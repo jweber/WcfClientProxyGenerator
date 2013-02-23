@@ -23,9 +23,10 @@ namespace WcfClientProxyGenerator.Tests
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
             var generator = new Generator<ITestService>();
-            var proxy = generator.Generate();
+            var proxy = generator.Generate(serviceHost.Binding, serviceHost.EndpointAddress);
 
-            var result = proxy.TestMethod("arg");
+            var result = proxy.TestMethod("good");
+            Assert.AreEqual("OK", result);
         }
 
         [Test]
@@ -53,11 +54,12 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = new ChannelFactory<ITestService>(serviceHost.Binding, serviceHost.EndpointAddress).CreateChannel();
+            var generator = new Generator<ITestService>();
+            var proxy = generator.Generate(serviceHost.Binding, serviceHost.EndpointAddress);
 
             // Will fault the channel
             Assert.That(() => proxy.TestMethod("bad"), Throws.Exception);
-            Assert.That(() => proxy.TestMethod("good"), Throws.Exception.TypeOf<CommunicationObjectFaultedException>());
+            Assert.That(() => proxy.TestMethod("good"), Is.EqualTo("OK"));
         }
     }
 }

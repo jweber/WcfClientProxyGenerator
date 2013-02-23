@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
+using System.ServiceModel.Channels;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,7 +13,7 @@ namespace WcfClientProxyGenerator
     public class Generator<TServiceInterface>
         where TServiceInterface : class
     {
-        public TServiceInterface Generate()
+        public TServiceInterface Generate(Binding binding, EndpointAddress endpointAddress)
         {
             var assemblyName = new AssemblyName("temp");
             var appDomain = System.Threading.Thread.GetDomain();
@@ -22,7 +23,7 @@ namespace WcfClientProxyGenerator
             var typeBuilder = moduleBuilder.DefineType(
                 "Generated",
                 TypeAttributes.Public | TypeAttributes.Class,
-                typeof(Caller));
+                typeof(ClientBase<TServiceInterface>));
 
             typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
 
@@ -38,14 +39,14 @@ namespace WcfClientProxyGenerator
             }
 
             Type generatedType = typeBuilder.CreateType();
-            var inst = Activator.CreateInstance(generatedType, new object[] { "testConfig" }) as TServiceInterface;
+            var inst = Activator.CreateInstance(generatedType, new object[] { binding, endpointAddress }) as TServiceInterface;
 
             return inst;
         }
 
         private void GenerateConstructor(TypeBuilder typeBuilder)
         {
-            var parameters = new[] { typeof(string) };
+            var parameters = new[] { typeof(Binding), typeof(EndpointAddress) };
             var constructorBuilder = typeBuilder.DefineConstructor(
                 MethodAttributes.Public, 
                 CallingConventions.Standard, 
@@ -53,10 +54,11 @@ namespace WcfClientProxyGenerator
 
             var ilGenerator = constructorBuilder.GetILGenerator();
 
-            ilGenerator.Emit(OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Ldarg_1);
+            ilGenerator.Emit(OpCodes.Ldarg_0); // this
+            ilGenerator.Emit(OpCodes.Ldarg_1); // binding parameter
+            ilGenerator.Emit(OpCodes.Ldarg_2); // endpoint address parameter
 
-            var baseConstructor = typeof(Caller)
+            var baseConstructor = typeof(ClientBase<TServiceInterface>)
                 .GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, parameters, null);
 
             ilGenerator.Emit(OpCodes.Call, baseConstructor);
@@ -79,8 +81,12 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ldarg_0);
             //ilGenerator.Emit(OpCodes.Ldarg_1);
 
-            var callerMethod = typeof(Caller).GetMethod("Get");
-            
+            var channelProperty = typeof(ClientBase<TServiceInterface>)
+                .GetMethod(
+                    "get_Channel", 
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
+
+            ilGenerator.EmitCall(OpCodes.Call, channelProperty, null);
 
             ilGenerator.DeclareLocal(typeof(string));
 
@@ -89,7 +95,7 @@ namespace WcfClientProxyGenerator
             for (int i = 0; i < parameterTypes.Length; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, ((short) i + 1));
 
-            ilGenerator.Emit(OpCodes.Call, callerMethod);
+            ilGenerator.Emit(OpCodes.Call, methodInfo);
 
             ilGenerator.Emit(OpCodes.Stloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
