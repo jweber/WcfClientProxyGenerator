@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WcfClientProxyGenerator", "WcfClientProxyGenerator\WcfClientProxyGenerator.csproj", "{56614D90-9EEA-4908-8BEB-7CD6E35BFCB0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WcfClientProxyGenerator.Tests", "WcfClientProxyGenerator.Tests\WcfClientProxyGenerator.Tests.csproj", "{C8B3B23C-F719-4F31-B6B7-8F02B3A817FA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{56614D90-9EEA-4908-8BEB-7CD6E35BFCB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56614D90-9EEA-4908-8BEB-7CD6E35BFCB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56614D90-9EEA-4908-8BEB-7CD6E35BFCB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56614D90-9EEA-4908-8BEB-7CD6E35BFCB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8B3B23C-F719-4F31-B6B7-8F02B3A817FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8B3B23C-F719-4F31-B6B7-8F02B3A817FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8B3B23C-F719-4F31-B6B7-8F02B3A817FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8B3B23C-F719-4F31-B6B7-8F02B3A817FA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
