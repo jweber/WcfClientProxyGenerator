@@ -8,6 +8,7 @@ using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.Text;
 using System.Threading.Tasks;
+using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
@@ -32,7 +33,7 @@ namespace WcfClientProxyGenerator
             where TServiceInterface : class
         {
             var proxyType = GetProxyType<TServiceInterface>();
-            return (TServiceInterface) Activator.CreateInstance(proxyType);
+            return (TServiceInterface) FastActivator.CreateInstance(proxyType);
         }
 
         private static Type GetProxyType<TServiceInterface>()

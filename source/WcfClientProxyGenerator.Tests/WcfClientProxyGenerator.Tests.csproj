@@ -47,6 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FastActivatorTests.cs" />
     <Compile Include="Test.cs" />
     <Compile Include="Infrastructure\InProcTestFactory.cs" />
     <Compile Include="Infrastructure\ITestService.cs" />
