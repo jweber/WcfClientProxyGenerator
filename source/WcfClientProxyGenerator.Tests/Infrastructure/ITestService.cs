@@ -16,6 +16,9 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
 
         [OperationContract]
         Response TestMethodComplex(Request request);
+
+        [OperationContract]
+        Response TestMethodComplexMulti(string input, Request request);
     }
 
     [DataContract]

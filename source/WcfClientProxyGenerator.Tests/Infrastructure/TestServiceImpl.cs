@@ -38,5 +38,15 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
 
             return new Response { ResponseMessage = string.Format("Echo: {0}", request.RequestMessage) };
         }
+
+        public Response TestMethodComplexMulti(string input, Request request)
+        {
+            if (this._mock != null)
+            {
+                return this._mock.Object.TestMethodComplexMulti(input, request);
+            }
+
+            return new Response { ResponseMessage = string.Format("Echo: {0} {1}", input, request.RequestMessage) };
+        }
     }
 }

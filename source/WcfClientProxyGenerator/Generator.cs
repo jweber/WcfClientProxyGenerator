@@ -100,9 +100,12 @@ namespace WcfClientProxyGenerator
             var lambdaIlGenerator = lambdaMethodBuilder.GetILGenerator();
             lambdaIlGenerator.DeclareLocal(methodInfo.ReturnType);
             lambdaIlGenerator.Emit(OpCodes.Ldarg_1);
-            lambdaIlGenerator.Emit(OpCodes.Ldarg_0);
             
-            lambdaFields.ForEach(lf => lambdaIlGenerator.Emit(OpCodes.Ldfld, lf));
+            lambdaFields.ForEach(lf =>
+            {
+                lambdaIlGenerator.Emit(OpCodes.Ldarg_0);
+                lambdaIlGenerator.Emit(OpCodes.Ldfld, lf);
+            });
 
             lambdaIlGenerator.Emit(OpCodes.Callvirt, methodInfo);
             lambdaIlGenerator.Emit(OpCodes.Stloc_0);
@@ -122,9 +125,15 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Newobj, lambdaCtor);
             ilGenerator.Emit(OpCodes.Stloc_2);
             ilGenerator.Emit(OpCodes.Ldloc_2);
-            ilGenerator.Emit(OpCodes.Ldarg_1);
+            
+            for (int i = 0; i < lambdaFields.Count; i++)
+            {
+                ilGenerator.Emit(OpCodes.Ldarg, i + 1);
+                ilGenerator.Emit(OpCodes.Stfld, lambdaType.GetField(lambdaFields[i].Name));
 
-            lambdaFields.ForEach(lf => ilGenerator.Emit(OpCodes.Stfld, lambdaType.GetField(lf.Name)));
+                if (i < lambdaFields.Count)
+                    ilGenerator.Emit(OpCodes.Ldloc_2);
+            }
 
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ldarg_0);
@@ -175,7 +184,7 @@ namespace WcfClientProxyGenerator
 
     public interface ITest
     {
-        string Get(string arg);
+        string Get(string arg0, int? arg1, bool arg2);
     }
 
     internal class TestImpl : FaultCaller<ITest>, ITest
@@ -184,10 +193,10 @@ namespace WcfClientProxyGenerator
             : base(binding, endpointAddress)
         {}
 
-        public string Get(string arg)
+        public string Get(string arg0, int? arg1, bool arg2)
         {
             var invokerInstance = base.ActionInvoker;
-            Func<ITest, string> lambda = m => m.Get(arg);
+            Func<ITest, string> lambda = m => m.Get(arg0, arg1, arg2);
             
             return invokerInstance.Invoke(lambda);
         }
