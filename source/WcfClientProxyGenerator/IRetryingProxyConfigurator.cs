@@ -1,14 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WcfClientProxyGenerator
 {
     public interface IProxyConfigurator
+    {
+        void SetEndpoint(string endpointConfigurationName);
+        void SetEndpoint(Binding binding, EndpointAddress endpointAddress);
+    }
+
+    public interface IRetryingProxyConfigurator : IProxyConfigurator
     {
         void MaximumRetries(int retryCount);
         void TimeBetweenRetries(TimeSpan timeSpan);

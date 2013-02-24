@@ -22,14 +22,14 @@ namespace WcfClientProxyGenerator
             var typeBuilder = moduleBuilder.DefineType(
                 "-proxy-" + typeof(TServiceInterface).Name,
                 TypeAttributes.Public | TypeAttributes.Class,
-                typeof(ActionInvokerProvider<TServiceInterface>));
+                typeof(RetryingWcfActionInvokerProvider<TServiceInterface>));
             
             typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
 
             SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
 
-            GenerateTypeConstructor(typeBuilder, typeof(string));
-            GenerateTypeConstructor(typeBuilder, typeof(Binding), typeof(EndpointAddress));
+//            GenerateTypeConstructor(typeBuilder, typeof(string));
+//            GenerateTypeConstructor(typeBuilder, typeof(Binding), typeof(EndpointAddress));
 
             var serviceMethods = typeof(TServiceInterface)
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -70,7 +70,7 @@ namespace WcfClientProxyGenerator
             for (int i = 0; i < argumentParameterTypes.Length; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, (i + 1));
 
-            var baseCtor = typeof(ActionInvokerProvider<TServiceInterface>)
+            var baseCtor = typeof(RetryingWcfActionInvokerProvider<TServiceInterface>)
                 .GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, argumentParameterTypes, null);
 
             ilGenerator.Emit(OpCodes.Call, baseCtor);
@@ -114,10 +114,10 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ldarg_0);
 
-            var channelProperty = typeof(ActionInvokerProvider<TServiceInterface>)
+            var channelProperty = typeof(RetryingWcfActionInvokerProvider<TServiceInterface>)
                 .GetMethod(
                     "get_ActionInvoker", 
-                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty);
 
             ilGenerator.Emit(OpCodes.Call, channelProperty);
             ilGenerator.Emit(OpCodes.Stloc_0);

@@ -40,9 +40,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ActionInvokerProvider.cs" />
+    <Compile Include="IActionInvoker.cs" />
+    <Compile Include="IActionInvokerProvider.cs" />
+    <Compile Include="RetryingWcfActionInvokerProvider.cs" />
     <Compile Include="DynamicProxyTypeGenerator.cs" />
-    <Compile Include="IProxyConfigurator.cs" />
+    <Compile Include="IRetryingProxyConfigurator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProxyGenerator.cs" />
     <Compile Include="RetryingWcfActionInvoker.cs" />

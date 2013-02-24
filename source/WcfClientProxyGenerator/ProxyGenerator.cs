@@ -15,37 +15,24 @@ namespace WcfClientProxyGenerator
     {
         private static readonly ConcurrentDictionary<Type, Type> ProxyCache = new ConcurrentDictionary<Type, Type>();
 
-        public static TServiceInterface Create<TServiceInterface>(string endpointConfigurationName, Action<IProxyConfigurator> configurator = null)
+        public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
         {
-            var proxy = CreateProxy<TServiceInterface>(endpointConfigurationName);
+            var proxy = CreateProxy<TServiceInterface>();
 
             if (configurator != null)
             {
-                configurator(proxy as IProxyConfigurator);
+                configurator(proxy as IRetryingProxyConfigurator);
             }
 
             return proxy;            
-        }
-
-        public static TServiceInterface Create<TServiceInterface>(Binding binding, EndpointAddress endpointAddress, Action<IProxyConfigurator> configurator = null)
-            where TServiceInterface : class
-        {
-            var proxy = CreateProxy<TServiceInterface>(binding, endpointAddress);
-            
-            if (configurator != null)
-            {
-                configurator(proxy as IProxyConfigurator);
-            }
-
-            return proxy;
         }
 
         private static TServiceInterface CreateProxy<TServiceInterface>(params object[] arguments)
             where TServiceInterface : class
         {
             var proxyType = GetProxyType<TServiceInterface>();
-            return (TServiceInterface) Activator.CreateInstance(proxyType, arguments);
+            return (TServiceInterface) Activator.CreateInstance(proxyType);
         }
 
         private static Type GetProxyType<TServiceInterface>()

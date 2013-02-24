@@ -5,39 +5,34 @@ using JetBrains.Annotations;
 
 namespace WcfClientProxyGenerator
 {
-    internal class ActionInvokerProvider<TServiceInterface> : IProxyConfigurator
+    internal class RetryingWcfActionInvokerProvider<TServiceInterface> : IActionInvokerProvider<TServiceInterface>, IRetryingProxyConfigurator
         where TServiceInterface : class
     {
-        private readonly ChannelFactory<TServiceInterface> _channelFactory;
+        private ChannelFactory<TServiceInterface> _channelFactory;
         private readonly RetryingWcfActionInvoker<TServiceInterface> _actionInvoker; 
 
-        private ActionInvokerProvider()
+        public RetryingWcfActionInvokerProvider()
         {
             _actionInvoker = new RetryingWcfActionInvoker<TServiceInterface>(() => _channelFactory.CreateChannel());
         }
 
-        protected ActionInvokerProvider(string endpointConfigurationName)
-            : this()
+        [UsedImplicitly]
+        public IActionInvoker<TServiceInterface> ActionInvoker
+        {
+            get { return _actionInvoker; }
+        }
+
+        #region IRetryingProxyConfigurator
+
+        public void SetEndpoint(string endpointConfigurationName)
         {
             _channelFactory = new ChannelFactory<TServiceInterface>(endpointConfigurationName);
         }
 
-        protected ActionInvokerProvider(Binding binding, EndpointAddress endpointAddress)
-            : this()
+        public void SetEndpoint(Binding binding, EndpointAddress endpointAddress)
         {
             _channelFactory = new ChannelFactory<TServiceInterface>(binding, endpointAddress);
         }
-
-        [UsedImplicitly]
-        protected RetryingWcfActionInvoker<TServiceInterface> ActionInvoker
-        {
-            get
-            {
-                return _actionInvoker;
-            }
-        }
-
-        #region IProxyConfigurator
 
         public void MaximumRetries(int retryCount)
         {

@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading;
+using JetBrains.Annotations;
 
 namespace WcfClientProxyGenerator
 {
-    internal class RetryingWcfActionInvoker<TServiceInterface>
+    internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
         where TServiceInterface : class
     {
         /// <summary>
@@ -68,6 +69,7 @@ namespace WcfClientProxyGenerator
             _exceptionsToHandle.Add(exceptionType, where);
         }
 
+        [UsedImplicitly]
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
             var provider = RefreshProvider(null);
