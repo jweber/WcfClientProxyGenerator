@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -19,13 +20,15 @@ namespace WcfClientProxyGenerator
             var appDomain = System.Threading.Thread.GetDomain();
             var assemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
             var moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name, "WcfClientProxyGenerator.DynamicProxy.dll");
-
+            
             var typeBuilder = moduleBuilder.DefineType(
                 "-proxy-" + typeof(TServiceInterface).Name,
                 TypeAttributes.Public | TypeAttributes.Class,
                 typeof(FaultCaller<TServiceInterface>));
-
+            
             typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
+
+            SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
 
             GenerateConstructor(typeBuilder);
 
@@ -47,6 +50,13 @@ namespace WcfClientProxyGenerator
             var inst = Activator.CreateInstance(generatedType, new object[] { binding, endpointAddress }) as TServiceInterface;
 
             return inst;
+        }
+
+        private void SetDebuggerDisplay(TypeBuilder typeBuilder, string display)
+        {
+            var ca = typeof(DebuggerDisplayAttribute).GetConstructor(new[] { typeof(string) });
+            var cab = new CustomAttributeBuilder(ca, new object[] { display });
+            typeBuilder.SetCustomAttribute(cab);
         }
 
         private void GenerateConstructor(TypeBuilder typeBuilder)
