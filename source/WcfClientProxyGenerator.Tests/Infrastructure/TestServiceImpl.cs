@@ -29,14 +29,14 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             return string.Format("Echo: {0}", input);
         }
 
-//        public Response TestMethodComplex(Request request)
-//        {
-//            if (this._mock != null)
-//            {
-//                return this._mock.Object.TestMethodComplex(request);
-//            }
-//
-//            return new Response { ResponseMessage = string.Format("Echo: {0}", request.RequestMessage) };
-//        }
+        public Response TestMethodComplex(Request request)
+        {
+            if (this._mock != null)
+            {
+                return this._mock.Object.TestMethodComplex(request);
+            }
+
+            return new Response { ResponseMessage = string.Format("Echo: {0}", request.RequestMessage) };
+        }
     }
 }

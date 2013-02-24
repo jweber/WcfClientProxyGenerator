@@ -21,7 +21,7 @@ namespace WcfClientProxyGenerator
             var moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name, "WcfClientProxyGenerator.DynamicProxy.dll");
 
             var typeBuilder = moduleBuilder.DefineType(
-                "Generated",
+                "-proxy-" + typeof(TServiceInterface).Name,
                 TypeAttributes.Public | TypeAttributes.Class,
                 typeof(FaultCaller<TServiceInterface>));
 
@@ -80,9 +80,17 @@ namespace WcfClientProxyGenerator
                 methodInfo.ReturnType,
                 parameterTypes);
 
-            var lambdaTypeBuilder = moduleBuilder.DefineType(Guid.NewGuid().ToString());
+            var lambdaTypeBuilder = moduleBuilder.DefineType("-lambda-" + methodInfo.Name);
             // define lambda arguments
-            var lambdaField = lambdaTypeBuilder.DefineField("arg", typeof(string), FieldAttributes.Public);
+            //var lambdaField = lambdaTypeBuilder.DefineField("arg", typeof(string), FieldAttributes.Public);
+            var lambdaFields = new List<FieldBuilder>(parameterTypes.Length);
+            for (int i = 0; i < parameterTypes.Length; i++)
+            {
+                Type parameterType = parameterTypes[i];
+                lambdaFields.Add(
+                    lambdaTypeBuilder.DefineField("arg" + i, parameterType, FieldAttributes.Public));
+            }
+
             var lambdaMethodBuilder = lambdaTypeBuilder.DefineMethod(
                 "Get",
                 MethodAttributes.Public,
@@ -93,7 +101,9 @@ namespace WcfClientProxyGenerator
             lambdaIlGenerator.DeclareLocal(methodInfo.ReturnType);
             lambdaIlGenerator.Emit(OpCodes.Ldarg_1);
             lambdaIlGenerator.Emit(OpCodes.Ldarg_0);
-            lambdaIlGenerator.Emit(OpCodes.Ldfld, lambdaField);
+            
+            lambdaFields.ForEach(lf => lambdaIlGenerator.Emit(OpCodes.Ldfld, lf));
+
             lambdaIlGenerator.Emit(OpCodes.Callvirt, methodInfo);
             lambdaIlGenerator.Emit(OpCodes.Stloc_0);
             lambdaIlGenerator.Emit(OpCodes.Ldloc_0);
@@ -103,7 +113,7 @@ namespace WcfClientProxyGenerator
 
             var ilGenerator = methodBuilder.GetILGenerator();
             ilGenerator.DeclareLocal(typeof(RetryingWcfActionInvoker<TServiceInterface>));
-            ilGenerator.DeclareLocal(typeof(Func<TServiceInterface, string>));
+            ilGenerator.DeclareLocal(typeof(Func<,>).MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType));
             ilGenerator.DeclareLocal(lambdaType);
             ilGenerator.DeclareLocal(methodInfo.ReturnType);
 
@@ -113,7 +123,9 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Stloc_2);
             ilGenerator.Emit(OpCodes.Ldloc_2);
             ilGenerator.Emit(OpCodes.Ldarg_1);
-            ilGenerator.Emit(OpCodes.Stfld, lambdaType.GetField("arg"));
+
+            lambdaFields.ForEach(lf => ilGenerator.Emit(OpCodes.Stfld, lambdaType.GetField(lf.Name)));
+
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ldarg_0);
 
@@ -133,7 +145,8 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ldftn, lambdaGetMethod);
             
             // new func<TService, TReturn>
-            var funcCons = typeof(Func<TServiceInterface,string>)
+            var funcCons = typeof(Func<,>)
+                .MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType)
                 .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
 
             ilGenerator.Emit(OpCodes.Newobj, funcCons);
@@ -143,7 +156,7 @@ namespace WcfClientProxyGenerator
 
             var invokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
                 .GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)
-                .MakeGenericMethod(new[] { typeof(string) });
+                .MakeGenericMethod(new[] { methodInfo.ReturnType });
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
 

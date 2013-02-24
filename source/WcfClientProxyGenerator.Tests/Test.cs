@@ -61,5 +61,27 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(() => proxy.TestMethod("bad"), Throws.Exception);
             Assert.That(() => proxy.TestMethod("good"), Is.EqualTo("OK"));
         }
+
+        [Test]
+        public void Test3()
+        {
+            var badRequest = new Request() { RequestMessage = "bad" };
+            var goodRequest = new Request() { RequestMessage = "good" };
+
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.TestMethodComplex(goodRequest)).Returns(new Response() { ResponseMessage = "OK" });
+            mockService.Setup(m => m.TestMethodComplex(badRequest)).Throws<Exception>();
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var generator = new Generator<ITestService>();
+            var proxy = generator.Generate(serviceHost.Binding, serviceHost.EndpointAddress);
+
+            var g = proxy.TestMethodComplex(new Request() { RequestMessage = "test" });
+
+            // Will fault the channel
+            Assert.That(() => proxy.TestMethodComplex(badRequest), Throws.Exception);
+            Assert.That(() => proxy.TestMethodComplex(goodRequest).ResponseMessage, Is.EqualTo("OK"));
+        }
     }
 }
