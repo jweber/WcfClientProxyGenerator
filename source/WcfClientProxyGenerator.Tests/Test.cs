@@ -22,7 +22,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var generator = new Generator<ITestService>();
+            var generator = new ProxyGenerator<ITestService>();
             var proxy = generator.Generate(serviceHost.Binding, serviceHost.EndpointAddress);
 
             var result = proxy.TestMethod("good");
@@ -54,7 +54,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var generator = new Generator<ITestService>();
+            var generator = new ProxyGenerator<ITestService>();
             var proxy = generator.Generate(serviceHost.Binding, serviceHost.EndpointAddress);
 
             // Will fault the channel
@@ -74,7 +74,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var generator = new Generator<ITestService>();
+            var generator = new ProxyGenerator<ITestService>();
             var proxy = generator.Generate(serviceHost.Binding, serviceHost.EndpointAddress);
 
             // Will fault the channel
@@ -94,7 +94,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var generator = new Generator<ITestService>();
+            var generator = new ProxyGenerator<ITestService>();
             var proxy = generator.Generate(serviceHost.Binding, serviceHost.EndpointAddress);
 
             // Will fault the channel

@@ -40,9 +40,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Generator.cs" />
+    <Compile Include="ActionInvokerProvider.cs" />
+    <Compile Include="ProxyGenerator.cs" />
+    <Compile Include="IActionInvoker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RetryingWcfActionInvoker.cs" />
+    <Compile Include="Util\ResharperAnnotations.cs" />
     <Compile Include="WcfRetryFailedException.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

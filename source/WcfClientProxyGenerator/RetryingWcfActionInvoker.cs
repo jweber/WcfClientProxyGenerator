@@ -5,8 +5,8 @@ using System.Threading;
 
 namespace WcfClientProxyGenerator
 {
-    internal class RetryingWcfActionInvoker<TWcfActionProvider>
-        where TWcfActionProvider : class
+    internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
+        where TServiceInterface : class
     {
         /// <summary>
         /// Number of times the client will attempt to retry
@@ -20,9 +20,9 @@ namespace WcfClientProxyGenerator
         /// <summary>
         /// The method that initializes new WCF action providers
         /// </summary>
-        private readonly Func<TWcfActionProvider> wcfActionProviderCreator;
+        private readonly Func<TServiceInterface> wcfActionProviderCreator;
 
-        public RetryingWcfActionInvoker(Func<TWcfActionProvider> wcfActionProviderCreator)
+        public RetryingWcfActionInvoker(Func<TServiceInterface> wcfActionProviderCreator)
         {
             this.wcfActionProviderCreator = wcfActionProviderCreator;
             this.exceptionsToHandle = new Dictionary<Type, Predicate<Exception>>
@@ -54,7 +54,7 @@ namespace WcfClientProxyGenerator
             this.exceptionsToHandle.Add(exceptionType, where);
         }
 
-        public TResponse Invoke<TResponse>(Func<TWcfActionProvider, TResponse> method)
+        public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
             var provider = this.RefreshProvider(null);
 
@@ -106,7 +106,7 @@ namespace WcfClientProxyGenerator
         /// </summary>
         /// <param name="provider">The provider.</param>
         /// <returns></returns>
-        private TWcfActionProvider RefreshProvider(TWcfActionProvider provider)
+        private TServiceInterface RefreshProvider(TServiceInterface provider)
         {
             var communicationObject = provider as ICommunicationObject;
             if (communicationObject == null)
@@ -123,7 +123,7 @@ namespace WcfClientProxyGenerator
             return this.wcfActionProviderCreator();
         }
 
-        private void DisposeProvider(TWcfActionProvider provider)
+        private void DisposeProvider(TServiceInterface provider)
         {
             var communicationObject = provider as ICommunicationObject;
             if (communicationObject == null)

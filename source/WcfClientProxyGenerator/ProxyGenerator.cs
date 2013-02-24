@@ -6,12 +6,10 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WcfClientProxyGenerator
 {
-    public class Generator<TServiceInterface>
+    public class ProxyGenerator<TServiceInterface>
         where TServiceInterface : class
     {
         public TServiceInterface Generate(Binding binding, EndpointAddress endpointAddress)
@@ -24,13 +22,13 @@ namespace WcfClientProxyGenerator
             var typeBuilder = moduleBuilder.DefineType(
                 "-proxy-" + typeof(TServiceInterface).Name,
                 TypeAttributes.Public | TypeAttributes.Class,
-                typeof(FaultCaller<TServiceInterface>));
+                typeof(ActionInvokerProvider<TServiceInterface>));
             
             typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
 
             SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
 
-            GenerateConstructor(typeBuilder);
+            GenerateTypeConstructor(typeBuilder);
 
             var serviceMethods = typeof(TServiceInterface)
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -38,7 +36,7 @@ namespace WcfClientProxyGenerator
 
             foreach (var serviceMethod in serviceMethods)
             {
-                GenerateMethod(serviceMethod, typeBuilder, moduleBuilder);
+                GenerateServiceProxyMethod(serviceMethod, moduleBuilder, typeBuilder);
             }
 
             Type generatedType = typeBuilder.CreateType();
@@ -59,7 +57,7 @@ namespace WcfClientProxyGenerator
             typeBuilder.SetCustomAttribute(cab);
         }
 
-        private void GenerateConstructor(TypeBuilder typeBuilder)
+        private void GenerateTypeConstructor(TypeBuilder typeBuilder)
         {
             var parameters = new[] { typeof(Binding), typeof(EndpointAddress) };
             var constructorBuilder = typeBuilder.DefineConstructor(
@@ -73,14 +71,14 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ldarg_1); // binding parameter
             ilGenerator.Emit(OpCodes.Ldarg_2); // endpoint address parameter
 
-            var baseConstructor = typeof(FaultCaller<TServiceInterface>)
+            var baseConstructor = typeof(ActionInvokerProvider<TServiceInterface>)
                 .GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, parameters, null);
 
             ilGenerator.Emit(OpCodes.Call, baseConstructor);
             ilGenerator.Emit(OpCodes.Ret);
         }
 
-        private void GenerateMethod(MethodInfo methodInfo, TypeBuilder typeBuilder, ModuleBuilder moduleBuilder)
+        private void GenerateServiceProxyMethod(MethodInfo methodInfo, ModuleBuilder moduleBuilder, TypeBuilder typeBuilder)
         {
             var parameterTypes = methodInfo.GetParameters().Select(m => m.ParameterType).ToArray();
 
@@ -90,65 +88,34 @@ namespace WcfClientProxyGenerator
                 methodInfo.ReturnType,
                 parameterTypes);
 
-            var lambdaTypeBuilder = moduleBuilder.DefineType("-lambda-" + methodInfo.Name);
-            // define lambda arguments
-            //var lambdaField = lambdaTypeBuilder.DefineField("arg", typeof(string), FieldAttributes.Public);
-            var lambdaFields = new List<FieldBuilder>(parameterTypes.Length);
-            for (int i = 0; i < parameterTypes.Length; i++)
-            {
-                Type parameterType = parameterTypes[i];
-                lambdaFields.Add(
-                    lambdaTypeBuilder.DefineField("arg" + i, parameterType, FieldAttributes.Public));
-            }
-
-            var lambdaMethodBuilder = lambdaTypeBuilder.DefineMethod(
-                "Get",
-                MethodAttributes.Public,
-                methodInfo.ReturnType,
-                new[] { typeof(TServiceInterface) });
-
-            var lambdaIlGenerator = lambdaMethodBuilder.GetILGenerator();
-            lambdaIlGenerator.DeclareLocal(methodInfo.ReturnType);
-            lambdaIlGenerator.Emit(OpCodes.Ldarg_1);
-            
-            lambdaFields.ForEach(lf =>
-            {
-                lambdaIlGenerator.Emit(OpCodes.Ldarg_0);
-                lambdaIlGenerator.Emit(OpCodes.Ldfld, lf);
-            });
-
-            lambdaIlGenerator.Emit(OpCodes.Callvirt, methodInfo);
-            lambdaIlGenerator.Emit(OpCodes.Stloc_0);
-            lambdaIlGenerator.Emit(OpCodes.Ldloc_0);
-            lambdaIlGenerator.Emit(OpCodes.Ret);
-
-            Type lambdaType = lambdaTypeBuilder.CreateType();
+            Type actionInvokerLambdaType;
+            var actionInvokerLambdaFields = GenerateActionInvokerLambdaType(methodInfo, moduleBuilder, parameterTypes, out actionInvokerLambdaType);
 
             var ilGenerator = methodBuilder.GetILGenerator();
             ilGenerator.DeclareLocal(typeof(RetryingWcfActionInvoker<TServiceInterface>));
             ilGenerator.DeclareLocal(typeof(Func<,>).MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType));
-            ilGenerator.DeclareLocal(lambdaType);
+            ilGenerator.DeclareLocal(actionInvokerLambdaType);
             ilGenerator.DeclareLocal(methodInfo.ReturnType);
 
-            var lambdaCtor = lambdaType.GetConstructor(Type.EmptyTypes);
+            var lambdaCtor = actionInvokerLambdaType.GetConstructor(Type.EmptyTypes);
 
             ilGenerator.Emit(OpCodes.Newobj, lambdaCtor);
             ilGenerator.Emit(OpCodes.Stloc_2);
             ilGenerator.Emit(OpCodes.Ldloc_2);
             
-            for (int i = 0; i < lambdaFields.Count; i++)
+            for (int i = 0; i < actionInvokerLambdaFields.Count; i++)
             {
                 ilGenerator.Emit(OpCodes.Ldarg, i + 1);
-                ilGenerator.Emit(OpCodes.Stfld, lambdaType.GetField(lambdaFields[i].Name));
+                ilGenerator.Emit(OpCodes.Stfld, actionInvokerLambdaType.GetField(actionInvokerLambdaFields[i].Name));
 
-                if (i < lambdaFields.Count)
+                if (i < actionInvokerLambdaFields.Count)
                     ilGenerator.Emit(OpCodes.Ldloc_2);
             }
 
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ldarg_0);
 
-            var channelProperty = typeof(FaultCaller<TServiceInterface>)
+            var channelProperty = typeof(ActionInvokerProvider<TServiceInterface>)
                 .GetMethod(
                     "get_ActionInvoker", 
                     BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
@@ -157,10 +124,7 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Stloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_2);
 
-//            for (int i = 0; i < parameterTypes.Length; i++)
-//                ilGenerator.Emit(OpCodes.Ldarg, ((short) i + 1));
-
-            var lambdaGetMethod = lambdaType.GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
+            var lambdaGetMethod = actionInvokerLambdaType.GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
             ilGenerator.Emit(OpCodes.Ldftn, lambdaGetMethod);
             
             // new func<TService, TReturn>
@@ -182,79 +146,52 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Stloc_3);
             ilGenerator.Emit(OpCodes.Ldloc_3);
             ilGenerator.Emit(OpCodes.Ret);
-
-            //typeBuilder.DefineMethodOverride(methodBuilder, methodInfo);
         }
 
-        private bool MethodHasReturnValue(MethodInfo methodInfo)
+        /// <summary>
+        /// Builds the type used by the call to the <see cref="IActionInvoker{TServiceInterface}.Invoke{TResponse}"/>
+        /// method.
+        /// </summary>
+        /// <param name="methodInfo"></param>
+        /// <param name="moduleBuilder"></param>
+        /// <param name="parameterTypes"></param>
+        /// <param name="lambdaType"></param>
+        /// <returns></returns>
+        private static IList<FieldBuilder> GenerateActionInvokerLambdaType(MethodInfo methodInfo, ModuleBuilder moduleBuilder, Type[] parameterTypes, out Type lambdaType)
         {
-            return methodInfo.ReturnType != typeof(void);
-        }
-    }
+            var lambdaTypeBuilder = moduleBuilder.DefineType("-lambda-" + methodInfo.Name);
 
-    public interface ITest
-    {
-        string Get(string arg0, int? arg1, bool arg2);
-    }
-
-    internal class TestImpl : FaultCaller<ITest>, ITest
-    {
-        public TestImpl(Binding binding, EndpointAddress endpointAddress)
-            : base(binding, endpointAddress)
-        {}
-
-        public string Get(string arg0, int? arg1, bool arg2)
-        {
-            var invokerInstance = base.ActionInvoker;
-            Func<ITest, string> lambda = m => m.Get(arg0, arg1, arg2);
-            
-            return invokerInstance.Invoke(lambda);
-        }
-    }
-
-    internal class FaultCaller<TServiceInterface>
-        where TServiceInterface : class
-    {
-        private Binding _binding;
-        private EndpointAddress _endpointAddress;
-
-        protected FaultCaller(Binding binding, EndpointAddress endpointAddress)
-        {
-            _binding = binding;
-            _endpointAddress = endpointAddress;
-        }
-
-        protected TServiceInterface Proxy
-        {
-            get
+            var lambdaFields = new List<FieldBuilder>(parameterTypes.Length);
+            for (int i = 0; i < parameterTypes.Length; i++)
             {
-                var cf = new ChannelFactory<TServiceInterface>(_binding, _endpointAddress);
-                return cf.CreateChannel();
+                Type parameterType = parameterTypes[i];
+                lambdaFields.Add(
+                    lambdaTypeBuilder.DefineField("arg" + i, parameterType, FieldAttributes.Public));
             }
-        }
 
-        protected RetryingWcfActionInvoker<TServiceInterface> ActionInvoker
-        {
-            get
+            var lambdaMethodBuilder = lambdaTypeBuilder.DefineMethod(
+                "Get",
+                MethodAttributes.Public,
+                methodInfo.ReturnType,
+                new[] { typeof(TServiceInterface) });
+
+            var lambdaIlGenerator = lambdaMethodBuilder.GetILGenerator();
+            lambdaIlGenerator.DeclareLocal(methodInfo.ReturnType);
+            lambdaIlGenerator.Emit(OpCodes.Ldarg_1);
+
+            lambdaFields.ForEach(lf =>
             {
-                var ai = new RetryingWcfActionInvoker<TServiceInterface>(() => new ChannelFactory<TServiceInterface>(_binding, _endpointAddress).CreateChannel());
-                return ai;               
-            }
-        }
-    }
+                lambdaIlGenerator.Emit(OpCodes.Ldarg_0);
+                lambdaIlGenerator.Emit(OpCodes.Ldfld, lf);
+            });
 
-    public class Caller
-    {
-        private string _endpointConfigurationName;
+            lambdaIlGenerator.Emit(OpCodes.Callvirt, methodInfo);
+            lambdaIlGenerator.Emit(OpCodes.Stloc_0);
+            lambdaIlGenerator.Emit(OpCodes.Ldloc_0);
+            lambdaIlGenerator.Emit(OpCodes.Ret);
 
-        protected Caller(string endpointConfigurationName)
-        {
-            _endpointConfigurationName = endpointConfigurationName;
-        }
-
-        public string Get(string arg)
-        {
-            return _endpointConfigurationName + ": " + arg;
+            lambdaType = lambdaTypeBuilder.CreateType();
+            return lambdaFields;
         }
     }
 }
