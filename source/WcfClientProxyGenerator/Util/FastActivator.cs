@@ -27,7 +27,7 @@ namespace WcfClientProxyGenerator.Util
             return new T();
         }
 
-        public static T CreateInstance<T>(params object[] args)
+        public static T CreateInstance<T>(object[] args)
             where T : class
         {
             return CreateInstance(typeof(T), args) as T;
