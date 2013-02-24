@@ -9,7 +9,7 @@ using System.ServiceModel.Channels;
 
 namespace WcfClientProxyGenerator
 {
-    internal static class InternalProxyGenerator<TServiceInterface>
+    internal static class DynamicProxyTypeGenerator<TServiceInterface>
         where TServiceInterface : class
     {
         public static Type GenerateType()
@@ -51,9 +51,9 @@ namespace WcfClientProxyGenerator
 
         private static void SetDebuggerDisplay(TypeBuilder typeBuilder, string display)
         {
-            var ca = typeof(DebuggerDisplayAttribute).GetConstructor(new[] { typeof(string) });
-            var cab = new CustomAttributeBuilder(ca, new object[] { display });
-            typeBuilder.SetCustomAttribute(cab);
+            var attributCtor = typeof(DebuggerDisplayAttribute).GetConstructor(new[] { typeof(string) });
+            var attributeBuilder = new CustomAttributeBuilder(attributCtor, new object[] { display });
+            typeBuilder.SetCustomAttribute(attributeBuilder);
         }
 
         private static void GenerateTypeConstructor(TypeBuilder typeBuilder, params Type[] argumentParameterTypes)
@@ -70,10 +70,10 @@ namespace WcfClientProxyGenerator
             for (int i = 0; i < argumentParameterTypes.Length; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, (i + 1));
 
-            var baseConstructor = typeof(ActionInvokerProvider<TServiceInterface>)
+            var baseCtor = typeof(ActionInvokerProvider<TServiceInterface>)
                 .GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, argumentParameterTypes, null);
 
-            ilGenerator.Emit(OpCodes.Call, baseConstructor);
+            ilGenerator.Emit(OpCodes.Call, baseCtor);
             ilGenerator.Emit(OpCodes.Ret);
         }
 
@@ -127,11 +127,11 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ldftn, lambdaGetMethod);
             
             // new func<TService, TReturn>
-            var funcCons = typeof(Func<,>)
+            var funcCtor = typeof(Func<,>)
                 .MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType)
                 .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
 
-            ilGenerator.Emit(OpCodes.Newobj, funcCons);
+            ilGenerator.Emit(OpCodes.Newobj, funcCtor);
             ilGenerator.Emit(OpCodes.Stloc_1);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_1);

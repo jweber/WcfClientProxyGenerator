@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace WcfClientProxyGenerator
 {
-    internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
+    internal class RetryingWcfActionInvoker<TServiceInterface>
         where TServiceInterface : class
     {
         /// <summary>
@@ -13,19 +13,33 @@ namespace WcfClientProxyGenerator
         /// calls to the service in the event of some known WCF
         /// exceptions occurring
         /// </summary>
-        internal const int WcfRetries = 5;
+        public int RetryCount { get; set; }
 
-        private IDictionary<Type, Predicate<Exception>> exceptionsToHandle;
+        public int MillisecondsBetweenRetries { get; set; }
+
+        private readonly IDictionary<Type, Predicate<Exception>> _exceptionsToHandle;
 
         /// <summary>
         /// The method that initializes new WCF action providers
         /// </summary>
-        private readonly Func<TServiceInterface> wcfActionProviderCreator;
+        private readonly Func<TServiceInterface> _wcfActionProviderCreator;
 
-        public RetryingWcfActionInvoker(Func<TServiceInterface> wcfActionProviderCreator)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="wcfActionProviderCreator"></param>
+        /// <param name="retryCount"></param>
+        /// <param name="millisecondsBetweenRetries">Performs a linear backoff between retries by multiplying this value by an incremntal value up to <paramref name="retryCount"/></param>
+        public RetryingWcfActionInvoker(
+            Func<TServiceInterface> wcfActionProviderCreator, 
+            int retryCount = 5, 
+            int millisecondsBetweenRetries = 1000)
         {
-            this.wcfActionProviderCreator = wcfActionProviderCreator;
-            this.exceptionsToHandle = new Dictionary<Type, Predicate<Exception>>
+            RetryCount = retryCount;
+            MillisecondsBetweenRetries = millisecondsBetweenRetries;
+
+            _wcfActionProviderCreator = wcfActionProviderCreator;
+            _exceptionsToHandle = new Dictionary<Type, Predicate<Exception>>
             {
                 { typeof(ChannelTerminatedException), null },
                 { typeof(EndpointNotFoundException), null },
@@ -41,7 +55,7 @@ namespace WcfClientProxyGenerator
                 where = _ => true;
             }
 
-            this.exceptionsToHandle.Add(typeof(TException), where);
+            _exceptionsToHandle.Add(typeof(TException), where);
         }
 
         public void AddExceptionToRetryOn(Type exceptionType, Predicate<Exception> where = null)
@@ -51,17 +65,17 @@ namespace WcfClientProxyGenerator
                 where = _ => true;
             }
 
-            this.exceptionsToHandle.Add(exceptionType, where);
+            _exceptionsToHandle.Add(exceptionType, where);
         }
 
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
-            var provider = this.RefreshProvider(null);
+            var provider = RefreshProvider(null);
 
             try
             {
                 Exception mostRecentException = null;
-                for (int i = 0; i < WcfRetries; i++)
+                for (int i = 0; i < RetryCount; i++)
                 {
                     try
                     {
@@ -71,13 +85,13 @@ namespace WcfClientProxyGenerator
                     {
                         var exceptionType = ex.GetType();
 
-                        if (this.exceptionsToHandle.ContainsKey(exceptionType)
-                            && (this.exceptionsToHandle[exceptionType] == null
-                                || this.exceptionsToHandle[exceptionType](ex)))
+                        if (_exceptionsToHandle.ContainsKey(exceptionType)
+                            && (_exceptionsToHandle[exceptionType] == null
+                                || _exceptionsToHandle[exceptionType](ex)))
                         {
                             mostRecentException = ex;
-                            Thread.Sleep(1000 * (i + 1));
-                            provider = this.RefreshProvider(provider);
+                            Thread.Sleep(MillisecondsBetweenRetries * (i + 1));
+                            provider = RefreshProvider(provider);
                         }
                         else
                         {
@@ -89,13 +103,13 @@ namespace WcfClientProxyGenerator
                 if (mostRecentException != null)
                 {
                     throw new WcfRetryFailedException(
-                        string.Format("WCF call failed after {0} retries.", WcfRetries),
+                        string.Format("WCF call failed after {0} retries.", RetryCount),
                         mostRecentException);
                 }
             }
             finally
             {
-                this.DisposeProvider(provider);
+                DisposeProvider(provider);
             }
 
             return default(TResponse);
@@ -111,7 +125,7 @@ namespace WcfClientProxyGenerator
             var communicationObject = provider as ICommunicationObject;
             if (communicationObject == null)
             {
-                return this.wcfActionProviderCreator();
+                return _wcfActionProviderCreator();
             }
 
             if (communicationObject.State == CommunicationState.Opened)
@@ -119,8 +133,8 @@ namespace WcfClientProxyGenerator
                 return provider;
             }
 
-            this.DisposeProvider(provider);
-            return this.wcfActionProviderCreator();
+            DisposeProvider(provider);
+            return _wcfActionProviderCreator();
         }
 
         private void DisposeProvider(TServiceInterface provider)

@@ -10,6 +10,9 @@ namespace WcfClientProxyGenerator
 {
     public interface IProxyConfigurator
     {
+        void MaximumRetries(int retryCount);
+        void TimeBetweenRetries(TimeSpan timeSpan);
+
         void AddExceptionToRetryOn<TException>(Predicate<Exception> where = null)
             where TException : Exception;
 

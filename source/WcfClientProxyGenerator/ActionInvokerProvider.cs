@@ -29,7 +29,7 @@ namespace WcfClientProxyGenerator
         }
 
         [UsedImplicitly]
-        protected IActionInvoker<TServiceInterface> ActionInvoker
+        protected RetryingWcfActionInvoker<TServiceInterface> ActionInvoker
         {
             get
             {
@@ -37,7 +37,19 @@ namespace WcfClientProxyGenerator
             }
         }
 
-        public void AddExceptionToRetryOn<TException>(Predicate<Exception> @where = null) 
+        #region IProxyConfigurator
+
+        public void MaximumRetries(int retryCount)
+        {
+            _actionInvoker.RetryCount = retryCount;
+        }
+
+        public void TimeBetweenRetries(TimeSpan timeSpan)
+        {
+            _actionInvoker.MillisecondsBetweenRetries = timeSpan.Milliseconds;
+        }
+
+        public void AddExceptionToRetryOn<TException>(Predicate<Exception> @where = null)
             where TException : Exception
         {
             _actionInvoker.AddExceptionToRetryOn<TException>(@where);
@@ -47,5 +59,7 @@ namespace WcfClientProxyGenerator
         {
             _actionInvoker.AddExceptionToRetryOn(exceptionType, @where);
         }
+
+        #endregion
     }
 }
