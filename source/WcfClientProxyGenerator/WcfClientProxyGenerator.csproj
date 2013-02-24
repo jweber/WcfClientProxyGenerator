@@ -41,9 +41,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActionInvokerProvider.cs" />
-    <Compile Include="ProxyGenerator.cs" />
+    <Compile Include="InternalProxyGenerator.cs" />
     <Compile Include="IActionInvoker.cs" />
+    <Compile Include="IProxyConfigurator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProxyGenerator.cs" />
     <Compile Include="RetryingWcfActionInvoker.cs" />
     <Compile Include="Util\ResharperAnnotations.cs" />
     <Compile Include="WcfRetryFailedException.cs" />
