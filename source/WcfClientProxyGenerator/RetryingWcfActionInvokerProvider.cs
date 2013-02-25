@@ -44,13 +44,13 @@ namespace WcfClientProxyGenerator
             _actionInvoker.MillisecondsBetweenRetries = timeSpan.Milliseconds;
         }
 
-        public void AddExceptionToRetryOn<TException>(Predicate<Exception> @where = null)
+        public void RetryOnException<TException>(Predicate<Exception> @where = null)
             where TException : Exception
         {
             _actionInvoker.AddExceptionToRetryOn<TException>(@where);
         }
 
-        public void AddExceptionToRetryOn(Type exceptionType, Predicate<Exception> @where = null)
+        public void RetryOnException(Type exceptionType, Predicate<Exception> @where = null)
         {
             _actionInvoker.AddExceptionToRetryOn(exceptionType, @where);
         }
