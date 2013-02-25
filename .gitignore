@@ -41,4 +41,5 @@ data
 *.log.*
 lib/.nuget_packages
 build-artifacts
+build
 source/VersionInfo.cs
