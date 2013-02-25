@@ -15,9 +15,11 @@ When calling the `WcfClientProxyGenerator.Create<TServiceInterface>()` method, a
 Configures the proxy to communicate with the endpoint as configured in the _app.config_ or _web.config_ `<system.serviceModel><client>` section. The `endpointConfigurationName` value needs to match the _name_ attribute value of the `<endpoint/>`.
 
 For example, using:
+
     var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint("WSHttpBinding_ITestService"))
 
 will configure the proxy based on the `<endpoint/>` as setup in the _app.config_:
+
     <?xml version="1.0" encoding="utf-8" ?>
     <configuration>
         <system.serviceModel>
@@ -50,11 +52,14 @@ Configures the proxy to retry calls when it encounters arbitrary exceptions. The
 
 Examples
 --------
+If the first request results in a faulted channel, you would normally have to manually dispose of it. With the proxy instance, you can continue using it.
+
     IWcfService proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint("testServiceConfiguration"));
     var response = proxy.ServiceMethod("request");
     var response2 = proxy.ServiceMethod("request2"); // even if the previous request resulted in a FaultException this call will still work
 
 Configure the proxy to retry when a custom exception is encountered:
+
     var proxy = WcfClientProxyGenerator.Create<ITestService>(c =>
     {
         c.SetEndpoint("testServiceConfiguration");
