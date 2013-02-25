@@ -48,12 +48,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FastActivatorTests.cs" />
-    <Compile Include="Test.cs" />
+    <Compile Include="ProxyTests.cs" />
     <Compile Include="Infrastructure\InProcTestFactory.cs" />
     <Compile Include="Infrastructure\ITestService.cs" />
     <Compile Include="Infrastructure\TestBase.cs" />
     <Compile Include="Infrastructure\TestServiceImpl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RetryingWcfActionInvokerTests.cs" />
+    <Compile Include="SanityTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
