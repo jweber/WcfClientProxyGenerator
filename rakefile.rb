@@ -66,25 +66,25 @@ end
 
 desc 'Creates the nuspec file'
 nuspec :nuspec => :version do |nuspec|
-	mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
-
-	
-	nuspec.id = PROJECT_NAME
-	nuspec.version = ENV['NUGET_VERSION']
-	nuspec.authors = 'jweber'
-	nuspec.description = 'todo'
-	nuspec.title = PROJECT_NAME
-	nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.dll", 'lib\net40'
-	
-	nuspec.working_directory = 'build'
-	nuspec.output_file = "#{PROJECT_NAME}.nuspec"
+  mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
+  
+  nuspec.id = PROJECT_NAME
+  nuspec.version = ENV['NUGET_VERSION']
+  nuspec.authors = "j.weber"
+  nuspec.description = "Utility to generate fault tolerant and retry capable dynamic proxies for WCF services based on the WCF service interface."
+  nuspec.projectUrl = "https://github.com/jweber/WcfClientProxyGenerator"
+  nuspec.title = PROJECT_NAME
+  nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.dll", 'lib\net40'
+  
+  nuspec.working_directory = 'build'
+  nuspec.output_file = "#{PROJECT_NAME}.nuspec"
 end
 
 nugetpack :nupack => [:compile, :nuspec] do |nuget|
-	nuget.command = nuget_path
-	nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
-	nuget.base_folder = 'build'
-	nuget.output = 'build'
+  nuget.command = nuget_path
+  nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
+  nuget.base_folder = 'build'
+  nuget.output = 'build'
 end
 
 desc 'Builds version environment variables'
@@ -119,11 +119,11 @@ def commit_data
   begin
     commit = `git rev-parse --short HEAD`.chomp()
     git_date = `git log -1 --date=iso --pretty=format:%ad`
-	commit_date = DateTime.parse(git_date).strftime("%Y-%m-%d %H%M%S")
+    commit_date = DateTime.parse(git_date).strftime("%Y-%m-%d %H%M%S")
   rescue Exception => e
     puts e.inspect
-	commit = (ENV['BUILD_VCS_NUMBER'] || "000000")
-	commit_date = Time.new.strftime("%Y-%m-%d %H%M%S")
+    commit = (ENV['BUILD_VCS_NUMBER'] || "000000")
+    commit_date = Time.new.strftime("%Y-%m-%d %H%M%S")
   end
   [commit, commit_date]
  end
