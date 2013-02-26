@@ -2,11 +2,7 @@ WcfClientProxyGenerator
 =========================
 Utility to generate fault tolerant and retry capable dynamic proxies for WCF services based on the WCF service interface. 
 
-By default, if the following Exceptions are encountered while calling the service, the call will retry up to 5 times:
-
-* ChannelTerminatedException
-* EndpointNotFoundException
-* ServerTooBusyException
+With normal Service Reference or ChannelFactory instantiated clients, care must be taken to abort and recreate the client in the event that a communication fault occurs. The goal of this project is to provide an easy-to-use method of creating WCF clients that are self healing and tolerant of temporary network communication errors while still being as transparently useable as default WCF clients.
 
 Configuration
 -------------
@@ -50,6 +46,12 @@ Sets the minimum amount of time to pause between retrying calls to the service. 
 
 #### RetryOnException<TException>(Predicate<Exception> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
+
+By default, if the following Exceptions are encountered while calling the service, the call will retry up to 5 times:
+
+* ChannelTerminatedException
+* EndpointNotFoundException
+* ServerTooBusyException
 
 Examples
 --------
