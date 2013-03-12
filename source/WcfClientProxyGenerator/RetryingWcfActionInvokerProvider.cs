@@ -8,7 +8,7 @@ namespace WcfClientProxyGenerator
     internal class RetryingWcfActionInvokerProvider<TServiceInterface> : IActionInvokerProvider<TServiceInterface>, IRetryingProxyConfigurator
         where TServiceInterface : class
     {
-        private ChannelFactory<TServiceInterface> _channelFactory;
+        private static ChannelFactory<TServiceInterface> _channelFactory;
         private readonly RetryingWcfActionInvoker<TServiceInterface> _actionInvoker; 
 
         public RetryingWcfActionInvokerProvider()
@@ -44,7 +44,7 @@ namespace WcfClientProxyGenerator
             _actionInvoker.MillisecondsBetweenRetries = timeSpan.Milliseconds;
         }
 
-        public void RetryOnException<TException>(Predicate<Exception> @where = null)
+        public void RetryOnException<TException>(Predicate<TException> @where = null)
             where TException : Exception
         {
             _actionInvoker.AddExceptionToRetryOn<TException>(@where);

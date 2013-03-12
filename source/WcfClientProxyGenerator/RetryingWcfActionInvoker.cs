@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.ServiceModel;
 using System.Threading;
 using JetBrains.Annotations;
@@ -18,7 +19,7 @@ namespace WcfClientProxyGenerator
 
         public int MillisecondsBetweenRetries { get; set; }
 
-        private readonly IDictionary<Type, Predicate<Exception>> _exceptionsToHandle;
+        private readonly IDictionary<Type, object> _exceptionsToHandle;
 
         /// <summary>
         /// The method that initializes new WCF action providers
@@ -40,7 +41,7 @@ namespace WcfClientProxyGenerator
             MillisecondsBetweenRetries = millisecondsBetweenRetries;
 
             _wcfActionProviderCreator = wcfActionProviderCreator;
-            _exceptionsToHandle = new Dictionary<Type, Predicate<Exception>>
+            _exceptionsToHandle = new Dictionary<Type, object>
             {
                 { typeof(ChannelTerminatedException), null },
                 { typeof(EndpointNotFoundException), null },
@@ -48,7 +49,7 @@ namespace WcfClientProxyGenerator
             };
         }
 
-        public void AddExceptionToRetryOn<TException>(Predicate<Exception> where = null)
+        public void AddExceptionToRetryOn<TException>(Predicate<TException> where = null)
             where TException : Exception
         {
             if (where == null)
@@ -85,11 +86,7 @@ namespace WcfClientProxyGenerator
                     }
                     catch (Exception ex)
                     {
-                        var exceptionType = ex.GetType();
-
-                        if (_exceptionsToHandle.ContainsKey(exceptionType)
-                            && (_exceptionsToHandle[exceptionType] == null
-                                || _exceptionsToHandle[exceptionType](ex)))
+                        if (ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
                             Thread.Sleep(MillisecondsBetweenRetries * (i + 1));
@@ -115,6 +112,25 @@ namespace WcfClientProxyGenerator
             }
 
             return default(TResponse);
+        }
+
+        private bool ExceptionIsRetryable(Exception ex)
+        {
+            var exceptionType = ex.GetType();
+            if (!_exceptionsToHandle.ContainsKey(exceptionType))
+                return false;
+
+            object predicate = _exceptionsToHandle[exceptionType];
+
+            if (predicate == null)
+                return true;
+
+            var predicateType = typeof(Predicate<>).MakeGenericType(exceptionType);
+
+            var invokeMethod = predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
+            bool response = (bool) invokeMethod.Invoke(predicate, new object[] { ex });
+
+            return response;
         }
 
         /// <summary>
