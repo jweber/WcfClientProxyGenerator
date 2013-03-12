@@ -30,13 +30,36 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void AddExceptionToRetryOn_RetriesOnConfiguredException()
         {
-            this.AssertThatCallRetriesOnException<TimeoutException>(c => c.AddExceptionToRetryOn<TimeoutException>());
+            this.AssertThatCallRetriesOnException<TimeoutException>(
+                c => c.AddExceptionToRetryOn<TimeoutException>());
         }
 
         [Test]
         public void AddExceptionToRetryOn_RetriesOnConfiguredException_WhenPredicateMatches()
         {
-            this.AssertThatCallRetriesOnException<TimeoutException>(c => c.AddExceptionToRetryOn<TimeoutException>(e => e.Message == "The operation has timed out."));
+            this.AssertThatCallRetriesOnException<TimeoutException>(
+                c => c.AddExceptionToRetryOn<TimeoutException>(e => e.Message == "The operation has timed out."));
+        }
+
+        [Test]
+        public void AddExceptionToRetryOn_RetriesOnConfiguredException_WhenPredicateMatches_UsingActualExceptionType()
+        {
+            this.AssertThatCallRetriesOnException<TestException>(
+                c => c.AddExceptionToRetryOn<TestException>(e => e.TestExceptionMessage == "test"),
+                () => new TestException("test"));
+        }
+
+        public class TestException : Exception
+        {
+            public TestException()
+            {}
+
+            public TestException(string testExceptionMessage)
+            {
+                TestExceptionMessage = testExceptionMessage;
+            }
+
+            public string TestExceptionMessage { get; set; }
         }
 
         [Test]
@@ -51,11 +74,21 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(() => actionInvoker.Invoke(s => s.TestMethod("test")), Throws.TypeOf<TimeoutException>());
         }
 
-        private void AssertThatCallRetriesOnException<TException>(Action<RetryingWcfActionInvoker<ITestService>> configurator = null)
+        private void AssertThatCallRetriesOnException<TException>(
+            Action<RetryingWcfActionInvoker<ITestService>> configurator = null,
+            Func<TException> exceptionFactory = null)
             where TException : Exception, new()
         {
             var mockService = new Mock<ITestService>();
-            mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws<TException>();
+
+            if (exceptionFactory != null)
+            {
+                mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws(exceptionFactory());
+            }
+            else 
+            {
+                mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws<TException>();
+            }
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(() => new TestServiceImpl(mockService));
             if (configurator != null)
@@ -63,7 +96,9 @@ namespace WcfClientProxyGenerator.Tests
                 configurator(actionInvoker);
             }
             
-            Assert.That(() => actionInvoker.Invoke(s => s.TestMethod("test")), Throws.TypeOf<WcfRetryFailedException>());
+            Assert.That(
+                () => actionInvoker.Invoke(s => s.TestMethod("test")), 
+                Throws.TypeOf<WcfRetryFailedException>());
         }
     }
 }
