@@ -8,7 +8,7 @@ namespace WcfClientProxyGenerator
     internal class RetryingWcfActionInvokerProvider<TServiceInterface> : IActionInvokerProvider<TServiceInterface>, IRetryingProxyConfigurator
         where TServiceInterface : class
     {
-        private ChannelFactory<TServiceInterface> _channelFactory;
+        private static ChannelFactory<TServiceInterface> _channelFactory;
         private readonly RetryingWcfActionInvoker<TServiceInterface> _actionInvoker; 
 
         public RetryingWcfActionInvokerProvider()
