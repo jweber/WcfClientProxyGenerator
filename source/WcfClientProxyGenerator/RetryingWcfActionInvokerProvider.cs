@@ -8,7 +8,7 @@ namespace WcfClientProxyGenerator
     internal class RetryingWcfActionInvokerProvider<TServiceInterface> : IActionInvokerProvider<TServiceInterface>, IRetryingProxyConfigurator
         where TServiceInterface : class
     {
-        private static ChannelFactory<TServiceInterface> _channelFactory;
+        private ChannelFactory<TServiceInterface> _channelFactory;
         private readonly RetryingWcfActionInvoker<TServiceInterface> _actionInvoker; 
 
         public RetryingWcfActionInvokerProvider()
@@ -26,12 +26,12 @@ namespace WcfClientProxyGenerator
 
         public void SetEndpoint(string endpointConfigurationName)
         {
-            _channelFactory = new ChannelFactory<TServiceInterface>(endpointConfigurationName);
+            _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName);
         }
 
         public void SetEndpoint(Binding binding, EndpointAddress endpointAddress)
         {
-            _channelFactory = new ChannelFactory<TServiceInterface>(binding, endpointAddress);
+            _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress);
         }
 
         public void MaximumRetries(int retryCount)
