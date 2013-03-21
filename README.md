@@ -4,6 +4,11 @@ Utility to generate fault tolerant and retry capable dynamic proxies for WCF ser
 
 With normal Service Reference or ChannelFactory instantiated clients, care must be taken to abort and recreate the client in the event that a communication fault occurs. The goal of this project is to provide an easy-to-use method of creating WCF clients that are self healing and tolerant of temporary network communication errors while still being as transparently useable as default WCF clients.
 
+Installation
+------------
+
+    Install-Package WcfClientProxyGenerator
+
 Configuration
 -------------
 When calling the `WcfClientProxyGenerator.Create<TServiceInterface>()` method, a configuration Action is used to setup the proxy. The following configuration options are available at the proxy creation time:
