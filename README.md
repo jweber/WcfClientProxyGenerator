@@ -20,17 +20,11 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
     <?xml version="1.0" encoding="utf-8" ?>
     <configuration>
         <system.serviceModel>
-            <bindings>
-                <wsHttpBinding>
-                    <binding name="WSHttpBinding_ITestService" />
-                </wsHttpBinding>
-            </bindings>
             <client>
                 <endpoint name="WSHttpBinding_ITestService"
                           address="http://localhost:23456/TestService" 
                           binding="wsHttpBinding" 
                           contract="Api.TestService.ITestService"/>
-                </endpoint>
             </client>
         </system.serviceModel>
     </configuration>
