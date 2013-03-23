@@ -8,15 +8,15 @@ namespace WcfClientProxyGenerator.Util
 {
     internal static class FastActivator
     {
-        private static readonly ConcurrentDictionary<int, Func<object[], object>> ActivatorCache 
-            = new ConcurrentDictionary<int, Func<object[], object>>(); 
+        private static readonly ConcurrentDictionary<int, Lazy<Func<object[], object>>> ActivatorCache 
+            = new ConcurrentDictionary<int, Lazy<Func<object[], object>>>(); 
 
         public static object CreateInstance(Type type, params object[] args)
         {
             int offset = type.GetHashCode();
             int key = args.Aggregate(0, (x, o) => x ^ (o == null ? offset : o.GetType().GetHashCode() << offset++));
 
-            var activator = ActivatorCache.GetOrAdd(key, (int _) => BuildActivatorLambda(type, args));
+            var activator = ActivatorCache.GetOrAddSafe(key, _ => BuildActivatorLambda(type, args));
 
             return activator(args);
         }

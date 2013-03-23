@@ -7,6 +7,7 @@ ARTIFACTS_PATH = "build"
 PROJECT_NAME = "WcfClientProxyGenerator"
 
 $config = ENV['config'] || 'Debug'
+$nuget_api_key = ENV['nuget_api_key']
 
 task :default => :compile
 
@@ -85,6 +86,16 @@ nugetpack :nupack => [:compile, :nuspec] do |nuget|
   nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
   nuget.base_folder = 'build'
   nuget.output = 'build'
+end
+
+nugetpush :nuget_push => [:nupack] do |nuget|
+  raise "No NuGet API key was defined" unless $nuget_api_key
+
+  nuget.command = nuget_path
+  nuget.package = "build\\#{PROJECT_NAME}.#{ENV['NUGET_VERSION']}.nupkg"
+  nuget.create_only = false
+  nuget.apikey = $nuget_api_key
+  nuget.create_only = false
 end
 
 desc 'Builds version environment variables'
