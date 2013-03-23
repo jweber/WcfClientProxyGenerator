@@ -2,46 +2,35 @@
 using System.Collections.Concurrent;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
     internal static class ChannelFactoryProvider
     {
-        private static readonly ConcurrentDictionary<string, Lazy<object>> _channelFactoryCache;
-
-        static ChannelFactoryProvider()
-        {
-            _channelFactoryCache = new ConcurrentDictionary<string, Lazy<object>>();
-        }
+        private static readonly ConcurrentDictionary<string, Lazy<object>> ChannelFactoryCache
+            = new ConcurrentDictionary<string, Lazy<object>>();
 
         public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(string endpointConfigurationName)
             where TServiceInterface : class
         {
             string cacheKey = GetCacheKey<TServiceInterface>(endpointConfigurationName);
-            var channelFactory = GetOrAddToCache(
+            var channelFactory = ChannelFactoryCache.GetOrAddSafe(
                 cacheKey,
                 () => new ChannelFactory<TServiceInterface>(endpointConfigurationName));
 
-            return channelFactory;
+            return channelFactory as ChannelFactory<TServiceInterface>;
         }
 
         public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(Binding binding, EndpointAddress endpointAddress)
             where TServiceInterface : class
         {
             string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress);
-            var channelFactory = GetOrAddToCache(
+            var channelFactory = ChannelFactoryCache.GetOrAddSafe(
                 cacheKey,
                 () => new ChannelFactory<TServiceInterface>(binding, endpointAddress));
 
-            return channelFactory;
-        }
-
-        private static ChannelFactory<TServiceInterface> GetOrAddToCache<TServiceInterface>(
-            string cacheKey,
-            Func<ChannelFactory<TServiceInterface>> factory)
-        {
-            Lazy<object> lazy = _channelFactoryCache.GetOrAdd(cacheKey, new Lazy<object>(factory));
-            return lazy.Value as ChannelFactory<TServiceInterface>;
+            return channelFactory as ChannelFactory<TServiceInterface>;
         }
 
         private static string GetCacheKey<TServiceInterface>(string endpointConfigurationName)

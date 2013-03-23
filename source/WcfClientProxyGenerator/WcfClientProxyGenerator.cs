@@ -14,7 +14,8 @@ namespace WcfClientProxyGenerator
 {
     public static class WcfClientProxyGenerator
     {
-        private static readonly ConcurrentDictionary<Type, Type> ProxyCache = new ConcurrentDictionary<Type, Type>();
+        private static readonly ConcurrentDictionary<Type, Lazy<Type>> ProxyCache 
+            = new ConcurrentDictionary<Type, Lazy<Type>>();
 
         public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
@@ -39,9 +40,9 @@ namespace WcfClientProxyGenerator
         private static Type GetProxyType<TServiceInterface>()
             where TServiceInterface : class
         {
-            return ProxyCache.GetOrAdd(
+            return ProxyCache.GetOrAddSafe(
                 typeof(TServiceInterface), 
-                _ => DynamicProxyTypeGenerator<TServiceInterface>.GenerateType());
+                DynamicProxyTypeGenerator<TServiceInterface>.GenerateType);
         }  
     }
 }
