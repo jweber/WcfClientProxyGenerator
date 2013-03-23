@@ -17,7 +17,7 @@ namespace WcfClientProxyGenerator
             string cacheKey = GetCacheKey<TServiceInterface>(endpointConfigurationName);
             var channelFactory = ChannelFactoryCache.GetOrAddSafe(
                 cacheKey,
-                () => new ChannelFactory<TServiceInterface>(endpointConfigurationName));
+                _ => new ChannelFactory<TServiceInterface>(endpointConfigurationName));
 
             return channelFactory as ChannelFactory<TServiceInterface>;
         }
@@ -28,7 +28,7 @@ namespace WcfClientProxyGenerator
             string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress);
             var channelFactory = ChannelFactoryCache.GetOrAddSafe(
                 cacheKey,
-                () => new ChannelFactory<TServiceInterface>(binding, endpointAddress));
+                _ => new ChannelFactory<TServiceInterface>(binding, endpointAddress));
 
             return channelFactory as ChannelFactory<TServiceInterface>;
         }

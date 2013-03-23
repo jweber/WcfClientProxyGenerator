@@ -42,7 +42,7 @@ namespace WcfClientProxyGenerator
         {
             return ProxyCache.GetOrAddSafe(
                 typeof(TServiceInterface), 
-                DynamicProxyTypeGenerator<TServiceInterface>.GenerateType);
+                _ => DynamicProxyTypeGenerator<TServiceInterface>.GenerateType());
         }  
     }
 }

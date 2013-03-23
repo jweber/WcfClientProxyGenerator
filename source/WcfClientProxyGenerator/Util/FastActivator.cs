@@ -16,7 +16,7 @@ namespace WcfClientProxyGenerator.Util
             int offset = type.GetHashCode();
             int key = args.Aggregate(0, (x, o) => x ^ (o == null ? offset : o.GetType().GetHashCode() << offset++));
 
-            var activator = ActivatorCache.GetOrAddSafe(key, () => BuildActivatorLambda(type, args));
+            var activator = ActivatorCache.GetOrAddSafe(key, _ => BuildActivatorLambda(type, args));
 
             return activator(args);
         }
