@@ -24,6 +24,28 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
+        public void MultipleProxies_ReturnExpectedValues_WhenCallingServices()
+        {
+            var mockService1 = new Mock<ITestService>();
+            mockService1.Setup(m => m.TestMethod("service1")).Returns("OK from service 1");
+
+            var mockService2 = new Mock<ITestService2>();
+            mockService2.Setup(m => m.TestMethod("service2")).Returns("OK from service 2");
+
+            var serviceHost1 = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService1));
+            var serviceHost2 = InProcTestFactory.CreateHost<ITestService2>(new TestService2Impl(mockService2));
+
+            var proxy1 = WcfClientProxyGenerator.Create<ITestService>(
+                    c => c.SetEndpoint(serviceHost1.Binding, serviceHost1.EndpointAddress));
+
+            var proxy2 = WcfClientProxyGenerator.Create<ITestService2>(
+                    c => c.SetEndpoint(serviceHost2.Binding, serviceHost2.EndpointAddress));
+
+            Assert.AreEqual("OK from service 1", proxy1.TestMethod("service1"));
+            Assert.AreEqual("OK from service 2", proxy2.TestMethod("service2"));
+        }
+
+        [Test]
         public void Proxy_RecoversFromFaultedState_WhenCallingSimpleMethod()
         {
             var mockService = new Mock<ITestService>();

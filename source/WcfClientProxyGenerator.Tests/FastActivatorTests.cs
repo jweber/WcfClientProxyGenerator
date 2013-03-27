@@ -13,7 +13,7 @@ namespace WcfClientProxyGenerator.Tests
     public class FastActivatorTests
     {
         [Test]
-        public void Test_Parameterless()
+        public void GenericType_CanBeActivated_UsingParameterlessConstructor()
         {
             var inst = FastActivator.CreateInstance<TestClass>();
             Assert.That(inst, Is.Not.Null);
@@ -23,7 +23,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void Test_Parameterized()
+        public void GenericType_CanBeActivated_UsingParameterizedConstructor()
         {
             var dateTime = DateTime.Now;
             var instance = FastActivator.CreateInstance<TestClass>(new object[] { "test2", true, dateTime });
@@ -32,6 +32,83 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(instance.Arg1, Is.EqualTo("test2"));
             Assert.That(instance.Arg2, Is.EqualTo(true));
             Assert.That(instance.Arg3, Is.EqualTo(dateTime));
+        }
+
+        [Test]
+        public void Type_CanBeActivated_UsingParameterlessConstructor()
+        {
+            var inst = FastActivator.CreateInstance(typeof(TestClass)) as TestClass;
+
+            Assert.That(inst, Is.Not.Null);
+            Assert.That(inst.Arg1, Is.EqualTo(default(string)));
+            Assert.That(inst.Arg2, Is.EqualTo(default(bool)));
+            Assert.That(inst.Arg3, Is.EqualTo(default(DateTime)));
+        }
+
+        [Test]
+        public void Type_CanBeActivated_UsingParameterizedConstructor()
+        {
+            var dateTime = DateTime.Now;
+            var instance = FastActivator.CreateInstance(typeof(TestClass), new object[] { "test2", true, dateTime }) as TestClass;
+            
+            Assert.That(instance, Is.Not.Null);
+            Assert.That(instance.Arg1, Is.EqualTo("test2"));
+            Assert.That(instance.Arg2, Is.EqualTo(true));
+            Assert.That(instance.Arg3, Is.EqualTo(dateTime));
+        }
+
+        [Test]
+        public void MultipleGenericTypes_CanBeActivated_UsingParameterlessConstructor()
+        {
+            var instance1 = FastActivator.CreateInstance<TestClass>();
+            var instance2 = FastActivator.CreateInstance<TestClass2>();
+
+            Assert.That(instance1, Is.Not.Null);
+            Assert.That(instance1.GetType(), Is.EqualTo(typeof(TestClass)));
+            
+            Assert.That(instance2, Is.Not.Null);
+            Assert.That(instance2.GetType(), Is.EqualTo(typeof(TestClass2)));
+        }
+
+        [Test]
+        public void MultipleGenericTypes_CanBeActivated_UsingParameterizedConstructor()
+        {
+            var instance1 = FastActivator.CreateInstance<TestClass>(new object[] { "instance1" });
+            var instance2 = FastActivator.CreateInstance<TestClass2>(new object[] { "instance2" });
+
+            Assert.That(instance1, Is.Not.Null);
+            Assert.That(instance1.Arg1, Is.EqualTo("instance1"));
+            Assert.That(instance1.GetType(), Is.EqualTo(typeof(TestClass)));
+            
+            Assert.That(instance2, Is.Not.Null);
+            Assert.That(instance2.Arg1, Is.EqualTo("instance2"));
+            Assert.That(instance2.GetType(), Is.EqualTo(typeof(TestClass2)));
+        }
+
+        [Test]
+        public void MultipleTypes_CanBeActivated_UsingParameterlessConstructor()
+        {
+            var instance1 = FastActivator.CreateInstance(typeof(TestClass));
+            var instance2 = FastActivator.CreateInstance(typeof(TestClass2));
+
+            Assert.That(instance1, Is.Not.Null);
+            Assert.That(instance1.GetType(), Is.EqualTo(typeof(TestClass)));
+            
+            Assert.That(instance2, Is.Not.Null);
+            Assert.That(instance2.GetType(), Is.EqualTo(typeof(TestClass2)));
+        }
+
+        [Test]
+        public void MultipleTypes_CanBeActivated_UsingParameterizedConstructor()
+        {
+            var instance1 = FastActivator.CreateInstance(typeof(TestClass), new object[] { "instance1" }) as TestClass;
+            var instance2 = FastActivator.CreateInstance(typeof(TestClass2), new object[] { "instance2" }) as TestClass2;
+
+            Assert.That(instance1, Is.Not.Null);
+            Assert.That(instance1.Arg1, Is.EqualTo("instance1"));
+            
+            Assert.That(instance2, Is.Not.Null);
+            Assert.That(instance2.Arg1, Is.EqualTo("instance2"));
         }
 
         [Test]
@@ -70,6 +147,11 @@ namespace WcfClientProxyGenerator.Tests
             public TestClass()
             {}
 
+            public TestClass(string arg1)
+            {
+                _arg1 = arg1;
+            }
+
             public TestClass(string arg1, bool arg2, DateTime arg3)
             {
                 _arg1 = arg1;
@@ -90,6 +172,24 @@ namespace WcfClientProxyGenerator.Tests
             public DateTime Arg3
             {
                 get { return _arg3; }
+            }
+        }
+
+        class TestClass2
+        {
+            private readonly string _arg1;
+
+            public TestClass2()
+            {}
+
+            public TestClass2(string arg1)
+            {
+                _arg1 = arg1;
+            }
+
+            public string Arg1
+            {
+                get { return _arg1; }
             }
         }
     }

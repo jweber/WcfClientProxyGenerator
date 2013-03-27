@@ -16,35 +16,29 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
 
         public TestServiceImpl(Mock<ITestService> mock)
         {
-            this._mock = mock;
+            _mock = mock;
         }
 
         public string TestMethod(string input)
         {
-            if (this._mock != null)
-            {
-                return this._mock.Object.TestMethod(input);    
-            }
+            if (_mock != null)
+                return _mock.Object.TestMethod(input);
 
             return string.Format("Echo: {0}", input);
         }
 
         public Response TestMethodComplex(Request request)
         {
-            if (this._mock != null)
-            {
-                return this._mock.Object.TestMethodComplex(request);
-            }
+            if (_mock != null)
+                return _mock.Object.TestMethodComplex(request);
 
             return new Response { ResponseMessage = string.Format("Echo: {0}", request.RequestMessage) };
         }
 
         public Response TestMethodComplexMulti(string input, Request request)
         {
-            if (this._mock != null)
-            {
-                return this._mock.Object.TestMethodComplexMulti(input, request);
-            }
+            if (_mock != null)
+                return _mock.Object.TestMethodComplexMulti(input, request);
 
             return new Response { ResponseMessage = string.Format("Echo: {0} {1}", input, request.RequestMessage) };
         }

@@ -50,6 +50,8 @@
     <Compile Include="ChannelFactoryProviderTests.cs" />
     <Compile Include="DictionaryExtensionsTests.cs" />
     <Compile Include="FastActivatorTests.cs" />
+    <Compile Include="Infrastructure\ITestService2.cs" />
+    <Compile Include="Infrastructure\TestService2Impl.cs" />
     <Compile Include="ProxyTests.cs" />
     <Compile Include="Infrastructure\InProcTestFactory.cs" />
     <Compile Include="Infrastructure\ITestService.cs" />
