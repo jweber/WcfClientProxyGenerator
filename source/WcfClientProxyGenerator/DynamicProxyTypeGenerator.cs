@@ -5,20 +5,36 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
-using System.ServiceModel.Channels;
 
 namespace WcfClientProxyGenerator
 {
+    internal static class DynamicProxyAssembly
+    {
+        static DynamicProxyAssembly()
+        {
+            var assemblyName = new AssemblyName("WcfClientProxyGenerator.DynamicProxy");
+            var appDomain = System.Threading.Thread.GetDomain();
+
+#if OUTPUT_PROXY_DLL
+            AssemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
+            ModuleBuilder = AssemblyBuilder.DefineDynamicModule(assemblyName.Name, "WcfClientProxyGenerator.DynamicProxy.dll");
+#else
+            AssemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+            ModuleBuilder = AssemblyBuilder.DefineDynamicModule(assemblyName.Name);
+#endif
+        }
+
+        public static AssemblyBuilder AssemblyBuilder { get; private set; }
+        public static ModuleBuilder ModuleBuilder { get; private set; }
+    }
+
     internal static class DynamicProxyTypeGenerator<TServiceInterface>
         where TServiceInterface : class
     {
         public static Type GenerateType()
         {
-            var assemblyName = new AssemblyName("WcfClientProxyGenerator.DynamicProxy");
-            var appDomain = System.Threading.Thread.GetDomain();
-            var assemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
-            var moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name, "WcfClientProxyGenerator.DynamicProxy.dll");
-            
+            var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
+
             var typeBuilder = moduleBuilder.DefineType(
                 "-proxy-" + typeof(TServiceInterface).Name,
                 TypeAttributes.Public | TypeAttributes.Class,
@@ -42,8 +58,8 @@ namespace WcfClientProxyGenerator
 
             Type generatedType = typeBuilder.CreateType();
 
-#if DEBUG
-            assemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
+#if OUTPUT_PROXY_DLL
+            DynamicProxyAssembly.AssemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
 #endif
 
             return generatedType;
@@ -158,7 +174,8 @@ namespace WcfClientProxyGenerator
         /// <returns></returns>
         private static IList<FieldBuilder> GenerateActionInvokerLambdaType(MethodInfo methodInfo, ModuleBuilder moduleBuilder, Type[] parameterTypes, out Type lambdaType)
         {
-            var lambdaTypeBuilder = moduleBuilder.DefineType("-lambda-" + methodInfo.Name);
+            string typeName = string.Format("-lambda-{0}.{1}", methodInfo.DeclaringType.Name, methodInfo.Name);
+            var lambdaTypeBuilder = moduleBuilder.DefineType(typeName);
 
             var lambdaFields = new List<FieldBuilder>(parameterTypes.Length);
             for (int i = 0; i < parameterTypes.Length; i++)

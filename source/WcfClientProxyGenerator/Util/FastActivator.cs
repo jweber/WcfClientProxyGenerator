@@ -14,7 +14,9 @@ namespace WcfClientProxyGenerator.Util
         public static object CreateInstance(Type type, params object[] args)
         {
             int offset = type.GetHashCode();
-            int key = args.Aggregate(0, (x, o) => x ^ (o == null ? offset : o.GetType().GetHashCode() << offset++));
+            int key = offset;
+            foreach (object o in args)
+                key = key ^ (o == null ? offset : o.GetType().GetHashCode() << offset++);
 
             var activator = ActivatorCache.GetOrAddSafe(key, _ => BuildActivatorLambda(type, args));
 
