@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 using System.ServiceModel;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {
@@ -13,6 +8,9 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
     {
         [OperationContract]
         string TestMethod(string input);
+
+        [OperationContract]
+        void VoidMethod(string input);
 
         [OperationContract]
         Response TestMethodComplex(Request request);

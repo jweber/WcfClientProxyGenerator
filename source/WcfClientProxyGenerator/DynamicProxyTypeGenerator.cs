@@ -108,9 +108,15 @@ namespace WcfClientProxyGenerator
 
             var ilGenerator = methodBuilder.GetILGenerator();
             ilGenerator.DeclareLocal(typeof(RetryingWcfActionInvoker<TServiceInterface>));
-            ilGenerator.DeclareLocal(typeof(Func<,>).MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType));
+
+            ilGenerator.DeclareLocal(methodInfo.ReturnType == typeof(void)
+                ? typeof(Action<>).MakeGenericType(typeof(TServiceInterface))
+                : typeof(Func<,>).MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType));
+
             ilGenerator.DeclareLocal(actionInvokerLambdaType);
-            ilGenerator.DeclareLocal(methodInfo.ReturnType);
+            
+            if (methodInfo.ReturnType != typeof(void))
+                ilGenerator.DeclareLocal(methodInfo.ReturnType);
 
             var lambdaCtor = actionInvokerLambdaType.GetConstructor(Type.EmptyTypes);
 
@@ -129,7 +135,7 @@ namespace WcfClientProxyGenerator
 
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ldarg_0);
-
+            
             var channelProperty = typeof(RetryingWcfActionInvokerProvider<TServiceInterface>)
                 .GetMethod(
                     "get_ActionInvoker", 
@@ -143,23 +149,46 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ldftn, lambdaGetMethod);
             
             // new func<TService, TReturn>
-            var funcCtor = typeof(Func<,>)
-                .MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType)
-                .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
-
-            ilGenerator.Emit(OpCodes.Newobj, funcCtor);
+            ConstructorInfo ctor = null;
+            if (methodInfo.ReturnType != typeof(void))
+            {
+                ctor = typeof(Func<,>)
+                    .MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType)
+                    .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
+            }
+            else
+            {
+                ctor = typeof(Action<>)
+                    .MakeGenericType(typeof(TServiceInterface))
+                    .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
+            }
+            
+            ilGenerator.Emit(OpCodes.Newobj, ctor);
             ilGenerator.Emit(OpCodes.Stloc_1);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_1);
 
-            var invokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
-                .GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)
-                .MakeGenericMethod(new[] { methodInfo.ReturnType });
+            MethodInfo invokeMethod = null;
+            if (methodInfo.ReturnType != typeof(void))
+            {
+                invokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
+                    .GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)
+                    .MakeGenericMethod(new[] { methodInfo.ReturnType });
+            }
+            else
+            {
+                invokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
+                    .GetMethod("InvokeAction", BindingFlags.Instance | BindingFlags.Public);
+            }
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
 
-            ilGenerator.Emit(OpCodes.Stloc_3);
-            ilGenerator.Emit(OpCodes.Ldloc_3);
+            if (methodInfo.ReturnType != typeof(void))
+            {
+                ilGenerator.Emit(OpCodes.Stloc_3);
+                ilGenerator.Emit(OpCodes.Ldloc_3);
+            }
+
             ilGenerator.Emit(OpCodes.Ret);
         }
 
@@ -192,7 +221,10 @@ namespace WcfClientProxyGenerator
                 new[] { typeof(TServiceInterface) });
 
             var lambdaIlGenerator = lambdaMethodBuilder.GetILGenerator();
-            lambdaIlGenerator.DeclareLocal(methodInfo.ReturnType);
+            
+            if (methodInfo.ReturnType != typeof(void))
+                lambdaIlGenerator.DeclareLocal(methodInfo.ReturnType);
+            
             lambdaIlGenerator.Emit(OpCodes.Ldarg_1);
 
             lambdaFields.ForEach(lf =>
@@ -202,8 +234,13 @@ namespace WcfClientProxyGenerator
             });
 
             lambdaIlGenerator.Emit(OpCodes.Callvirt, methodInfo);
-            lambdaIlGenerator.Emit(OpCodes.Stloc_0);
-            lambdaIlGenerator.Emit(OpCodes.Ldloc_0);
+            
+            if (methodInfo.ReturnType != typeof(void))
+            {
+                lambdaIlGenerator.Emit(OpCodes.Stloc_0);
+                lambdaIlGenerator.Emit(OpCodes.Ldloc_0);
+            }
+
             lambdaIlGenerator.Emit(OpCodes.Ret);
 
             lambdaType = lambdaTypeBuilder.CreateType();

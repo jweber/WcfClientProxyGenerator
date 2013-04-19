@@ -71,6 +71,47 @@ namespace WcfClientProxyGenerator
         }
 
         [UsedImplicitly]
+        public void InvokeAction(Action<TServiceInterface> method)
+        {
+            var provider = RefreshProvider(null);
+            try
+            {
+                Exception mostRecentException = null;
+                for (int i = 0; i < RetryCount; i++)
+                {
+                    try
+                    {
+                        method(provider);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ExceptionIsRetryable(ex))
+                        {
+                            mostRecentException = ex;
+                            Thread.Sleep(MillisecondsBetweenRetries * (i + 1));
+                            provider = RefreshProvider(provider);
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                }
+
+                if (mostRecentException != null)
+                {
+                    throw new WcfRetryFailedException(
+                        string.Format("WCF call failed after {0} retries.", RetryCount),
+                        mostRecentException);
+                }
+            }
+            finally
+            {
+                DisposeProvider(provider);
+            }
+        }
+
+        [UsedImplicitly]
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
             var provider = RefreshProvider(null);

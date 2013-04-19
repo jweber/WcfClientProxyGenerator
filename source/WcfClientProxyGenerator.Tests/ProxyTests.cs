@@ -1,8 +1,10 @@
 ﻿using System;
 using System.ServiceModel;
+using System.Threading.Tasks;
 using Moq;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
+using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator.Tests
 {
@@ -21,6 +23,23 @@ namespace WcfClientProxyGenerator.Tests
             
             var result = proxy.TestMethod("good");
             Assert.AreEqual("OK", result);
+        }
+
+        [Test]
+        public void Proxy_CanCallVoidMethod()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.VoidMethod("good"))
+                .Callback<string>(input =>
+                {
+                    Assert.That(input, Is.EqualTo("good"));
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            proxy.VoidMethod("good");
         }
 
         [Test]
