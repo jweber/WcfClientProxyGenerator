@@ -103,8 +103,12 @@ namespace WcfClientProxyGenerator
                 methodInfo.ReturnType,
                 parameterTypes);
 
-            Type actionInvokerLambdaType;
-            var actionInvokerLambdaFields = GenerateActionInvokerLambdaType(methodInfo, moduleBuilder, parameterTypes, out actionInvokerLambdaType);
+            Type serviceCallWrapperType;
+            var serviceCallWrapperFields = GenerateServiceCallWrapperType(
+                methodInfo, 
+                moduleBuilder, 
+                parameterTypes, 
+                out serviceCallWrapperType);
 
             var ilGenerator = methodBuilder.GetILGenerator();
             ilGenerator.DeclareLocal(typeof(RetryingWcfActionInvoker<TServiceInterface>));
@@ -113,23 +117,25 @@ namespace WcfClientProxyGenerator
                 ? typeof(Action<>).MakeGenericType(typeof(TServiceInterface))
                 : typeof(Func<,>).MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType));
 
-            ilGenerator.DeclareLocal(actionInvokerLambdaType);
+            ilGenerator.DeclareLocal(serviceCallWrapperType);
             
             if (methodInfo.ReturnType != typeof(void))
                 ilGenerator.DeclareLocal(methodInfo.ReturnType);
 
-            var lambdaCtor = actionInvokerLambdaType.GetConstructor(Type.EmptyTypes);
+            var serviceCallWrapperCtor = serviceCallWrapperType.GetConstructor(Type.EmptyTypes);
+            if (serviceCallWrapperCtor == null)
+                throw new Exception("Parameterless constructor not found for type: " + serviceCallWrapperType);
 
-            ilGenerator.Emit(OpCodes.Newobj, lambdaCtor);
+            ilGenerator.Emit(OpCodes.Newobj, serviceCallWrapperCtor);
             ilGenerator.Emit(OpCodes.Stloc_2);
             ilGenerator.Emit(OpCodes.Ldloc_2);
             
-            for (int i = 0; i < actionInvokerLambdaFields.Count; i++)
+            for (int i = 0; i < serviceCallWrapperFields.Count; i++)
             {
                 ilGenerator.Emit(OpCodes.Ldarg, i + 1);
-                ilGenerator.Emit(OpCodes.Stfld, actionInvokerLambdaType.GetField(actionInvokerLambdaFields[i].Name));
+                ilGenerator.Emit(OpCodes.Stfld, serviceCallWrapperType.GetField(serviceCallWrapperFields[i].Name));
 
-                if (i < actionInvokerLambdaFields.Count)
+                if (i < serviceCallWrapperFields.Count)
                     ilGenerator.Emit(OpCodes.Ldloc_2);
             }
 
@@ -145,41 +151,19 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Stloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_2);
 
-            var lambdaGetMethod = actionInvokerLambdaType.GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
-            ilGenerator.Emit(OpCodes.Ldftn, lambdaGetMethod);
+            var serviceCallWrapperGetMethod = serviceCallWrapperType
+                .GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
             
-            // new func<TService, TReturn>
-            ConstructorInfo ctor = null;
-            if (methodInfo.ReturnType != typeof(void))
-            {
-                ctor = typeof(Func<,>)
-                    .MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType)
-                    .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
-            }
-            else
-            {
-                ctor = typeof(Action<>)
-                    .MakeGenericType(typeof(TServiceInterface))
-                    .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
-            }
+            ilGenerator.Emit(OpCodes.Ldftn, serviceCallWrapperGetMethod);
+            
+            ConstructorInfo ctor = GetDelegateConstructor(methodInfo);
             
             ilGenerator.Emit(OpCodes.Newobj, ctor);
             ilGenerator.Emit(OpCodes.Stloc_1);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_1);
 
-            MethodInfo invokeMethod = null;
-            if (methodInfo.ReturnType != typeof(void))
-            {
-                invokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
-                    .GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)
-                    .MakeGenericMethod(new[] { methodInfo.ReturnType });
-            }
-            else
-            {
-                invokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
-                    .GetMethod("InvokeAction", BindingFlags.Instance | BindingFlags.Public);
-            }
+            MethodInfo invokeMethod = GetRetryingActionInvokerMethod(methodInfo);
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
 
@@ -192,59 +176,91 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ret);
         }
 
+        private static ConstructorInfo GetDelegateConstructor(MethodInfo methodInfo)
+        {
+            if (methodInfo.ReturnType == typeof(void))
+            {
+                return typeof(Action<>)
+                    .MakeGenericType(typeof(TServiceInterface))
+                    .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
+            }
+
+            return typeof(Func<,>)
+                .MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType)
+                .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
+        }
+
+        private static MethodInfo GetRetryingActionInvokerMethod(MethodInfo methodInfo)
+        {
+            if (methodInfo.ReturnType == typeof(void))
+            {
+                Type actionType = typeof(Action<>)
+                    .MakeGenericType(typeof(TServiceInterface));
+
+                return typeof(RetryingWcfActionInvoker<TServiceInterface>)
+                    .GetMethod("Invoke", new[] { actionType });
+            }
+
+            var funcInvokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .First(m => m.Name == "Invoke" && m.ReturnType != typeof(void));
+
+            return funcInvokeMethod.MakeGenericMethod(new[] { methodInfo.ReturnType });
+
+        }
+
         /// <summary>
         /// Builds the type used by the call to the <see cref="IActionInvoker{TServiceInterface}.Invoke{TResponse}"/>
         /// method.
         /// </summary>
-        /// <param name="methodInfo"></param>
-        /// <param name="moduleBuilder"></param>
-        /// <param name="parameterTypes"></param>
-        /// <param name="lambdaType"></param>
-        /// <returns></returns>
-        private static IList<FieldBuilder> GenerateActionInvokerLambdaType(MethodInfo methodInfo, ModuleBuilder moduleBuilder, Type[] parameterTypes, out Type lambdaType)
+        private static IList<FieldBuilder> GenerateServiceCallWrapperType(
+            MethodInfo methodInfo, 
+            ModuleBuilder moduleBuilder, 
+            Type[] parameterTypes, 
+            out Type generatedType)
         {
-            string typeName = string.Format("-lambda-{0}.{1}", methodInfo.DeclaringType.Name, methodInfo.Name);
-            var lambdaTypeBuilder = moduleBuilder.DefineType(typeName);
+            string typeName = string.Format("-call-{0}.{1}", methodInfo.DeclaringType.Name, methodInfo.Name);
+            var serviceCallTypeBuilder = moduleBuilder.DefineType(typeName);
 
-            var lambdaFields = new List<FieldBuilder>(parameterTypes.Length);
+            var fields = new List<FieldBuilder>(parameterTypes.Length);
             for (int i = 0; i < parameterTypes.Length; i++)
             {
                 Type parameterType = parameterTypes[i];
-                lambdaFields.Add(
-                    lambdaTypeBuilder.DefineField("arg" + i, parameterType, FieldAttributes.Public));
+                fields.Add(
+                    serviceCallTypeBuilder.DefineField("arg" + i, parameterType, FieldAttributes.Public));
             }
 
-            var lambdaMethodBuilder = lambdaTypeBuilder.DefineMethod(
+            var methodBuilder = serviceCallTypeBuilder.DefineMethod(
                 "Get",
                 MethodAttributes.Public,
                 methodInfo.ReturnType,
                 new[] { typeof(TServiceInterface) });
 
-            var lambdaIlGenerator = lambdaMethodBuilder.GetILGenerator();
+            var ilGenerator = methodBuilder.GetILGenerator();
             
             if (methodInfo.ReturnType != typeof(void))
-                lambdaIlGenerator.DeclareLocal(methodInfo.ReturnType);
+                ilGenerator.DeclareLocal(methodInfo.ReturnType);
             
-            lambdaIlGenerator.Emit(OpCodes.Ldarg_1);
+            ilGenerator.Emit(OpCodes.Ldarg_1);
 
-            lambdaFields.ForEach(lf =>
+            fields.ForEach(lf =>
             {
-                lambdaIlGenerator.Emit(OpCodes.Ldarg_0);
-                lambdaIlGenerator.Emit(OpCodes.Ldfld, lf);
+                ilGenerator.Emit(OpCodes.Ldarg_0);
+                ilGenerator.Emit(OpCodes.Ldfld, lf);
             });
 
-            lambdaIlGenerator.Emit(OpCodes.Callvirt, methodInfo);
+            ilGenerator.Emit(OpCodes.Callvirt, methodInfo);
             
             if (methodInfo.ReturnType != typeof(void))
             {
-                lambdaIlGenerator.Emit(OpCodes.Stloc_0);
-                lambdaIlGenerator.Emit(OpCodes.Ldloc_0);
+                ilGenerator.Emit(OpCodes.Stloc_0);
+                ilGenerator.Emit(OpCodes.Ldloc_0);
             }
 
-            lambdaIlGenerator.Emit(OpCodes.Ret);
+            ilGenerator.Emit(OpCodes.Ret);
 
-            lambdaType = lambdaTypeBuilder.CreateType();
-            return lambdaFields;
+            generatedType = serviceCallTypeBuilder.CreateType();
+            return fields;
         }
     }
 }
