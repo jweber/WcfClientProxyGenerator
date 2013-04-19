@@ -71,6 +71,16 @@ namespace WcfClientProxyGenerator
         }
 
         [UsedImplicitly]
+        public void Invoke(Action<TServiceInterface> method)
+        {
+            Invoke(provider =>
+            {
+                method(provider);
+                return true;
+            });
+        }
+
+        [UsedImplicitly]
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
             var provider = RefreshProvider(null);
