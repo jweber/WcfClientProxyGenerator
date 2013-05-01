@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.ServiceModel;
@@ -12,6 +13,12 @@ namespace WcfClientProxyGenerator
     internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
         where TServiceInterface : class
     {
+        private static ConcurrentDictionary<Type, Lazy<MethodInfo>> PredicateCache
+            = new ConcurrentDictionary<Type, Lazy<MethodInfo>>();
+    
+        private static ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>> TypeHierarchyCache
+            = new ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>>();
+
         /// <summary>
         /// Number of times the client will attempt to retry
         /// calls to the service in the event of some known WCF
@@ -21,8 +28,7 @@ namespace WcfClientProxyGenerator
 
         public int MillisecondsBetweenRetries { get; set; }
 
-        private readonly IDictionary<Type, object> _exceptionsToHandle;
-        private readonly IDictionary<Type, object> _responsesToRetryOn;
+        private readonly IDictionary<Type, object> _retryPredicates;
 
         /// <summary>
         /// The method that initializes new WCF action providers
@@ -44,14 +50,12 @@ namespace WcfClientProxyGenerator
             MillisecondsBetweenRetries = millisecondsBetweenRetries;
 
             _wcfActionProviderCreator = wcfActionProviderCreator;
-            _exceptionsToHandle = new Dictionary<Type, object>
+            _retryPredicates = new Dictionary<Type, object>
             {
                 { typeof(ChannelTerminatedException), null },
                 { typeof(EndpointNotFoundException), null },
                 { typeof(ServerTooBusyException), null }
             };
-
-            _responsesToRetryOn = new Dictionary<Type, object>();
         }
 
         public void AddExceptionToRetryOn<TException>(Predicate<TException> where = null)
@@ -62,7 +66,7 @@ namespace WcfClientProxyGenerator
                 where = _ => true;
             }
 
-            _exceptionsToHandle.Add(typeof(TException), where);
+            _retryPredicates.Add(typeof(TException), where);
         }
 
         public void AddExceptionToRetryOn(Type exceptionType, Predicate<Exception> where = null)
@@ -72,12 +76,12 @@ namespace WcfClientProxyGenerator
                 where = _ => true;
             }
 
-            _exceptionsToHandle.Add(exceptionType, where);
+            _retryPredicates.Add(exceptionType, where);
         }
 
         public void AddResponseToRetryOn<TResponse>(Predicate<TResponse> where)
         {
-            _responsesToRetryOn.Add(typeof(TResponse), where);
+            _retryPredicates.Add(typeof(TResponse), where);
         }
 
         [UsedImplicitly]
@@ -151,33 +155,37 @@ namespace WcfClientProxyGenerator
 
         private bool ExceptionIsRetryable(Exception ex)
         {
-            return EvaluatePredicate(ex.GetType(), ex, _exceptionsToHandle);
+            return EvaluatePredicate(ex.GetType(), ex);
         }
 
         private bool ResponseInRetryable<TResponse>(TResponse response)
         {
             Type @type = typeof(TResponse);
-            var baseTypes = @type.GetAllInheritedTypes();
+            var baseTypes = TypeHierarchyCache.GetOrAddSafe(@type, _ =>
+            {
+                return @type.GetAllInheritedTypes();
+            });
 
-            return baseTypes.Any(t => EvaluatePredicate(t, response, _responsesToRetryOn));
+            return baseTypes.Any(t => EvaluatePredicate(t, response));
         }
 
-        private bool EvaluatePredicate<TInstance>(Type key, TInstance instance, IDictionary<Type, object> dictionary)
+        private bool EvaluatePredicate<TInstance>(Type key, TInstance instance)
         {
-            if (!dictionary.ContainsKey(key))
+            if (!_retryPredicates.ContainsKey(key))
                 return false;
 
-            object predicate = dictionary[key];
+            object predicate = _retryPredicates[key];
 
             if (predicate == null)
                 return true;
 
-            Type predicateType = typeof(Predicate<>).MakeGenericType(key);
+            MethodInfo invokeMethod = PredicateCache.GetOrAddSafe(key, _ =>
+            {
+                Type predicateType = typeof(Predicate<>).MakeGenericType(key);
+                return predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
+            });
 
-            var invokeMethod = predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
-            bool response = (bool) invokeMethod.Invoke(predicate, new object[] { instance });
-
-            return response;
+            return (bool) invokeMethod.Invoke(predicate, new object[] { instance });
         }
 
         /// <summary>

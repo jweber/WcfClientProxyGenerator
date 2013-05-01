@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsyncExtensionTests.cs" />
+    <Compile Include="BenchmarkTests.cs" />
     <Compile Include="ChannelFactoryProviderTests.cs" />
     <Compile Include="DefaultProxyConfiguratorTests.cs" />
     <Compile Include="DictionaryExtensionsTests.cs" />
