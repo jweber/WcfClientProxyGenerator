@@ -45,7 +45,7 @@ Sets the maximum amount of times the the proxy will attempt to call the service 
 #### TimeBetweenRetries(TimeSpan timeSpan)
 Sets the minimum amount of time to pause between retrying calls to the service. This amount of time is multiplied by the current iteration of the retryCount to perform a linear back-off.
 
-#### RetryOnException<TException>(Predicate<Exception> where = null)
+#### RetryOnException<TException>(Predicate<TException> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
 
 By default, if the following Exceptions are encountered while calling the service, the call will retry up to 5 times:
@@ -53,6 +53,20 @@ By default, if the following Exceptions are encountered while calling the servic
 * ChannelTerminatedException
 * EndpointNotFoundException
 * ServerTooBusyException
+
+#### RetryOnResponse<TResponse>(Predicate<TResponse> where)
+Configures the proxy to retry calls based on conditions in the response from the service.
+
+For example, if your response objects all inherit from a base `IResponseStatus` interface and you would like to retry calls when certain status codes are returned, the proxy can be configured as such:
+
+    ITestService proxy = WcfClientProxyGenerator.Create<ITestService>(c =>
+    {
+        c.SetEndpoint("testServiceConfiguration");
+        c.RetryOnResponse<IResponseStatus>(r => r.StatusCode == 503 || r.StatusCode == 504);
+    });
+    
+The proxy will now retry calls made into the service when it detects a `503` or `504` status code.
+
 
 Examples
 --------
