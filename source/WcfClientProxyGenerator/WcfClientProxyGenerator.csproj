@@ -44,6 +44,7 @@
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
     <Compile Include="ChannelFactoryProvider.cs" />
+    <Compile Include="DefaultProxyConfigurator.cs" />
     <Compile Include="IActionInvoker.cs" />
     <Compile Include="IActionInvokerProvider.cs" />
     <Compile Include="IProxyConfigurator.cs" />

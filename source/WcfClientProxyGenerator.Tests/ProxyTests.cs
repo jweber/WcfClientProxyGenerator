@@ -11,6 +11,21 @@ namespace WcfClientProxyGenerator.Tests
     [TestFixture]
     public class ProxyTests
     {
+        [Test] 
+        [Description("Asserts that when no conguration is given in the Create proxy call, the endpoint with the full namespace of the service interface will be used")]
+        public void CreatingProxy_WithNoConfigurator_GetsDefaultClientConfiguration()
+        {
+            WcfClientProxyGenerator.Create<ITestService>();
+        }
+
+        [Test]
+        public void CreatingProxy_WithNoConfigurator_AndNoDefaultConfiguration_ThrowsException()
+        {
+            Assert.That(
+                () => WcfClientProxyGenerator.Create<ITestService2>(), 
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
         [Test]
         public void Proxy_ReturnsExpectedValue_WhenCallingService()
         {
