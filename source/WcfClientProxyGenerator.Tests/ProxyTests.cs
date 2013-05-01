@@ -8,6 +8,11 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator.Tests
 {
+    public interface IStatus
+    {
+        int StatusCode { get; }
+    }
+
     [TestFixture]
     public class ProxyTests
     {

@@ -26,7 +26,9 @@ namespace WcfClientProxyGenerator.Tests
         {
             this.AssertThatCallRetriesOnException<ServerTooBusyException>();
         }
-        
+
+        #region RetriesOnException
+
         [Test]
         public void AddExceptionToRetryOn_RetriesOnConfiguredException()
         {
@@ -49,6 +51,60 @@ namespace WcfClientProxyGenerator.Tests
                 () => new TestException("test"));
         }
 
+        #endregion
+
+        #region RetryOnResponseCondition
+
+        [Test]
+        public void AddResponseToRetryOn_RetriesOnConfiguredResponse_ForResponseType()
+        {
+            var mockService = new Mock<ITestService>();
+
+            var failResponse = new Response { ResponseMessage = "fail" };
+            var successResponse = new Response { ResponseMessage = "success" };
+
+            mockService
+                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns(failResponse)
+                .Returns(failResponse)
+                .Returns(successResponse);
+
+            var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
+                () => new TestServiceImpl(mockService),
+                millisecondsBetweenRetries: 50);
+
+            actionInvoker.AddResponseToRetryOn<Response>(r => r.ResponseMessage == failResponse.ResponseMessage);
+
+            var response = actionInvoker.Invoke(s => s.TestMethodComplex(new Request()));
+            Assert.That(response.ResponseMessage, Is.EqualTo(successResponse.ResponseMessage));
+        }
+
+        [Test]
+        public void AddResponseToRetryOn_RetriesOnConfiguredResponse_ForResponseBaseType()
+        {
+            var mockService = new Mock<ITestService>();
+
+            var failResponse = new Response { StatusCode = 100 };
+            var successResponse = new Response { StatusCode = 1 };
+
+            mockService
+                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns(failResponse)
+                .Returns(failResponse)
+                .Returns(successResponse);
+
+            var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
+                () => new TestServiceImpl(mockService),
+                millisecondsBetweenRetries: 50);
+
+            actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == failResponse.StatusCode);
+
+            var response = actionInvoker.Invoke(s => s.TestMethodComplex(new Request()));
+            Assert.That(response.StatusCode, Is.EqualTo(successResponse.StatusCode));
+        }
+
+        #endregion
+
         public class TestException : Exception
         {
             public TestException()
@@ -68,7 +124,10 @@ namespace WcfClientProxyGenerator.Tests
             var mockService = new Mock<ITestService>();
             mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws<TimeoutException>();
 
-            var actionInvoker = new RetryingWcfActionInvoker<ITestService>(() => new TestServiceImpl(mockService));
+            var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
+                () => new TestServiceImpl(mockService),
+                millisecondsBetweenRetries: 50);
+
             actionInvoker.AddExceptionToRetryOn<TimeoutException>(where: e => e.Message == "not the message");
 
             Assert.That(() => actionInvoker.Invoke(s => s.TestMethod("test")), Throws.TypeOf<TimeoutException>());
@@ -90,7 +149,10 @@ namespace WcfClientProxyGenerator.Tests
                 mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws<TException>();
             }
 
-            var actionInvoker = new RetryingWcfActionInvoker<ITestService>(() => new TestServiceImpl(mockService));
+            var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
+                () => new TestServiceImpl(mockService),
+                millisecondsBetweenRetries: 50);
+
             if (configurator != null)
             {
                 configurator(actionInvoker);

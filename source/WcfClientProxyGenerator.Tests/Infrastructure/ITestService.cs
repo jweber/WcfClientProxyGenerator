@@ -53,10 +53,18 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
         }
     }
 
+    public interface IResponseStatus
+    {
+        int StatusCode { get; }
+    }
+
     [DataContract]
-    public class Response
+    public class Response : IResponseStatus
     {
         [DataMember]
         public string ResponseMessage { get; set; }
+
+        [DataMember]
+        public int StatusCode { get; set; }
     }
 }

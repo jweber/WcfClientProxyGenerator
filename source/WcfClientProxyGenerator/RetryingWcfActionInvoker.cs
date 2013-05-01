@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.ServiceModel;
 using System.Threading;
+using System.Linq;
 using JetBrains.Annotations;
+using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
@@ -20,6 +22,7 @@ namespace WcfClientProxyGenerator
         public int MillisecondsBetweenRetries { get; set; }
 
         private readonly IDictionary<Type, object> _exceptionsToHandle;
+        private readonly IDictionary<Type, object> _responsesToRetryOn;
 
         /// <summary>
         /// The method that initializes new WCF action providers
@@ -47,6 +50,8 @@ namespace WcfClientProxyGenerator
                 { typeof(EndpointNotFoundException), null },
                 { typeof(ServerTooBusyException), null }
             };
+
+            _responsesToRetryOn = new Dictionary<Type, object>();
         }
 
         public void AddExceptionToRetryOn<TException>(Predicate<TException> where = null)
@@ -70,6 +75,11 @@ namespace WcfClientProxyGenerator
             _exceptionsToHandle.Add(exceptionType, where);
         }
 
+        public void AddResponseToRetryOn<TResponse>(Predicate<TResponse> where)
+        {
+            _responsesToRetryOn.Add(typeof(TResponse), where);
+        }
+
         [UsedImplicitly]
         public void Invoke(Action<TServiceInterface> method)
         {
@@ -85,6 +95,8 @@ namespace WcfClientProxyGenerator
         {
             var provider = RefreshProvider(null);
 
+            TResponse lastResponse = default(TResponse);
+
             try
             {
                 Exception mostRecentException = null;
@@ -92,15 +104,22 @@ namespace WcfClientProxyGenerator
                 {
                     try
                     {
-                        return method(provider);
+                        TResponse response = method(provider);
+                        if (ResponseInRetryable(response))
+                        {
+                            lastResponse = response;
+                            Delay(i, ref provider);
+                            continue;
+                        }
+                        
+                        return response;
                     }
                     catch (Exception ex)
                     {
                         if (ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
-                            Thread.Sleep(MillisecondsBetweenRetries * (i + 1));
-                            provider = RefreshProvider(provider);
+                            Delay(i, ref provider);
                         }
                         else
                         {
@@ -121,24 +140,42 @@ namespace WcfClientProxyGenerator
                 DisposeProvider(provider);
             }
 
-            return default(TResponse);
+            return lastResponse;
+        }
+
+        private void Delay(int iteration, ref TServiceInterface provider)
+        {
+            Thread.Sleep(MillisecondsBetweenRetries * (iteration + 1));
+            provider = RefreshProvider(provider);
         }
 
         private bool ExceptionIsRetryable(Exception ex)
         {
-            var exceptionType = ex.GetType();
-            if (!_exceptionsToHandle.ContainsKey(exceptionType))
+            return EvaluatePredicate(ex.GetType(), ex, _exceptionsToHandle);
+        }
+
+        private bool ResponseInRetryable<TResponse>(TResponse response)
+        {
+            Type @type = typeof(TResponse);
+            var baseTypes = @type.GetAllInheritedTypes();
+
+            return baseTypes.Any(t => EvaluatePredicate(t, response, _responsesToRetryOn));
+        }
+
+        private bool EvaluatePredicate<TInstance>(Type key, TInstance instance, IDictionary<Type, object> dictionary)
+        {
+            if (!dictionary.ContainsKey(key))
                 return false;
 
-            object predicate = _exceptionsToHandle[exceptionType];
+            object predicate = dictionary[key];
 
             if (predicate == null)
                 return true;
 
-            var predicateType = typeof(Predicate<>).MakeGenericType(exceptionType);
+            Type predicateType = typeof(Predicate<>).MakeGenericType(key);
 
             var invokeMethod = predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
-            bool response = (bool) invokeMethod.Invoke(predicate, new object[] { ex });
+            bool response = (bool) invokeMethod.Invoke(predicate, new object[] { instance });
 
             return response;
         }
