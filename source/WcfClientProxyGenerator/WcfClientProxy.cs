@@ -4,7 +4,7 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
-    public static class WcfClientProxyGenerator
+    public static class WcfClientProxy
     {
         private static readonly ConcurrentDictionary<Type, Lazy<Type>> ProxyCache 
             = new ConcurrentDictionary<Type, Lazy<Type>>();

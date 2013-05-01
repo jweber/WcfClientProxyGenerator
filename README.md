@@ -11,7 +11,7 @@ Installation
 
 Configuration
 -------------
-When calling the `WcfClientProxyGenerator.Create<TServiceInterface>()` method, a configuration Action is used to setup the proxy. The following configuration options are available at the proxy creation time:
+When calling the `WcfClientProxy.Create<TServiceInterface>()` method, a configuration Action is used to setup the proxy. The following configuration options are available at the proxy creation time:
 
 If no congigurator is given, then a `client` configuration section with the full name of the service interface type is looked for. If no `client` configuration section is present, an `InvalidOperationException` is thrown.
 
@@ -20,7 +20,7 @@ Configures the proxy to communicate with the endpoint as configured in the _app.
 
 For example, using:
 
-    var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint("WSHttpBinding_ITestService"))
+    var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint("WSHttpBinding_ITestService"))
 
 will configure the proxy based on the `<endpoint/>` as setup in the _app.config_:
 
@@ -59,7 +59,7 @@ Configures the proxy to retry calls based on conditions in the response from the
 
 For example, if your response objects all inherit from a base `IResponseStatus` interface and you would like to retry calls when certain status codes are returned, the proxy can be configured as such:
 
-    ITestService proxy = WcfClientProxyGenerator.Create<ITestService>(c =>
+    ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
     {
         c.SetEndpoint("testServiceConfiguration");
         c.RetryOnResponse<IResponseStatus>(r => r.StatusCode == 503 || r.StatusCode == 504);
@@ -81,17 +81,17 @@ The following interface defines the contract for the service:
 
 The proxy can then be created based on this interface by using the `Create` method of the proxy generator:
 
-    ITestService proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(binding, endpointAddress));
+    ITestService proxy = ClientProxy.Create<ITestService>(c => c.SetEndpoint(binding, endpointAddress));
 
 The proxy generated is now tolerant of faults and communication exceptions. In this example, if the first request results in a faulted channel, you would normally have to manually dispose of it. With the proxy instance, you can continue using it.
 
-    ITestService proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint("testServiceConfiguration"));
+    ITestService proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint("testServiceConfiguration"));
     var response = proxy.ServiceMethod("request");
     var response2 = proxy.ServiceMethod("request2"); // even if the previous request resulted in a FaultException this call will still work
 
 If there are known exceptions that you would like the proxy to retry calls on, it can be configured to retry when a custom exception is encountered:
 
-    var proxy = WcfClientProxyGenerator.Create<ITestService>(c =>
+    var proxy = WcfClientProxy.Create<ITestService>(c =>
     {
         c.SetEndpoint("testServiceConfiguration");
         c.RetryOnException<CustomException>();

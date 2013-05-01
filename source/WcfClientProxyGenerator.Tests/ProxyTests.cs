@@ -20,14 +20,14 @@ namespace WcfClientProxyGenerator.Tests
         [Description("Asserts that when no conguration is given in the Create proxy call, the endpoint with the full namespace of the service interface will be used")]
         public void CreatingProxy_WithNoConfigurator_GetsDefaultClientConfiguration()
         {
-            WcfClientProxyGenerator.Create<ITestService>();
+            WcfClientProxy.Create<ITestService>();
         }
 
         [Test]
         public void CreatingProxy_WithNoConfigurator_AndNoDefaultConfiguration_ThrowsException()
         {
             Assert.That(
-                () => WcfClientProxyGenerator.Create<ITestService2>(), 
+                () => WcfClientProxy.Create<ITestService2>(), 
                 Throws.TypeOf<InvalidOperationException>());
         }
 
@@ -39,7 +39,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
             
             var result = proxy.TestMethod("good");
             Assert.AreEqual("OK", result);
@@ -58,7 +58,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
             proxy.VoidMethod("good");
         }
 
@@ -74,10 +74,10 @@ namespace WcfClientProxyGenerator.Tests
             var serviceHost1 = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService1));
             var serviceHost2 = InProcTestFactory.CreateHost<ITestService2>(new TestService2Impl(mockService2));
 
-            var proxy1 = WcfClientProxyGenerator.Create<ITestService>(
+            var proxy1 = WcfClientProxy.Create<ITestService>(
                     c => c.SetEndpoint(serviceHost1.Binding, serviceHost1.EndpointAddress));
 
-            var proxy2 = WcfClientProxyGenerator.Create<ITestService2>(
+            var proxy2 = WcfClientProxy.Create<ITestService2>(
                     c => c.SetEndpoint(serviceHost2.Binding, serviceHost2.EndpointAddress));
 
             Assert.AreEqual("OK from service 1", proxy1.TestMethod("service1"));
@@ -93,7 +93,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
             // Will fault the channel
             Assert.That(() => proxy.TestMethod("bad"), Throws.Exception);
@@ -112,7 +112,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
             // Will fault the channel
             Assert.That(() => proxy.TestMethodComplex(badRequest), Throws.Exception);
@@ -131,7 +131,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
             // Will fault the channel
             Assert.That(() => proxy.TestMethodComplexMulti("bad", badRequest), Throws.Exception);

@@ -55,7 +55,7 @@
     <Compile Include="Async\AsyncExtensions.cs" />
     <Compile Include="Util\DictionaryExtensions.cs" />
     <Compile Include="Util\TypeExtensions.cs" />
-    <Compile Include="WcfClientProxyGenerator.cs" />
+    <Compile Include="WcfClientProxy.cs" />
     <Compile Include="RetryingWcfActionInvoker.cs" />
     <Compile Include="Util\FastActivator.cs" />
     <Compile Include="Util\ResharperAnnotations.cs" />
