@@ -48,7 +48,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsyncExtensionTests.cs" />
+    <Compile Include="BenchmarkTests.cs" />
     <Compile Include="ChannelFactoryProviderTests.cs" />
+    <Compile Include="DefaultProxyConfiguratorTests.cs" />
     <Compile Include="DictionaryExtensionsTests.cs" />
     <Compile Include="FastActivatorTests.cs" />
     <Compile Include="Infrastructure\ITestService2.cs" />
@@ -61,6 +63,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RetryingWcfActionInvokerTests.cs" />
     <Compile Include="SanityTests.cs" />
+    <Compile Include="TypeExtensionsTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">

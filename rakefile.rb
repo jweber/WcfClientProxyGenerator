@@ -75,6 +75,7 @@ nuspec :nuspec => :version do |nuspec|
   nuspec.description = "Utility to generate fault tolerant and retry capable dynamic proxies for WCF services based on the WCF service interface."
   nuspec.projectUrl = "https://github.com/jweber/WcfClientProxyGenerator"
   nuspec.title = PROJECT_NAME
+  nuspec.tags = "wcf service proxy dynamic"
   nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.dll", 'lib\net40'
   
   nuspec.working_directory = 'build'

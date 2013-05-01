@@ -11,5 +11,7 @@ namespace WcfClientProxyGenerator
             where TException : Exception;
 
         void RetryOnException(Type exceptionType, Predicate<Exception> where = null);
+
+        void RetryOnResponse<TResponse>(Predicate<TResponse> where);
     }
 }

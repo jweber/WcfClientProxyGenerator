@@ -22,7 +22,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
             string result = await proxy.CallAsync(m => m.TestMethod("good"));
             Assert.AreEqual("OK", result);
@@ -41,7 +41,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxyGenerator.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
             await proxy.CallAsync(m => m.VoidMethod("good"));
         }

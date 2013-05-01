@@ -4,12 +4,12 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
-    public static class WcfClientProxyGenerator
+    public static class WcfClientProxy
     {
         private static readonly ConcurrentDictionary<Type, Lazy<Type>> ProxyCache 
             = new ConcurrentDictionary<Type, Lazy<Type>>();
 
-        public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
+        public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator = null)
             where TServiceInterface : class
         {
             var proxy = CreateProxy<TServiceInterface>();
@@ -17,6 +17,10 @@ namespace WcfClientProxyGenerator
             if (configurator != null)
             {
                 configurator(proxy as IRetryingProxyConfigurator);
+            }
+            else
+            {
+                DefaultProxyConfigurator.Configure<TServiceInterface>(proxy as IRetryingProxyConfigurator);
             }
 
             return proxy;            
