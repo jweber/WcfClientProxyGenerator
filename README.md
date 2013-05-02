@@ -81,7 +81,7 @@ The following interface defines the contract for the service:
 
 The proxy can then be created based on this interface by using the `Create` method of the proxy generator:
 
-    ITestService proxy = ClientProxy.Create<ITestService>(c => c.SetEndpoint(binding, endpointAddress));
+    ITestService proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(binding, endpointAddress));
 
 The proxy generated is now tolerant of faults and communication exceptions. In this example, if the first request results in a faulted channel, you would normally have to manually dispose of it. With the proxy instance, you can continue using it.
 
