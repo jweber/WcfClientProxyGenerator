@@ -53,6 +53,8 @@
     <Compile Include="DefaultProxyConfiguratorTests.cs" />
     <Compile Include="DictionaryExtensionsTests.cs" />
     <Compile Include="FastActivatorTests.cs" />
+    <Compile Include="Infrastructure\ChildServiceImpl.cs" />
+    <Compile Include="Infrastructure\IChildService.cs" />
     <Compile Include="Infrastructure\ITestService2.cs" />
     <Compile Include="Infrastructure\TestService2Impl.cs" />
     <Compile Include="ProxyTests.cs" />

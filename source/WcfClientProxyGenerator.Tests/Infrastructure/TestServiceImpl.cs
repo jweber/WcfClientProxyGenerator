@@ -9,15 +9,15 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
 {
     public class TestServiceImpl : ITestService
     {
-        private readonly Mock<ITestService> _mock;
+            private readonly Mock<ITestService> _mock;
 
-        public TestServiceImpl()
-        {}
+            public TestServiceImpl()
+            {}
 
-        public TestServiceImpl(Mock<ITestService> mock)
-        {
-            _mock = mock;
-        }
+            public TestServiceImpl(Mock<ITestService> mock)
+            {
+                _mock = mock;
+            }
 
         public string TestMethod(string input)
         {

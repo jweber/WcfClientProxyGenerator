@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
+using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
@@ -47,8 +49,12 @@ namespace WcfClientProxyGenerator
 //            GenerateTypeConstructor(typeBuilder, typeof(string));
 //            GenerateTypeConstructor(typeBuilder, typeof(Binding), typeof(EndpointAddress));
 
-            var serviceMethods = typeof(TServiceInterface)
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            var interfaceTypeHierarchy = typeof(TServiceInterface)
+                .GetAllInheritedTypes(includeInterfaces: true)
+                .Where(t => t.IsInterface);
+
+            var serviceMethods = interfaceTypeHierarchy
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                 .Where(t => t.GetCustomAttribute<OperationContractAttribute>() != null);
 
             foreach (var serviceMethod in serviceMethods)
@@ -93,9 +99,14 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ret);
         }
 
-        private static void GenerateServiceProxyMethod(MethodInfo methodInfo, ModuleBuilder moduleBuilder, TypeBuilder typeBuilder)
+        private static void GenerateServiceProxyMethod(
+            MethodInfo methodInfo, 
+            ModuleBuilder moduleBuilder, 
+            TypeBuilder typeBuilder)
         {
-            var parameterTypes = methodInfo.GetParameters().Select(m => m.ParameterType).ToArray();
+            var parameterTypes = methodInfo.GetParameters()
+                .Select(m => m.ParameterType)
+                .ToArray();
 
             var methodBuilder = typeBuilder.DefineMethod(
                 methodInfo.Name,
@@ -219,7 +230,11 @@ namespace WcfClientProxyGenerator
             Type[] parameterTypes, 
             out Type generatedType)
         {
-            string typeName = string.Format("-call-{0}.{1}", methodInfo.DeclaringType.Name, methodInfo.Name);
+            string typeName = string.Format(
+                "-call-{0}.{1}",
+                typeof(TServiceInterface).Name,
+                methodInfo.Name);
+
             var serviceCallTypeBuilder = moduleBuilder.DefineType(typeName);
 
             var fields = new List<FieldBuilder>(parameterTypes.Length);

@@ -137,5 +137,22 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(() => proxy.TestMethodComplexMulti("bad", badRequest), Throws.Exception);
             Assert.That(() => proxy.TestMethodComplexMulti("good", goodRequest).ResponseMessage, Is.EqualTo("OK"));
         }
+
+        [Test]
+        public void Proxy_CanBeGeneratedForInheritingServiceInterface()
+        {
+            var mockTestService = new Mock<ITestService>();
+            var mockChildService = new Mock<IChildService>();
+
+            mockChildService
+                .Setup(m => m.ChildMethod(It.IsAny<string>()))
+                .Returns("OK");
+
+            var serviceHost = InProcTestFactory.CreateHost<IChildService>(new ChildServiceImpl(mockTestService, mockChildService));
+
+            var proxy = WcfClientProxy.Create<IChildService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            Assert.That(() => proxy.ChildMethod("test"), Is.EqualTo("OK"));
+        }
     }
 }
