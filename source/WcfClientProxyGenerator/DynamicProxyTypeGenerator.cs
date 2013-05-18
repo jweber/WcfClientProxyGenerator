@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,6 +9,9 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
+    /// <summary>
+    /// Static class to hold the cached instance of the dynamic assembly
+    /// </summary>
     internal static class DynamicProxyAssembly
     {
         static DynamicProxyAssembly()
@@ -30,24 +32,30 @@ namespace WcfClientProxyGenerator
         public static ModuleBuilder ModuleBuilder { get; private set; }
     }
 
+    /// <summary>
+    /// Dynamic type generator for WCF interfaces. Builds an implementation
+    /// of <typeparamref name="TServiceInterface"/> at runtime that passes calls
+    /// through to the <see cref="IActionInvoker{TServiceInterface}"/>
+    /// </summary>
+    /// <typeparam name="TServiceInterface">
+    /// WCF based interface that is decorated with the <c>System.ServiceModel</c> attributes
+    /// </typeparam>
     internal static class DynamicProxyTypeGenerator<TServiceInterface>
         where TServiceInterface : class
     {
-        public static Type GenerateType()
+        public static Type GenerateType<TActionInvokerProvider>()
+            where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
             var typeBuilder = moduleBuilder.DefineType(
                 "-proxy-" + typeof(TServiceInterface).Name,
                 TypeAttributes.Public | TypeAttributes.Class,
-                typeof(RetryingWcfActionInvokerProvider<TServiceInterface>));
+                typeof(TActionInvokerProvider));
             
             typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
 
             SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
-
-//            GenerateTypeConstructor(typeBuilder, typeof(string));
-//            GenerateTypeConstructor(typeBuilder, typeof(Binding), typeof(EndpointAddress));
 
             var interfaceTypeHierarchy = typeof(TServiceInterface)
                 .GetAllInheritedTypes(includeInterfaces: true)
@@ -59,7 +67,7 @@ namespace WcfClientProxyGenerator
 
             foreach (var serviceMethod in serviceMethods)
             {
-                GenerateServiceProxyMethod(serviceMethod, moduleBuilder, typeBuilder);
+                GenerateServiceProxyMethod(serviceMethod, typeBuilder);
             }
 
             Type generatedType = typeBuilder.CreateType();
@@ -73,35 +81,24 @@ namespace WcfClientProxyGenerator
 
         private static void SetDebuggerDisplay(TypeBuilder typeBuilder, string display)
         {
-            var attributCtor = typeof(DebuggerDisplayAttribute).GetConstructor(new[] { typeof(string) });
+            var attributCtor = typeof(DebuggerDisplayAttribute)
+                .GetConstructor(new[] { typeof(string) });
+           
+            if (attributCtor == null)
+                throw new NotImplementedException("No constructor found on type 'DebuggerDisplayAttribute' that takes an argument of 'string'");
+
             var attributeBuilder = new CustomAttributeBuilder(attributCtor, new object[] { display });
             typeBuilder.SetCustomAttribute(attributeBuilder);
         }
 
-        private static void GenerateTypeConstructor(TypeBuilder typeBuilder, params Type[] argumentParameterTypes)
-        {
-            var constructorBuilder = typeBuilder.DefineConstructor(
-                MethodAttributes.Public, 
-                CallingConventions.Standard, 
-                argumentParameterTypes);
-
-            var ilGenerator = constructorBuilder.GetILGenerator();
-
-            ilGenerator.Emit(OpCodes.Ldarg_0); // this
-
-            for (int i = 0; i < argumentParameterTypes.Length; i++)
-                ilGenerator.Emit(OpCodes.Ldarg, (i + 1));
-
-            var baseCtor = typeof(RetryingWcfActionInvokerProvider<TServiceInterface>)
-                .GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, argumentParameterTypes, null);
-
-            ilGenerator.Emit(OpCodes.Call, baseCtor);
-            ilGenerator.Emit(OpCodes.Ret);
-        }
-
+        /// <summary>
+        /// Generates the methods on the <paramref name="typeBuilder">dynamic type</paramref> 
+        /// to satisfy the <see cref="OperationContractAttribute"/> interface contracts.
+        /// </summary>
+        /// <param name="methodInfo">MethodInfo from the interface</param>
+        /// <param name="typeBuilder">The dynamic type</param>
         private static void GenerateServiceProxyMethod(
             MethodInfo methodInfo, 
-            ModuleBuilder moduleBuilder, 
             TypeBuilder typeBuilder)
         {
             var parameterTypes = methodInfo.GetParameters()
@@ -117,7 +114,6 @@ namespace WcfClientProxyGenerator
             Type serviceCallWrapperType;
             var serviceCallWrapperFields = GenerateServiceCallWrapperType(
                 methodInfo, 
-                moduleBuilder, 
                 parameterTypes, 
                 out serviceCallWrapperType);
 
@@ -174,7 +170,7 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_1);
 
-            MethodInfo invokeMethod = GetRetryingActionInvokerMethod(methodInfo);
+            MethodInfo invokeMethod = GetIActionInvokerInvokeMethod(methodInfo);
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
 
@@ -201,23 +197,22 @@ namespace WcfClientProxyGenerator
                 .GetConstructor(new Type[] { typeof(object), typeof(IntPtr) });
         }
 
-        private static MethodInfo GetRetryingActionInvokerMethod(MethodInfo methodInfo)
+        private static MethodInfo GetIActionInvokerInvokeMethod(MethodInfo methodInfo)
         {
             if (methodInfo.ReturnType == typeof(void))
             {
                 Type actionType = typeof(Action<>)
                     .MakeGenericType(typeof(TServiceInterface));
 
-                return typeof(RetryingWcfActionInvoker<TServiceInterface>)
+                return typeof(IActionInvoker<TServiceInterface>)
                     .GetMethod("Invoke", new[] { actionType });
             }
 
-            var funcInvokeMethod = typeof(RetryingWcfActionInvoker<TServiceInterface>)
+            var funcInvokeMethod = typeof(IActionInvoker<TServiceInterface>)
                 .GetMethods(BindingFlags.Instance | BindingFlags.Public)
                 .First(m => m.Name == "Invoke" && m.ReturnType != typeof(void));
 
             return funcInvokeMethod.MakeGenericMethod(new[] { methodInfo.ReturnType });
-
         }
 
         /// <summary>
@@ -226,7 +221,6 @@ namespace WcfClientProxyGenerator
         /// </summary>
         private static IList<FieldBuilder> GenerateServiceCallWrapperType(
             MethodInfo methodInfo, 
-            ModuleBuilder moduleBuilder, 
             Type[] parameterTypes, 
             out Type generatedType)
         {
@@ -235,7 +229,7 @@ namespace WcfClientProxyGenerator
                 typeof(TServiceInterface).Name,
                 methodInfo.Name);
 
-            var serviceCallTypeBuilder = moduleBuilder.DefineType(typeName);
+            var serviceCallTypeBuilder = DynamicProxyAssembly.ModuleBuilder.DefineType(typeName);
 
             var fields = new List<FieldBuilder>(parameterTypes.Length);
             for (int i = 0; i < parameterTypes.Length; i++)

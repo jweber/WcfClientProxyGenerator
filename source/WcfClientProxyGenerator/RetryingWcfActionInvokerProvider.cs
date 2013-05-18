@@ -5,7 +5,9 @@ using JetBrains.Annotations;
 
 namespace WcfClientProxyGenerator
 {
-    internal class RetryingWcfActionInvokerProvider<TServiceInterface> : IActionInvokerProvider<TServiceInterface>, IRetryingProxyConfigurator
+    internal class RetryingWcfActionInvokerProvider<TServiceInterface> : 
+        IActionInvokerProvider<TServiceInterface>, 
+        IRetryingProxyConfigurator
         where TServiceInterface : class
     {
         private ChannelFactory<TServiceInterface> _channelFactory;
