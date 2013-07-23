@@ -67,6 +67,8 @@ The proxy will now retry calls made into the service when it detects a `503` or 
 #### SetDelayPolicy(Func\<IDelayPolicy\> policyFactory)
 Configures how the proxy will handle pausing between failed calls to the WCF service. See the [Delay Policies](#delay-policies) section below.
 
+Instances of `IDelayPolicy` are generated through the provided factory for each call made to the WCF service.
+
 For example, to wait an exponentially growing amount of time starting at 500 milliseconds between failures:
 
 	ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
