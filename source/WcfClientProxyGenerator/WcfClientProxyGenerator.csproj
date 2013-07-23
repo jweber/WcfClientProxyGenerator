@@ -30,12 +30,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Framework)' == 'NET45'">
     <DefineConstants>NET45</DefineConstants>
-    <OutputPath>bin\$(Configuration)\$(Framework)</OutputPath>
+    <OutputPath>bin\$(Configuration)\net-4.5</OutputPath>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Framework)' == 'NET40'">
     <DefineConstants>NET40</DefineConstants>
-    <OutputPath>bin\$(Configuration)\$(Framework)</OutputPath>
+    <OutputPath>bin\$(Configuration)\net-4.0</OutputPath>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
