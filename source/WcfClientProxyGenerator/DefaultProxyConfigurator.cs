@@ -1,4 +1,7 @@
-﻿namespace WcfClientProxyGenerator
+﻿using System;
+using WcfClientProxyGenerator.Policy;
+
+namespace WcfClientProxyGenerator
 {
     internal static class DefaultProxyConfigurator
     {
@@ -6,5 +9,8 @@
         {
             proxy.SetEndpoint(typeof(TServiceInterface).FullName);
         }
+
+        public static readonly Func<LinearBackoffDelayPolicy> DefaultDelayPolicyFactory
+            = () => new LinearBackoffDelayPolicy(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(10));
     }
 }

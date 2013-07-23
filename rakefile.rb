@@ -27,10 +27,25 @@ assemblyinfo :version => [:versioning] do |asm|
 end
 
 desc 'Compile the project'
-msbuild :compile => :version do |msb|
-  msb.properties :configuration => $config
-  msb.targets [:clean, :build]
-  msb.solution = "source/#{PROJECT_NAME}.sln"
+task :compile do
+  Rake::Task['build:net45'].invoke()
+end
+
+namespace :build do
+  task :all => [:net40, :net45] do
+  end
+
+  msbuild :net40 => :version do |msb|
+    msb.properties :configuration => $config, :Framework => 'NET40'
+    msb.targets [:clean, :build]
+    msb.solution = "source/#{PROJECT_NAME}.sln"
+  end
+  
+  msbuild :net45 => :version do |msb|
+    msb.properties :configuration => $config, :Framework => 'NET45'
+    msb.targets [:clean, :build]
+    msb.solution = "source/#{PROJECT_NAME}.sln"
+  end    
 end
 
 desc 'Run tests'
@@ -46,7 +61,7 @@ nunit :test => :compile do |nunit|
 end
 
 desc 'Builds release package'
-task :package => :compile do
+task :package => 'build:all' do
   include FileUtils
   
   assemble_path = File.join(ARTIFACTS_PATH, "assemble")
@@ -65,38 +80,41 @@ task :package => :compile do
   rm_rf assemble_path if Dir.exists? assemble_path
 end
 
-desc 'Creates the nuspec file'
-nuspec :nuspec => :version do |nuspec|
-  mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
+namespace :nuget do
+  desc 'Creates the nuspec file'
+  nuspec :spec => :version do |nuspec|
+    mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
+    
+    nuspec.id = PROJECT_NAME
+    nuspec.version = ENV['NUGET_VERSION']
+    nuspec.authors = "j.weber"
+    nuspec.description = "Utility to generate fault tolerant and retry capable dynamic proxies for WCF services based on the WCF service interface."
+    nuspec.projectUrl = "https://github.com/jweber/WcfClientProxyGenerator"
+    nuspec.title = PROJECT_NAME
+    nuspec.tags = "wcf service proxy dynamic"
+    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.0\\#{PROJECT_NAME}.dll", 'lib\net40'  
+    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.5\\#{PROJECT_NAME}.dll", 'lib\net45'
+    
+    nuspec.working_directory = 'build'
+    nuspec.output_file = "#{PROJECT_NAME}.nuspec"
+  end
   
-  nuspec.id = PROJECT_NAME
-  nuspec.version = ENV['NUGET_VERSION']
-  nuspec.authors = "j.weber"
-  nuspec.description = "Utility to generate fault tolerant and retry capable dynamic proxies for WCF services based on the WCF service interface."
-  nuspec.projectUrl = "https://github.com/jweber/WcfClientProxyGenerator"
-  nuspec.title = PROJECT_NAME
-  nuspec.tags = "wcf service proxy dynamic"
-  nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.dll", 'lib\net40'
+  nugetpack :pack => ['build:all', :spec] do |nuget|
+    nuget.command = nuget_path
+    nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
+    nuget.base_folder = 'build'
+    nuget.output = 'build'
+  end
   
-  nuspec.working_directory = 'build'
-  nuspec.output_file = "#{PROJECT_NAME}.nuspec"
-end
-
-nugetpack :nupack => [:compile, :nuspec] do |nuget|
-  nuget.command = nuget_path
-  nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
-  nuget.base_folder = 'build'
-  nuget.output = 'build'
-end
-
-nugetpush :nuget_push => [:nupack] do |nuget|
-  raise "No NuGet API key was defined" unless $nuget_api_key
-
-  nuget.command = nuget_path
-  nuget.package = "build\\#{PROJECT_NAME}.#{ENV['NUGET_VERSION']}.nupkg"
-  nuget.create_only = false
-  nuget.apikey = $nuget_api_key
-  nuget.create_only = false
+  nugetpush :push => [:pack] do |nuget|
+    raise "No NuGet API key was defined" unless $nuget_api_key
+  
+    nuget.command = nuget_path
+    nuget.package = "build\\#{PROJECT_NAME}.#{ENV['NUGET_VERSION']}.nupkg"
+    nuget.create_only = false
+    nuget.apikey = $nuget_api_key
+    nuget.create_only = false
+  end
 end
 
 desc 'Builds version environment variables'
@@ -116,7 +134,7 @@ def nunit_path()
 end
 
 def nuget_path()
-	File.join(Dir.glob(File.join('lib', 'nuget_packages', "nuget.commandline.*")).sort.last, "tools", "nuget.exe")
+  File.join(Dir.glob(File.join('lib', 'nuget_packages', "nuget.commandline.*")).sort.last, "tools", "nuget.exe")
 end
 
 def zip_directory(assemble_path, output_path)

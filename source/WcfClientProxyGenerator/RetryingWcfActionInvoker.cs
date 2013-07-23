@@ -6,6 +6,7 @@ using System.ServiceModel;
 using System.Threading;
 using System.Linq;
 using JetBrains.Annotations;
+using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
@@ -26,7 +27,7 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public int RetryCount { get; set; }
 
-        public int MillisecondsBetweenRetries { get; set; }
+        public Func<IDelayPolicy> DelayPolicyFactory { get; set; }
 
         private readonly IDictionary<Type, object> _retryPredicates;
 
@@ -35,19 +36,13 @@ namespace WcfClientProxyGenerator
         /// </summary>
         private readonly Func<TServiceInterface> _wcfActionProviderCreator;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="wcfActionProviderCreator"></param>
-        /// <param name="retryCount"></param>
-        /// <param name="millisecondsBetweenRetries">Performs a linear backoff between retries by multiplying this value by an incremntal value up to <paramref name="retryCount"/></param>
         public RetryingWcfActionInvoker(
             Func<TServiceInterface> wcfActionProviderCreator, 
-            int retryCount = 5, 
-            int millisecondsBetweenRetries = 1000)
+            Func<IDelayPolicy> delayPolicyFactory = null,
+            int retryCount = 5)
         {
             RetryCount = retryCount;
-            MillisecondsBetweenRetries = millisecondsBetweenRetries;
+            DelayPolicyFactory = delayPolicyFactory ?? DefaultProxyConfigurator.DefaultDelayPolicyFactory;
 
             _wcfActionProviderCreator = wcfActionProviderCreator;
             _retryPredicates = new Dictionary<Type, object>
@@ -97,9 +92,9 @@ namespace WcfClientProxyGenerator
         [UsedImplicitly]
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
-            var provider = RefreshProvider(null);
-
+            TServiceInterface provider = RefreshProvider(null);
             TResponse lastResponse = default(TResponse);
+            IDelayPolicy delayPolicy = DelayPolicyFactory();
 
             try
             {
@@ -112,7 +107,7 @@ namespace WcfClientProxyGenerator
                         if (ResponseInRetryable(response))
                         {
                             lastResponse = response;
-                            Delay(i, ref provider);
+                            Delay(i, delayPolicy, ref provider);
                             continue;
                         }
                         
@@ -123,7 +118,7 @@ namespace WcfClientProxyGenerator
                         if (ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
-                            Delay(i, ref provider);
+                            Delay(i, delayPolicy, ref provider);
                         }
                         else
                         {
@@ -147,9 +142,9 @@ namespace WcfClientProxyGenerator
             return lastResponse;
         }
 
-        private void Delay(int iteration, ref TServiceInterface provider)
+        private void Delay(int iteration, IDelayPolicy delayPolicy, ref TServiceInterface provider)
         {
-            Thread.Sleep(MillisecondsBetweenRetries * (iteration + 1));
+            Thread.Sleep(delayPolicy.GetDelay(iteration));
             provider = RefreshProvider(provider);
         }
 
