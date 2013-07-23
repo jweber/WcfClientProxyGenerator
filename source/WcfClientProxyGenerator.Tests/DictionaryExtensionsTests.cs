@@ -9,7 +9,7 @@ namespace WcfClientProxyGenerator.Tests
     [TestFixture]
     public class DictionaryExtensionsTests
     {
-        [Test]
+        [Test, Ignore]
         public void Unsafe_ConcurrentDictionary_GetOrAdd_CallsValueFactoryMultipleTimes()
         {
             var dictionary = new ConcurrentDictionary<string, string>();
