@@ -63,7 +63,7 @@ namespace WcfClientProxyGenerator
 
             var serviceMethods = interfaceTypeHierarchy
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                .Where(t => t.GetCustomAttribute<OperationContractAttribute>() != null);
+                .Where(t => t.HasAttribute<OperationContractAttribute>());
 
             foreach (var serviceMethod in serviceMethods)
             {
@@ -72,7 +72,7 @@ namespace WcfClientProxyGenerator
 
             Type generatedType = typeBuilder.CreateType();
 
-#if OUTPUT_PROXY_DLL
+#if OUTPUT_PROXY_DLL 
             DynamicProxyAssembly.AssemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
 #endif
 
