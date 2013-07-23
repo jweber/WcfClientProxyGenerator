@@ -2,6 +2,7 @@
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using JetBrains.Annotations;
+using WcfClientProxyGenerator.Policy;
 
 namespace WcfClientProxyGenerator
 {
@@ -41,9 +42,9 @@ namespace WcfClientProxyGenerator
             _actionInvoker.RetryCount = retryCount;
         }
 
-        public void TimeBetweenRetries(TimeSpan timeSpan)
+        public void SetDelayPolicy(Func<IDelayPolicy> policyFactory)
         {
-            _actionInvoker.MillisecondsBetweenRetries = timeSpan.Milliseconds;
+            _actionInvoker.DelayPolicyFactory = policyFactory;
         }
 
         public void RetryOnException<TException>(Predicate<TException> where = null)

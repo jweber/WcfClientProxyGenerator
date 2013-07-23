@@ -4,6 +4,7 @@ using System.Linq;
 using System.ServiceModel;
 using Moq;
 using NUnit.Framework;
+using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
 namespace WcfClientProxyGenerator.Tests
@@ -73,7 +74,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
                 () => new TestServiceImpl(mockService),
-                millisecondsBetweenRetries: 50);
+                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)));
 
             actionInvoker.AddResponseToRetryOn<Response>(r => r.ResponseMessage == failResponse.ResponseMessage);
 
@@ -97,7 +98,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
                 () => new TestServiceImpl(mockService),
-                millisecondsBetweenRetries: 50);
+                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)));
 
             actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == failResponse.StatusCode);
 
@@ -128,7 +129,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
                 () => new TestServiceImpl(mockService),
-                millisecondsBetweenRetries: 50);
+                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)));
 
             actionInvoker.AddExceptionToRetryOn<TimeoutException>(where: e => e.Message == "not the message");
 
@@ -151,18 +152,25 @@ namespace WcfClientProxyGenerator.Tests
                 mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws<TException>();
             }
 
+            var mockDelayPolicy = new Mock<IDelayPolicy>();
+
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
                 () => new TestServiceImpl(mockService),
-                millisecondsBetweenRetries: 50);
+                () => mockDelayPolicy.Object,
+                retryCount: 5);
 
             if (configurator != null)
             {
                 configurator(actionInvoker);
             }
-            
+
             Assert.That(
                 () => actionInvoker.Invoke(s => s.TestMethod("test")), 
                 Throws.TypeOf<WcfRetryFailedException>());
+
+            mockDelayPolicy.Verify(
+                m => m.GetDelay(It.IsInRange(0, 4, Range.Inclusive)), 
+                Times.Exactly(5));
         }
     }
 }

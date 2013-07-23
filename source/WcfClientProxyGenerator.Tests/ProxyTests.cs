@@ -3,16 +3,12 @@ using System.ServiceModel;
 using System.Threading.Tasks;
 using Moq;
 using NUnit.Framework;
+using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    public interface IStatus
-    {
-        int StatusCode { get; }
-    }
-
     [TestFixture]
     public class ProxyTests
     {

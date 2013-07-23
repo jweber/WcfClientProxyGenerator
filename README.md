@@ -42,10 +42,7 @@ Configures the proxy to communicate with the endpoint using the given `binding` 
 #### MaximumRetries(int retryCount)
 Sets the maximum amount of times the the proxy will attempt to call the service in the event it encounters a known retry-friendly exception.
 
-#### TimeBetweenRetries(TimeSpan timeSpan)
-Sets the minimum amount of time to pause between retrying calls to the service. This amount of time is multiplied by the current iteration of the retryCount to perform a linear back-off.
-
-#### RetryOnException<TException>(Predicate<TException> where = null)
+#### RetryOnException\<TException\>(Predicate\<TException\> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
 
 By default, if the following Exceptions are encountered while calling the service, the call will retry up to 5 times:
@@ -54,7 +51,7 @@ By default, if the following Exceptions are encountered while calling the servic
 * EndpointNotFoundException
 * ServerTooBusyException
 
-#### RetryOnResponse<TResponse>(Predicate<TResponse> where)
+#### RetryOnResponse\<TResponse\>(Predicate\<TResponse\> where)
 Configures the proxy to retry calls based on conditions in the response from the service.
 
 For example, if your response objects all inherit from a base `IResponseStatus` interface and you would like to retry calls when certain status codes are returned, the proxy can be configured as such:
@@ -66,6 +63,16 @@ For example, if your response objects all inherit from a base `IResponseStatus` 
     });
     
 The proxy will now retry calls made into the service when it detects a `503` or `504` status code.
+
+#### SetDelayPolicy(Func\<IDelayPolicy\> policyFactory)
+Configures how the proxy will handle pausing between failed calls to the WCF service. See the [Delay Policies](#delay-policies) section below.
+
+For example, to wait an exponentially growing amount of time starting at 500 milliseconds between failures:
+
+	ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
+    {
+    	c.SetDelayPolicy(() => new ExponentialBackoffDelayPolicy(TimeSpan.FromMilliseconds(500)));
+    });
 
 
 Examples
@@ -97,6 +104,24 @@ If there are known exceptions that you would like the proxy to retry calls on, i
         c.RetryOnException<CustomException>();
         c.RetryOnException<PossibleCustomException>(e => e.Message == "retry only for this message");
     });
+
+
+Delay Policies
+--------------
+Delay policies are classes that implement the `WcfClientProxyGenerator.Policy.IDelayPolicy` interface. There are a handful of pre-defined delay policies to use in this namespace.
+
+If not specified, the `LinearBackoffDelayPolicy` will be used with a minimum delay of 500 milliseconds and a maximum of 10 seconds.
+
+
+#### ConstantDelayPolicy
+Waits a constant amount of time between call failures regardless of how many calls have failed.
+
+#### LinearBackoffDelayPolicy
+Waits a linearly increasing amount of time between call failures that grows based on how many previous calls have failed. This policy also accepts a maximum delay argument which insures the policy will never wait more than the defined maximum value.
+
+#### ExponentialBackoffDelayPolicy
+Same as the LinearBackoffDelayPolicy, but increases the amount of time between call failures exponentially.
+
 
 License
 -------

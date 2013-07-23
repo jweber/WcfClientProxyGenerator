@@ -57,6 +57,10 @@
     <Compile Include="IActionInvoker.cs" />
     <Compile Include="IActionInvokerProvider.cs" />
     <Compile Include="IProxyConfigurator.cs" />
+    <Compile Include="Policy\ConstantDelayPolicy.cs" />
+    <Compile Include="Policy\ExponentialBackoffDelayPolicy.cs" />
+    <Compile Include="Policy\IDelayPolicy.cs" />
+    <Compile Include="Policy\LinearBackoffDelayPolicy.cs" />
     <Compile Include="RetryingWcfActionInvokerProvider.cs" />
     <Compile Include="DynamicProxyTypeGenerator.cs" />
     <Compile Include="IRetryingProxyConfigurator.cs" />

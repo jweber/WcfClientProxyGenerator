@@ -66,6 +66,7 @@
     <Compile Include="Infrastructure\IChildService.cs" />
     <Compile Include="Infrastructure\ITestService2.cs" />
     <Compile Include="Infrastructure\TestService2Impl.cs" />
+    <Compile Include="DelayPolicyTests.cs" />
     <Compile Include="ProxyTests.cs" />
     <Compile Include="Infrastructure\InProcTestFactory.cs" />
     <Compile Include="Infrastructure\ITestService.cs" />
@@ -88,6 +89,7 @@
       <Name>WcfClientProxyGenerator</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
