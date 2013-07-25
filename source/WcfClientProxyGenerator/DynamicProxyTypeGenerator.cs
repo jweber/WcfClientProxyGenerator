@@ -156,8 +156,7 @@ namespace WcfClientProxyGenerator
 
             ilGenerator.Emit(OpCodes.Call, channelProperty);
             ilGenerator.Emit(OpCodes.Stloc_0);
-            ilGenerator.Emit(OpCodes.Ldloc_2);
-
+            
             var serviceCallWrapperGetMethod = serviceCallWrapperType
                 .GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
             
@@ -173,13 +172,6 @@ namespace WcfClientProxyGenerator
             MethodInfo invokeMethod = GetIActionInvokerInvokeMethod(methodInfo);
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
-
-            if (methodInfo.ReturnType != typeof(void))
-            {
-                ilGenerator.Emit(OpCodes.Stloc_3);
-                ilGenerator.Emit(OpCodes.Ldloc_3);
-            }
-
             ilGenerator.Emit(OpCodes.Ret);
         }
 
