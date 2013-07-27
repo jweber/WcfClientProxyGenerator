@@ -11,26 +11,40 @@ namespace WcfClientProxyGenerator
         private static readonly ConcurrentDictionary<string, Lazy<object>> ChannelFactoryCache
             = new ConcurrentDictionary<string, Lazy<object>>();
 
+        public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>()
+            where TServiceInterface : class
+        {
+            string cacheKey = GetCacheKey<TServiceInterface>();
+            return GetChannelFactory(cacheKey, () => new ChannelFactory<TServiceInterface>("*"));
+        }
+        
         public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(string endpointConfigurationName)
             where TServiceInterface : class
         {
             string cacheKey = GetCacheKey<TServiceInterface>(endpointConfigurationName);
-            var channelFactory = ChannelFactoryCache.GetOrAddSafe(
-                cacheKey,
-                _ => new ChannelFactory<TServiceInterface>(endpointConfigurationName));
-
-            return channelFactory as ChannelFactory<TServiceInterface>;
+            return GetChannelFactory(cacheKey, () => new ChannelFactory<TServiceInterface>(endpointConfigurationName));
         }
 
         public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(Binding binding, EndpointAddress endpointAddress)
             where TServiceInterface : class
         {
             string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress);
+            return GetChannelFactory(cacheKey, () => new ChannelFactory<TServiceInterface>(binding, endpointAddress));
+        }
+
+        private static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(string cacheKey, Func<ChannelFactory<TServiceInterface>> factory)
+            where TServiceInterface : class
+        {
             var channelFactory = ChannelFactoryCache.GetOrAddSafe(
                 cacheKey,
-                _ => new ChannelFactory<TServiceInterface>(binding, endpointAddress));
+                _ => factory());
 
             return channelFactory as ChannelFactory<TServiceInterface>;
+        }
+
+        private static string GetCacheKey<TServiceInterface>()
+        {
+            return string.Format("type:{0}", typeof(TServiceInterface).FullName);
         }
 
         private static string GetCacheKey<TServiceInterface>(string endpointConfigurationName)

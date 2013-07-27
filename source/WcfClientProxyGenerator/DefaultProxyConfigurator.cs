@@ -7,7 +7,7 @@ namespace WcfClientProxyGenerator
     {
         public static void Configure<TServiceInterface>(IRetryingProxyConfigurator proxy)
         {
-            proxy.SetEndpoint(typeof(TServiceInterface).FullName);
+            proxy.UseDefaultEndpoint();
         }
 
         public static readonly Func<LinearBackoffDelayPolicy> DefaultDelayPolicyFactory

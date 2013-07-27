@@ -1,7 +1,6 @@
 ﻿using System;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
-using JetBrains.Annotations;
 using WcfClientProxyGenerator.Policy;
 
 namespace WcfClientProxyGenerator
@@ -16,16 +15,26 @@ namespace WcfClientProxyGenerator
 
         public RetryingWcfActionInvokerProvider()
         {
-            _actionInvoker = new RetryingWcfActionInvoker<TServiceInterface>(() => _channelFactory.CreateChannel());
+            _actionInvoker = new RetryingWcfActionInvoker<TServiceInterface>(() =>
+            {
+                if (_channelFactory == null)
+                    this.UseDefaultEndpoint();
+
+                return _channelFactory.CreateChannel();
+            });
         }
 
-        [UsedImplicitly]
         public IActionInvoker<TServiceInterface> ActionInvoker
         {
             get { return _actionInvoker; }
         }
 
         #region IRetryingProxyConfigurator
+
+        public void UseDefaultEndpoint()
+        {
+            _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>();
+        }
 
         public void SetEndpoint(string endpointConfigurationName)
         {

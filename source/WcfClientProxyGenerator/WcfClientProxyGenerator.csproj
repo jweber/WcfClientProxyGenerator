@@ -72,7 +72,6 @@
     <Compile Include="WcfClientProxy.cs" />
     <Compile Include="RetryingWcfActionInvoker.cs" />
     <Compile Include="Util\FastActivator.cs" />
-    <Compile Include="Util\ResharperAnnotations.cs" />
     <Compile Include="WcfRetryFailedException.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

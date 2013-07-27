@@ -20,7 +20,7 @@ namespace WcfClientProxyGenerator.Tests
             DefaultProxyConfigurator.Configure<ITestService>(mockProxy.Object);
 
             mockProxy.Verify(
-                m => m.SetEndpoint(typeof(ITestService).FullName), 
+                m => m.UseDefaultEndpoint(), 
                 Times.Once());
         }
     }

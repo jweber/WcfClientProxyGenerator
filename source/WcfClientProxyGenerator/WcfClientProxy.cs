@@ -17,9 +17,34 @@ namespace WcfClientProxyGenerator
         /// is used to initiate calls to a WCF service.
         /// </summary>
         /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
+        /// <returns>The WCF client proxy</returns>
+        public static TServiceInterface Create<TServiceInterface>()
+            where TServiceInterface : class
+        {
+            return Create<TServiceInterface>((Action<IRetryingProxyConfigurator>)null);
+        }
+
+        /// <summary>
+        /// Creates a proxy instance of <typeparamref name="TServiceInterface"/> that
+        /// is used to initiate calls to a WCF service.
+        /// </summary>
+        /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
+        /// <param name="endpointConfigurationName">Name of the WCF service configuration</param>
+        /// <returns>The WCF client proxy</returns>
+        public static TServiceInterface Create<TServiceInterface>(string endpointConfigurationName)
+            where TServiceInterface : class
+        {
+            return Create<TServiceInterface>(c => c.SetEndpoint(endpointConfigurationName));
+        }
+
+        /// <summary>
+        /// Creates a proxy instance of <typeparamref name="TServiceInterface"/> that
+        /// is used to initiate calls to a WCF service.
+        /// </summary>
+        /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
         /// <param name="configurator">Lambda that defines how the proxy is configured</param>
         /// <returns>The WCF client proxy</returns>
-        public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator = null)
+        public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
         {
             var proxy = CreateProxy<
