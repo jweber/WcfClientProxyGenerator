@@ -9,6 +9,19 @@ Installation
 
     NuGet> Install-Package WcfClientProxyGenerator
 
+Usage
+-----
+To create a proxy, use the `WcfClientProxy.Create<TServiceInterface>()` method. There are multiple overloads that can be used to setup and configure the proxy.
+
+#### WcfClientProxy.Create\<TServiceInterface\>()
+Calling create without passing any configuration in will configure the proxy using the `endpoint` section in your config where the `contract` attribute matches `TServiceInterface`. If more than one `endpoint` section exists, an `InvalidOperationException` is thrown. The alternate overloads must be used to select the appropriate endpoint configuration.
+
+#### WcfClientProxy.Create\<TServiceInterface\>(string endpointConfigurationName)
+This is a shortcut to using the overload that accepts an `Action<IRetryingProxyConfigurator>`. It's the same as calling `WcfClientProxy.Create<TServiceInterface>(c => c.SetEndpoint(endpointConfigurationName))`.
+
+#### WcfClientProxy.Create\<TServiceInterface\>(Action\<IRetryingProxyConfigurator\> config)
+Exposes the full configuration available. See the [Configuration](#configuration) section of the documentation.
+	
 Configuration
 -------------
 When calling the `WcfClientProxy.Create<TServiceInterface>()` method, a configuration Action is used to setup the proxy. The following configuration options are available at the proxy creation time:

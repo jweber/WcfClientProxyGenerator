@@ -13,10 +13,19 @@ namespace WcfClientProxyGenerator.Tests
     public class ProxyTests
     {
         [Test] 
-        [Description("Asserts that when no conguration is given in the Create proxy call, the endpoint with the full namespace of the service interface will be used")]
-        public void CreatingProxy_WithNoConfigurator_GetsDefaultClientConfiguration()
+        [Description("Asserts that when no conguration is given in the Create proxy call, the endpoint config that matches the contract will be used")]
+        public void CreatingProxy_WithNoConfigurator_AndSingleEndpointConfig_GetsDefaultClientConfiguration()
         {
-            WcfClientProxy.Create<ITestService>();
+            WcfClientProxy.Create<ITestServiceSingleEndpointConfig>();
+        }
+
+        [Test] 
+        [Description("Asserts that when no conguration is given in the Create proxy call, and multiple endpoint configs for the contract exist, an exception is thrown")]
+        public void CreatingProxy_WithNoConfigurator_AndMultipleEndpointConfigs_ThrowsException()
+        {
+            Assert.That(
+                () => WcfClientProxy.Create<ITestService>(),
+                Throws.TypeOf<InvalidOperationException>());
         }
 
         [Test]
@@ -24,6 +33,20 @@ namespace WcfClientProxyGenerator.Tests
         {
             Assert.That(
                 () => WcfClientProxy.Create<ITestService2>(), 
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void CreatingProxy_WithEndpointConfigurationName_ThatExists_CreatesProxy()
+        {
+            WcfClientProxy.Create<ITestService>("ITestService2");
+        }
+
+        [Test]
+        public void CreatingProxy_WithEndpointConfigurationName_ThatDoesNotExist_ThrowsException()
+        {
+            Assert.That(
+                () => WcfClientProxy.Create<ITestService>("DoesNotExist"),
                 Throws.TypeOf<InvalidOperationException>());
         }
 

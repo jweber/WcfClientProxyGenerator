@@ -3,9 +3,9 @@
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {
     [ServiceContract]
-    public interface IChildService : ITestService
+    public interface ITestServiceSingleEndpointConfig
     {
         [OperationContract]
-        string ChildMethod(string input);
+        string TestMethod(string input);
     }
 }

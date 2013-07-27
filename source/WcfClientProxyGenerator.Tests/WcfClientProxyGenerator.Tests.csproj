@@ -65,6 +65,7 @@
     <Compile Include="Infrastructure\ChildServiceImpl.cs" />
     <Compile Include="Infrastructure\IChildService.cs" />
     <Compile Include="Infrastructure\ITestService2.cs" />
+    <Compile Include="Infrastructure\ITestServiceSingleEndpointConfig.cs" />
     <Compile Include="Infrastructure\TestService2Impl.cs" />
     <Compile Include="DelayPolicyTests.cs" />
     <Compile Include="ProxyTests.cs" />

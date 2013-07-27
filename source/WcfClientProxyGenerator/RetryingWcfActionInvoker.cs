@@ -5,7 +5,6 @@ using System.Reflection;
 using System.ServiceModel;
 using System.Threading;
 using System.Linq;
-using JetBrains.Annotations;
 using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Util;
 
@@ -79,7 +78,6 @@ namespace WcfClientProxyGenerator
             _retryPredicates.Add(typeof(TResponse), where);
         }
 
-        [UsedImplicitly]
         public void Invoke(Action<TServiceInterface> method)
         {
             Invoke(provider =>
@@ -89,7 +87,6 @@ namespace WcfClientProxyGenerator
             });
         }
 
-        [UsedImplicitly]
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
             TServiceInterface provider = RefreshProvider(null);
