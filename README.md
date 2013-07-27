@@ -19,7 +19,7 @@ Calling create without passing any configuration in will configure the proxy usi
 #### WcfClientProxy.Create\<TServiceInterface\>(string endpointConfigurationName)
 This is a shortcut to using the overload that accepts an `Action<IRetryingProxyConfigurator>`. It's the same as calling `WcfClientProxy.Create<TServiceInterface>(c => c.SetEndpoint(endpointConfigurationName))`.
 
-#### WcfClientProxy.Create\<TServiceInterface\>(Action<IRetryingProxyConfigurator> config)
+#### WcfClientProxy.Create\<TServiceInterface\>(Action\<IRetryingProxyConfigurator\> config)
 Exposes the full configuration available. See the [Configuration](#configuration) section of the documentation.
 	
 Configuration
