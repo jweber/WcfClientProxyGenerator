@@ -49,7 +49,7 @@ namespace WcfClientProxyGenerator
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
             var typeBuilder = moduleBuilder.DefineType(
-                "-proxy-" + typeof(TServiceInterface).Name,
+                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name,
                 TypeAttributes.Public | TypeAttributes.Class,
                 typeof(TActionInvokerProvider));
             
@@ -110,6 +110,9 @@ namespace WcfClientProxyGenerator
                 MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual,
                 methodInfo.ReturnType,
                 parameterTypes);
+
+            for (int i = 1; i <= parameterTypes.Length; i++)
+                methodBuilder.DefineParameter(i, ParameterAttributes.None, "arg" + i);
 
             Type serviceCallWrapperType;
             var serviceCallWrapperFields = GenerateServiceCallWrapperType(
@@ -217,7 +220,7 @@ namespace WcfClientProxyGenerator
             out Type generatedType)
         {
             string typeName = string.Format(
-                "-call-{0}.{1}",
+                "WcfClientProxyGenerator.DynamicProxy.{0}Support.{1}",
                 typeof(TServiceInterface).Name,
                 methodInfo.Name);
 
@@ -236,6 +239,8 @@ namespace WcfClientProxyGenerator
                 MethodAttributes.Public,
                 methodInfo.ReturnType,
                 new[] { typeof(TServiceInterface) });
+
+            methodBuilder.DefineParameter(1, ParameterAttributes.None, "service");
 
             var ilGenerator = methodBuilder.GetILGenerator();
             
