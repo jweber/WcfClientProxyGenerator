@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>NET45</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -65,9 +65,11 @@
     <Compile Include="Infrastructure\ChildServiceImpl.cs" />
     <Compile Include="Infrastructure\IChildService.cs" />
     <Compile Include="Infrastructure\ITestService2.cs" />
+    <Compile Include="Infrastructure\IOutParamTestService.cs" />
     <Compile Include="Infrastructure\ITestServiceSingleEndpointConfig.cs" />
     <Compile Include="Infrastructure\TestService2Impl.cs" />
     <Compile Include="DelayPolicyTests.cs" />
+    <Compile Include="Infrastructure\OutParamTestServiceImpl.cs" />
     <Compile Include="ProxyTests.cs" />
     <Compile Include="Infrastructure\InProcTestFactory.cs" />
     <Compile Include="Infrastructure\ITestService.cs" />

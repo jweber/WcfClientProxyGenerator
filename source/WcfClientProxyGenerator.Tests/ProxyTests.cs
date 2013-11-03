@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.Serialization;
 using System.ServiceModel;
 using System.Threading.Tasks;
 using Moq;
@@ -173,5 +174,82 @@ namespace WcfClientProxyGenerator.Tests
 
             Assert.That(() => proxy.ChildMethod("test"), Is.EqualTo("OK"));
         }
+
+        #region Out Parameter Support
+
+        [Test]
+        public void Proxy_CanBeGeneratedForOperationWithSingleOutParameter()
+        {
+            var mockTestService = new Mock<IOutParamTestService>();
+
+            byte[] expectedOutParam = { 0x00, 0x01 };
+            mockTestService
+                .Setup(m => m.SingleOutParam(out expectedOutParam))
+                .Returns(1);
+
+            var serviceHost = InProcTestFactory.CreateHost<IOutParamTestService>(new OutParamTestServiceImpl(mockTestService));
+
+            var proxy = WcfClientProxy.Create<IOutParamTestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            byte[] outParam;
+            int result = proxy.SingleOutParam(out outParam);
+
+            Assert.That(result, Is.EqualTo(1));
+            Assert.That(outParam, Is.EqualTo(expectedOutParam));
+        }
+
+        [Test]
+        public void Proxy_CanBeGeneratedForOperationWithMultipleOutParameters()
+        {
+            var mockTestService = new Mock<IOutParamTestService>();
+
+            byte[] expectedOut1Value = { 0x00, 0x01 };
+            string expectedOut2Value = "message";
+            mockTestService
+                .Setup(m => m.MultipleOutParams(out expectedOut1Value, out expectedOut2Value))
+                .Returns(1);
+
+            var serviceHost = InProcTestFactory.CreateHost<IOutParamTestService>(new OutParamTestServiceImpl(mockTestService));
+
+            var proxy = WcfClientProxy.Create<IOutParamTestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            byte[] out1Value;
+            string out2Value;
+            int result = proxy.MultipleOutParams(out out1Value, out out2Value);
+
+            Assert.That(result, Is.EqualTo(1));
+            Assert.That(out1Value, Is.EqualTo(expectedOut1Value));
+            Assert.That(out2Value, Is.EqualTo(expectedOut2Value));
+        }
+
+        [Test]
+        public void Proxy_CanBeGeneratedForOperationWithMixedInputAndOutputParams()
+        {
+            var mockTestService = new Mock<IOutParamTestService>();
+
+            int expectedOut1Value = 25;
+            mockTestService
+                .Setup(m => m.MixedParams(1, out expectedOut1Value, "test"))
+                .Returns(1);
+
+            var serviceHost = InProcTestFactory.CreateHost<IOutParamTestService>(new OutParamTestServiceImpl(mockTestService));
+
+            var proxy = WcfClientProxy.Create<IOutParamTestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            int out1Value;
+            int result = proxy.MixedParams(1, out out1Value, "test");
+
+            Assert.That(result, Is.EqualTo(1));
+            Assert.That(out1Value, Is.EqualTo(expectedOut1Value));
+        }
+
+        [DataContract]
+        public class TestObj : MarshalByRefObject
+        {
+            [DataMember]
+            public string Value { get; set; }
+        }
+
+        #endregion
     }
 }
