@@ -120,8 +120,11 @@ namespace WcfClientProxyGenerator
                 parameterTypes, 
                 out serviceCallWrapperType);
 
+            FieldBuilder[] inputFields = serviceCallWrapperFields.Where(f => f.Name.StartsWith("arg")).ToArray();
+            FieldBuilder[] outputFields = serviceCallWrapperFields.Where(f => f.Name.StartsWith("out")).ToArray();
+
             var ilGenerator = methodBuilder.GetILGenerator();
-            ilGenerator.DeclareLocal(typeof(RetryingWcfActionInvoker<TServiceInterface>));
+            ilGenerator.DeclareLocal(typeof(IActionInvoker<TServiceInterface>));
 
             ilGenerator.DeclareLocal(methodInfo.ReturnType == typeof(void)
                 ? typeof(Action<>).MakeGenericType(typeof(TServiceInterface))
@@ -142,8 +145,12 @@ namespace WcfClientProxyGenerator
             
             for (int i = 0; i < serviceCallWrapperFields.Count; i++)
             {
+                FieldBuilder field = serviceCallWrapperFields[i];
+                if (!inputFields.Contains(field))
+                    continue;
+
                 ilGenerator.Emit(OpCodes.Ldarg, i + 1);
-                ilGenerator.Emit(OpCodes.Stfld, serviceCallWrapperType.GetField(serviceCallWrapperFields[i].Name));
+                ilGenerator.Emit(OpCodes.Stfld, serviceCallWrapperType.GetField(field.Name));
 
                 if (i < serviceCallWrapperFields.Count)
                     ilGenerator.Emit(OpCodes.Ldloc_2);
@@ -175,6 +182,27 @@ namespace WcfClientProxyGenerator
             MethodInfo invokeMethod = GetIActionInvokerInvokeMethod(methodInfo);
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
+
+            if (outputFields.Length > 0)
+            {
+                ilGenerator.Emit(OpCodes.Stloc_3);
+                
+                for (int i = 0; i < serviceCallWrapperFields.Count; i++)
+                {
+                    FieldBuilder field = serviceCallWrapperFields[i];
+                    if (!outputFields.Contains(field))
+                        continue;
+
+                    ilGenerator.Emit(OpCodes.Ldarg, i + 1);
+                    ilGenerator.Emit(OpCodes.Ldloc_2);
+                    ilGenerator.Emit(OpCodes.Ldfld, serviceCallWrapperFields[i]);
+                    ilGenerator.Emit(OpCodes.Stind_Ref);
+                }
+
+                ilGenerator.Emit(OpCodes.Ldloc_3);
+            }
+            
+
             ilGenerator.Emit(OpCodes.Ret);
         }
 
@@ -219,6 +247,10 @@ namespace WcfClientProxyGenerator
             Type[] parameterTypes, 
             out Type generatedType)
         {
+            Type[] byRefParameterTypes = parameterTypes
+                .Where(t => t.IsByRef)
+                .ToArray();
+
             string typeName = string.Format(
                 "WcfClientProxyGenerator.DynamicProxy.{0}Support.{1}",
                 typeof(TServiceInterface).Name,
@@ -227,11 +259,25 @@ namespace WcfClientProxyGenerator
             var serviceCallTypeBuilder = DynamicProxyAssembly.ModuleBuilder.DefineType(typeName);
 
             var fields = new List<FieldBuilder>(parameterTypes.Length);
-            for (int i = 0; i < parameterTypes.Length; i++)
+
+            int inputFields = 0;
+            int outputFields = 0;
+            foreach (Type parameterType in parameterTypes)
             {
-                Type parameterType = parameterTypes[i];
+                string fieldName;
+                Type fieldType = parameterType;
+                if (parameterType.IsByRef)
+                {
+                    fieldName = "out" + (outputFields++);
+                    fieldType = parameterType.GetElementType();
+                }
+                else
+                {
+                    fieldName = "arg" + (inputFields++);
+                }
+
                 fields.Add(
-                    serviceCallTypeBuilder.DefineField("arg" + i, parameterType, FieldAttributes.Public));
+                    serviceCallTypeBuilder.DefineField(fieldName, fieldType, FieldAttributes.Public));
             }
 
             var methodBuilder = serviceCallTypeBuilder.DefineMethod(
@@ -249,11 +295,15 @@ namespace WcfClientProxyGenerator
             
             ilGenerator.Emit(OpCodes.Ldarg_1);
 
-            fields.ForEach(lf =>
+            for (int i = 0; i < parameterTypes.Length; i++)
             {
+                bool isByRef = parameterTypes[i].IsByRef;
+
                 ilGenerator.Emit(OpCodes.Ldarg_0);
-                ilGenerator.Emit(OpCodes.Ldfld, lf);
-            });
+                ilGenerator.Emit(
+                    isByRef ? OpCodes.Ldflda : OpCodes.Ldfld, 
+                    fields[i]);
+            }
 
             ilGenerator.Emit(OpCodes.Callvirt, methodInfo);
             
