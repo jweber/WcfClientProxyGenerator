@@ -243,13 +243,6 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(out1Value, Is.EqualTo(expectedOut1Value));
         }
 
-        [DataContract]
-        public class TestObj : MarshalByRefObject
-        {
-            [DataMember]
-            public string Value { get; set; }
-        }
-
         #endregion
     }
 }
