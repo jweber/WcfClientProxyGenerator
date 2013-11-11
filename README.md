@@ -93,8 +93,8 @@ For example, to wait an exponentially growing amount of time starting at 500 mil
 Allows you to configure an event handlers that are called every time a method is called on the service.
 Events will receive information which method was called and with what parameters in the `OnInvokeHandlerArguments` structure.
 
-The OnBeforeInvoke event will fire every time the method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
-The OnAfterInvoke event will fire only on successful calls to the service.
+The OnBeforeInvoke event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
+The OnAfterInvoke event will fire once after a successful call to a service method.
 
 For example, to log all service calls:
 
@@ -109,16 +109,15 @@ ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
         Console.WriteLine("{0}.{1} returned value: {2}",
             args.ServiceType.Name, args.InvokeInfo.MethodName,
             args.InvokeInfo.ReturnValue);
-        };
-    });
-);
-string result = proxy.TestMethod("test", 42);
+    };
+});
+int result = proxy.AddNumbers(3, 42);
 ````
 
 Will print:
 
-    ITestService.TestMethod called with parameters: test, 42
-    ITestService.TestMethod returned value: Hello, World!
+    ITestService.TestMethod called with parameters: 3, 42
+    ITestService.TestMethod returned value: 45
 
 Examples
 --------
