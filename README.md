@@ -89,6 +89,36 @@ For example, to wait an exponentially growing amount of time starting at 500 mil
     	c.SetDelayPolicy(() => new ExponentialBackoffDelayPolicy(TimeSpan.FromMilliseconds(500)));
     });
 
+#### OnBeforeInvoke & OnAfterInvoke
+Allows you to configure an event handlers that are called every time a method is called on the service.
+Events will receive information which method was called and with what parameters in the `OnInvokeHandlerArguments` structure.
+
+The OnBeforeInvoke event will fire every time the method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
+The OnAfterInvoke event will fire only on successful calls to the service.
+
+For example, to log all service calls:
+
+````csharp
+ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
+     c.OnBeforeInvoke += (sender, args) => {
+        Console.WriteLine("{0}.{1} called with parameters: {2}",
+            args.ServiceType.Name, args.InvokeInfo.MethodName,
+            String.Join(", ", args.InvokeInfo.Parameters));
+    };
+    c.OnAfterInvoke += (sender, args) => {
+        Console.WriteLine("{0}.{1} returned value: {2}",
+            args.ServiceType.Name, args.InvokeInfo.MethodName,
+            args.InvokeInfo.ReturnValue);
+        };
+    });
+);
+string result = proxy.TestMethod("test", 42);
+````
+
+Will print:
+
+    ITestService.TestMethod called with parameters: test, 42
+    ITestService.TestMethod returned value: Hello, World!
 
 Examples
 --------
