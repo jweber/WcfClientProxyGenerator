@@ -116,8 +116,8 @@ int result = proxy.AddNumbers(3, 42);
 
 Will print:
 
-    ITestService.TestMethod called with parameters: 3, 42
-    ITestService.TestMethod returned value: 45
+    ITestService.AddNumbers called with parameters: 3, 42
+    ITestService.AddNumbers returned value: 45
 
 Examples
 --------
