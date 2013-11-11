@@ -428,6 +428,24 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
+        public void Proxy_OnBeforeInvoke_ReturnValue_Throws()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.IsFalse(args.InvokeInfo.MethodHasReturnValue, "InvokeInfo.MethodHasReturnValue is not set correctly");
+                    Assert.Throws<InvalidOperationException>(delegate { var x = args.InvokeInfo.ReturnValue; }, "InvokeInfo.ReturnValue did not throw!");
+                };
+                c.OnBeforeInvoke += handler;
+            });
+            proxy.TestMethod("test");
+        }
+
+        [Test]
         public void Proxy_OnAfterInvoke_IsFired()
         {
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
@@ -556,6 +574,64 @@ namespace WcfClientProxyGenerator.Tests
                 c.OnAfterInvoke += handler;
             });
             proxy.TestMethodComplexMulti("test", request);
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_ReturnValue_IsSetCorrectly()
+        {
+            Mock<ITestService> mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Returns("retval");
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.IsTrue(args.InvokeInfo.MethodHasReturnValue, "InvokeInfo.MethodHasReturnValue is not set correctly");
+                    Assert.AreEqual("retval", args.InvokeInfo.ReturnValue, "InvokeInfo.ReturnValue is not set correctly");
+                };
+                c.OnAfterInvoke += handler;
+            });
+            proxy.TestMethod("test");
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_ReturnValue_ForValueTypeMethods_IsSetCorrectly()
+        {
+            Mock<ITestService> mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.IntMethod()).Returns(1337);
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.IsTrue(args.InvokeInfo.MethodHasReturnValue, "InvokeInfo.MethodHasReturnValue is not set correctly");
+                    Assert.AreEqual(1337, args.InvokeInfo.ReturnValue, "InvokeInfo.ReturnValue is not set correctly");
+                };
+                c.OnAfterInvoke += handler;
+            });
+            proxy.IntMethod();
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_ReturnValue_ThrowsForVoidMethods()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.IsFalse(args.InvokeInfo.MethodHasReturnValue, "InvokeInfo.MethodHasReturnValue is not set correctly");
+                    Assert.Throws<InvalidOperationException>(delegate { var x = args.InvokeInfo.ReturnValue; }, "InvokeInfo.ReturnValue did not throw!");
+                };
+                c.OnAfterInvoke += handler;
+            });
+            proxy.VoidMethod("test");
         }
         #endregion
     }

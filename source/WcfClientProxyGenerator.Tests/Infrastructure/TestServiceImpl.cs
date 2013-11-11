@@ -45,6 +45,14 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
                 _mock.Object.VoidMethodIntParameter(input);
         }
 
+        public int IntMethod()
+        {
+            if (_mock != null)
+                return _mock.Object.IntMethod();
+
+            return 42;
+        }
+
         public Response TestMethodComplex(Request request)
         {
             if (_mock != null)

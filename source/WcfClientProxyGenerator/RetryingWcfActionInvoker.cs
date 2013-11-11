@@ -89,6 +89,11 @@ namespace WcfClientProxyGenerator
         }
 
         /// <summary>
+        /// Used to identify void return types in the Invoke() methods below.
+        /// </summary>
+        private struct VoidReturnType { }
+
+        /// <summary>
         /// This function is called when a proxy's method is called that should return void.
         /// </summary>
         /// <param name="method">Method implementing the service call using WCF</param>
@@ -97,7 +102,7 @@ namespace WcfClientProxyGenerator
             Invoke(provider =>
             {
                 method(provider);
-                return true;
+                return new VoidReturnType();
             }, invokeInfo);
         }
 
@@ -141,6 +146,12 @@ namespace WcfClientProxyGenerator
                         // fire OnAfterInvoke callback at successful retry
                         if (OnAfterInvoke != null)
                         {
+                            // set return value if non-void
+                            if (typeof(TResponse) != typeof(VoidReturnType))
+                            {
+                                invokeInfo.MethodHasReturnValue = true;
+                                invokeInfo.ReturnValue = response;
+                            }
                             OnAfterInvoke(this, new OnInvokeHandlerArguments()
                             {
                                 ServiceType = typeof(TServiceInterface),
