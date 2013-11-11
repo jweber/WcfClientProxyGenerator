@@ -46,6 +46,8 @@ namespace WcfClientProxyGenerator
         public static Type GenerateType<TActionInvokerProvider>()
             where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
+            CheckServiceInterfaceValidity(typeof(TServiceInterface));
+
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
             var typeBuilder = moduleBuilder.DefineType(
@@ -65,6 +67,11 @@ namespace WcfClientProxyGenerator
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                 .Where(t => t.HasAttribute<OperationContractAttribute>());
 
+            if (!serviceMethods.Any())
+            {
+                throw new InvalidOperationException(String.Format("Service interface {0} has no OperationContact methods. Is this a proper WCF service interface?", typeof(TServiceInterface).Name));
+            }
+
             foreach (var serviceMethod in serviceMethods)
             {
                 GenerateServiceProxyMethod(serviceMethod, typeBuilder);
@@ -77,6 +84,19 @@ namespace WcfClientProxyGenerator
 #endif
 
             return generatedType;
+        }
+
+        private static void CheckServiceInterfaceValidity(Type type)
+        {
+            if (!type.IsPublic && !type.IsNestedPublic)
+            {
+                throw new InvalidOperationException(String.Format("Service interface {0} is not declared public. WcfClientProxyGenerator cannot work with non-public service interfaces.", type.Name));
+            }
+
+            if (!type.HasAttribute<ServiceContractAttribute>())
+            {
+                throw new InvalidOperationException(String.Format("Service interface {0} is not marked with ServiceContract attribute. Is this a proper WCF service interface?", type.Name));
+            }
         }
 
         private static void SetDebuggerDisplay(TypeBuilder typeBuilder, string display)
