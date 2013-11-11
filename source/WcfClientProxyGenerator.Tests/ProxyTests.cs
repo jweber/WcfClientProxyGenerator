@@ -352,6 +352,82 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
+        public void Proxy_OnBeforeInvoke_InvokeInfo_IsSet()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.IsNotNull(args.InvokeInfo, "InvokeInfo is null when it should be set");
+                };
+                c.OnBeforeInvoke += handler;
+            });
+            proxy.TestMethod("test");
+        }
+
+        [Test]
+        public void Proxy_OnBeforeInvoke_InvokeInfo_SetCorrectly()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            Request request = new Request() { RequestMessage = "message" };
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.AreEqual("TestMethodComplexMulti", args.InvokeInfo.MethodName, "InvokeInfo.MethodName is not set correctly");
+                    // parameters
+                    Assert.AreEqual(2, args.InvokeInfo.Parameters.Length, "InvokeInfo.Parameters length is incorrect");
+                    Assert.AreEqual("test", args.InvokeInfo.Parameters[0], "InvokeInfo.Parameters[0] is not set correctly");
+                    Assert.AreEqual(request, args.InvokeInfo.Parameters[1], "InvokeInfo.Parameters[1] is not set correctly");
+                };
+                c.OnBeforeInvoke += handler;
+            });
+            proxy.TestMethodComplexMulti("test", request);
+        }
+
+        [Test]
+        public void Proxy_OnBeforeInvoke_InvokeInfo_SetCorrectly_NoParameters()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.AreEqual("VoidMethodNoParameters", args.InvokeInfo.MethodName, "InvokeInfo.MethodName is not set correctly");
+                    Assert.AreEqual(0, args.InvokeInfo.Parameters.Length, "InvokeInfo.Parameters length is incorrect");
+                };
+                c.OnBeforeInvoke += handler;
+            });
+            proxy.VoidMethodNoParameters();
+        }
+
+        [Test]
+        public void Proxy_OnBeforeInvoke_InvokeInfo_SetCorrectly_IntParameter()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.AreEqual("VoidMethodIntParameter", args.InvokeInfo.MethodName, "InvokeInfo.MethodName is not set correctly");
+                    Assert.AreEqual(1, args.InvokeInfo.Parameters.Length, "InvokeInfo.Parameters length is incorrect");
+                    Assert.AreEqual(1337, args.InvokeInfo.Parameters[0], "InvokeInfo.Parameters[0] is not set correctly");
+                };
+                c.OnBeforeInvoke += handler;
+            });
+            proxy.VoidMethodIntParameter(1337);
+        }
+
+        [Test]
         public void Proxy_OnAfterInvoke_IsFired()
         {
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
@@ -458,6 +534,28 @@ namespace WcfClientProxyGenerator.Tests
             catch { }
             Assert.AreEqual(5, attempts, "Assumption failed: Should attempt to call service method 5 times");
             Assert.IsFalse(fired, "OnAfterInvoke was called when it should not have been!");
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_InvokeInfo_SetCorrectly()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            Request request = new Request() { RequestMessage = "message" };
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.AreEqual("TestMethodComplexMulti", args.InvokeInfo.MethodName, "InvokeInfo.MethodName is not set correctly");
+                    // parameters
+                    Assert.AreEqual(2, args.InvokeInfo.Parameters.Length, "InvokeInfo.Parameters length is incorrect");
+                    Assert.AreEqual("test", args.InvokeInfo.Parameters[0], "InvokeInfo.Parameters[0] is not set correctly");
+                    Assert.AreEqual(request, args.InvokeInfo.Parameters[1], "InvokeInfo.Parameters[1] is not set correctly");
+                };
+                c.OnAfterInvoke += handler;
+            });
+            proxy.TestMethodComplexMulti("test", request);
         }
         #endregion
     }

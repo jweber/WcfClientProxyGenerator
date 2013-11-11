@@ -56,6 +56,7 @@
     <Compile Include="DefaultProxyConfigurator.cs" />
     <Compile Include="IActionInvoker.cs" />
     <Compile Include="IActionInvokerProvider.cs" />
+    <Compile Include="InvokeInfo.cs" />
     <Compile Include="IProxyConfigurator.cs" />
     <Compile Include="OnInvokeHandler.cs" />
     <Compile Include="Policy\ConstantDelayPolicy.cs" />

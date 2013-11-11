@@ -142,6 +142,16 @@ namespace WcfClientProxyGenerator
             // TResult local3;
             if (methodInfo.ReturnType != typeof(void))
                 ilGenerator.DeclareLocal(methodInfo.ReturnType);
+            else
+                ilGenerator.DeclareLocal(typeof(bool)); // generate unused variable to make referencing local variables easier
+
+            // local variable to store invocation information (which method and parameters)
+            // InvokeInfo local4;
+            ilGenerator.DeclareLocal(typeof(InvokeInfo));
+
+            // local variable to store parameter information
+            // object[] local5;
+            ilGenerator.DeclareLocal(typeof(object[]));
 
             var serviceCallWrapperCtor = serviceCallWrapperType.GetConstructor(Type.EmptyTypes);
             if (serviceCallWrapperCtor == null)
@@ -190,9 +200,36 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Newobj, ctor);
             ilGenerator.Emit(OpCodes.Stloc_1);
 
-            // call correct Invoke() ActionInvoker.Invoke() with parameter local1 (method to execute)
+            // create InvokeInfo structure to hold data
+            ilGenerator.Emit(OpCodes.Newobj, typeof(InvokeInfo).GetConstructor(Type.EmptyTypes));
+            ilGenerator.Emit(OpCodes.Stloc, 4);
+            ilGenerator.Emit(OpCodes.Ldloc, 4);
+            ilGenerator.Emit(OpCodes.Ldstr, methodInfo.Name);
+            ilGenerator.Emit(OpCodes.Callvirt, typeof(InvokeInfo).GetMethod("set_MethodName"));
+
+            // store parameters used to InvokeInfo.Parameters structure
+            ilGenerator.Emit(OpCodes.Ldc_I4, parameterTypes.Length);
+            ilGenerator.Emit(OpCodes.Newarr, typeof(object));
+            ilGenerator.Emit(OpCodes.Stloc, 5);
+            for (int i = 0; i < parameterTypes.Length; i++)
+            {
+                ilGenerator.Emit(OpCodes.Ldloc, 5); // object[], parameters
+                ilGenerator.Emit(OpCodes.Ldc_I4, i);
+                ilGenerator.Emit(OpCodes.Ldarg, i + 1);
+                if (parameterTypes[i].IsValueType)
+                {
+                    ilGenerator.Emit(OpCodes.Box, parameterTypes[i]);
+                }
+                ilGenerator.Emit(OpCodes.Stelem_Ref);
+            }
+            ilGenerator.Emit(OpCodes.Ldloc, 4); // InvokeInfo
+            ilGenerator.Emit(OpCodes.Ldloc, 5); // object[] parameters
+            ilGenerator.Emit(OpCodes.Callvirt, typeof(InvokeInfo).GetMethod("set_Parameters"));
+
+            // call correct Invoke() ActionInvoker.Invoke() with parameters local1 (method to execute) and InvokeInfo
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Ldloc, 4);
             MethodInfo invokeMethod = GetIActionInvokerInvokeMethod(methodInfo);
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
@@ -242,7 +279,7 @@ namespace WcfClientProxyGenerator
                     .MakeGenericType(typeof(TServiceInterface));
 
                 return typeof(IActionInvoker<TServiceInterface>)
-                    .GetMethod("Invoke", new[] { actionType });
+                    .GetMethod("Invoke", new[] { actionType, typeof(InvokeInfo) });
             }
 
             var funcInvokeMethod = typeof(IActionInvoker<TServiceInterface>)

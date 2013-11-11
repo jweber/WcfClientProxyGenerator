@@ -33,6 +33,18 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
                 _mock.Object.VoidMethod(input);
         }
 
+        public void VoidMethodNoParameters()
+        {
+            if (_mock != null)
+                _mock.Object.VoidMethodNoParameters();
+        }
+
+        public void VoidMethodIntParameter(int input)
+        {
+            if (_mock != null)
+                _mock.Object.VoidMethodIntParameter(input);
+        }
+
         public Response TestMethodComplex(Request request)
         {
             if (_mock != null)

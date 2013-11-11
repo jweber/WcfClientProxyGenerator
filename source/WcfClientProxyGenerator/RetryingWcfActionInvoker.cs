@@ -92,20 +92,20 @@ namespace WcfClientProxyGenerator
         /// This function is called when a proxy's method is called that should return void.
         /// </summary>
         /// <param name="method">Method implementing the service call using WCF</param>
-        public void Invoke(Action<TServiceInterface> method)
+        public void Invoke(Action<TServiceInterface> method, InvokeInfo invokeInfo = null)
         {
             Invoke(provider =>
             {
                 method(provider);
                 return true;
-            });
+            }, invokeInfo);
         }
 
         /// <summary>
         /// This function is called when a proxy's method is called that should return something.
         /// </summary>
         /// <param name="method">Method implementing the service call using WCF</param>
-        public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
+        public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method, InvokeInfo invokeInfo = null)
         {
             TServiceInterface provider = RefreshProvider(null);
             TResponse lastResponse = default(TResponse);
@@ -125,6 +125,7 @@ namespace WcfClientProxyGenerator
                             {
                                 ServiceType = typeof(TServiceInterface),
                                 RetryCounter = i,
+                                InvokeInfo = invokeInfo,
                             });
                         }
 
@@ -144,6 +145,7 @@ namespace WcfClientProxyGenerator
                             {
                                 ServiceType = typeof(TServiceInterface),
                                 RetryCounter = i,
+                                InvokeInfo = invokeInfo,
                             });
                         }
 

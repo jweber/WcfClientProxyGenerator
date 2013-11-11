@@ -13,6 +13,11 @@ namespace WcfClientProxyGenerator
     public class OnInvokeHandlerArguments
     {
         /// <summary>
+        /// Information on which method was invoked and with what parameters.
+        /// </summary>
+        public InvokeInfo InvokeInfo { get; set; }
+
+        /// <summary>
         /// Type of the service that was invoked.
         /// </summary>
         public Type ServiceType { get; set; }
