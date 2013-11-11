@@ -31,6 +31,16 @@ namespace WcfClientProxyGenerator
         private readonly IDictionary<Type, object> _retryPredicates;
 
         /// <summary>
+        /// Fires before the invocation of a service method, at every retry.
+        /// </summary>
+        public OnInvokeHandler OnBeforeInvoke { get; set; }
+
+        /// <summary>
+        /// Fires after the successful invocation of a method.
+        /// </summary>
+        public OnInvokeHandler OnAfterInvoke { get; set; }
+
+        /// <summary>
         /// The method that initializes new WCF action providers
         /// </summary>
         private readonly Func<TServiceInterface> _wcfActionProviderCreator;
@@ -78,6 +88,10 @@ namespace WcfClientProxyGenerator
             _retryPredicates.Add(typeof(TResponse), where);
         }
 
+        /// <summary>
+        /// This function is called when a proxy's method is called that should return void.
+        /// </summary>
+        /// <param name="method">Method implementing the service call using WCF</param>
         public void Invoke(Action<TServiceInterface> method)
         {
             Invoke(provider =>
@@ -87,6 +101,10 @@ namespace WcfClientProxyGenerator
             });
         }
 
+        /// <summary>
+        /// This function is called when a proxy's method is called that should return something.
+        /// </summary>
+        /// <param name="method">Method implementing the service call using WCF</param>
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
         {
             TServiceInterface provider = RefreshProvider(null);
@@ -100,6 +118,17 @@ namespace WcfClientProxyGenerator
                 {
                     try
                     {
+                        // fire OnBeforeInvoke callback at every retry
+                        if (OnBeforeInvoke != null)
+                        {
+                            OnBeforeInvoke(this, new OnInvokeHandlerArguments()
+                            {
+                                ServiceType = typeof(TServiceInterface),
+                                RetryCounter = i,
+                            });
+                        }
+
+                        // make the service call
                         TResponse response = method(provider);
                         if (ResponseInRetryable(response))
                         {
@@ -108,6 +137,16 @@ namespace WcfClientProxyGenerator
                             continue;
                         }
                         
+                        // fire OnAfterInvoke callback at successful retry
+                        if (OnAfterInvoke != null)
+                        {
+                            OnAfterInvoke(this, new OnInvokeHandlerArguments()
+                            {
+                                ServiceType = typeof(TServiceInterface),
+                                RetryCounter = i,
+                            });
+                        }
+
                         return response;
                     }
                     catch (Exception ex)

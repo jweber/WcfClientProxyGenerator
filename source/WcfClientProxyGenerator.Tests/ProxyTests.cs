@@ -244,5 +244,221 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         #endregion
+
+        #region OnBeforeInvoke and OnAfterInvoke support
+        [Test]
+        public void Proxy_OnBeforeInvoke_IsFired()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            bool fired = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnBeforeInvoke += (sender, args) => fired = true;
+            });
+            proxy.VoidMethod("test");
+            Assert.IsTrue(fired);
+        }
+
+        [Test]
+        public void Proxy_OnBeforeInvoke_Multiple_AreFired()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            bool fired1 = false;
+            bool fired2 = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnBeforeInvoke += (sender, args) => fired1 = true;
+                c.OnBeforeInvoke += (sender, args) => fired2 = true;
+            });
+            proxy.VoidMethod("test");
+            Assert.IsTrue(fired1);
+            Assert.IsTrue(fired2);
+        }
+
+        [Test]
+        public void Proxy_OnBeforeInvoke_IfHandlerRemoved_NotFired()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            bool fired = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) => fired = true;
+                c.OnBeforeInvoke += handler;
+                c.OnBeforeInvoke -= handler;
+            });
+            proxy.VoidMethod("test");
+            Assert.IsFalse(fired);
+        }
+
+        [Test]
+        public void Proxy_OnBeforeInvoke_ArgumentsSetCorrectly()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.AreEqual(false, args.IsRetry, "IsRetry is not set correctly");
+                    Assert.AreEqual(0, args.RetryCounter, "RetryCounter is not set correctly");
+                    Assert.AreEqual(typeof(ITestService), args.ServiceType, "ServiceType is not set correctly");
+                };
+                c.OnBeforeInvoke += handler;
+            });
+            proxy.VoidMethod("test");
+        }
+
+        [Test]
+        public void Proxy_OnBeforeInvoke_IfRetry_FiredManyTimes()
+        {
+            // set up a service method that throws first two times, and completes on the third time
+            var mockService = new Mock<ITestService>();
+            int mockFireCount = 0;
+            mockService.Setup(m => m.VoidMethod(It.IsAny<string>()))
+                .Callback(() =>
+                {
+                    // fail on first two calls, return on subsequent calls
+                    mockFireCount++;
+                    if (mockFireCount < 3)
+                        throw new Exception();
+                });
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            int fireCount = 0;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.MaximumRetries(10);
+                c.RetryOnException<FaultException>();
+
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    fireCount++;
+                    Assert.AreEqual(fireCount > 1, args.IsRetry, "IsRetry is not set correctly");
+                    Assert.AreEqual(fireCount - 1, args.RetryCounter, "RetryCounter is not set correctly");
+                    Assert.AreEqual(typeof(ITestService), args.ServiceType, "ServiceType is not set correctly");
+                };
+                c.OnBeforeInvoke += handler;
+            });
+            proxy.VoidMethod("test");
+            Assert.AreEqual(3, fireCount, "Not called three times!");
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_IsFired()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            bool fired = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnAfterInvoke += (sender, args) => fired = true;
+            });
+            proxy.VoidMethod("test");
+            Assert.IsTrue(fired);
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_Multiple_AreFired()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            bool fired1 = false;
+            bool fired2 = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnAfterInvoke += (sender, args) => fired1 = true;
+                c.OnAfterInvoke += (sender, args) => fired2 = true;
+            });
+            proxy.VoidMethod("test");
+            Assert.IsTrue(fired1);
+            Assert.IsTrue(fired2);
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_IfHandlerRemoved_IsNotFired()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            bool fired = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) => fired = true;
+                c.OnAfterInvoke += handler;
+                c.OnAfterInvoke -= handler;
+            });
+            proxy.VoidMethod("test");
+            Assert.IsFalse(fired);
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_ArgumentsSetCorrectly()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                OnInvokeHandler handler = (object sender, OnInvokeHandlerArguments args) =>
+                {
+                    Assert.AreEqual(false, args.IsRetry, "IsRetry is not set correctly");
+                    Assert.AreEqual(0, args.RetryCounter, "RetryCounter is not set correctly");
+                    Assert.AreEqual(typeof(ITestService), args.ServiceType, "ServiceType is not set correctly");
+                };
+                c.OnAfterInvoke += handler;
+            });
+            proxy.VoidMethod("test");
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_IfException_IsNotFired()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.VoidMethod(It.IsAny<string>())).Throws<Exception>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            bool fired = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnAfterInvoke += (sender, args) => fired = true;
+            });
+            try { proxy.VoidMethod("test"); } catch { }
+            Assert.IsFalse(fired, "OnAfterInvoke was called when it should not have been!");
+        }
+
+        [Test]
+        public void Proxy_OnAfterInvoke_IfExceptionAndIfRetryCountUsedUp_IsNotFired()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.VoidMethod(It.IsAny<string>())).Throws<Exception>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            int attempts = 0; // number of times method has been attempted to be called
+            bool fired = false; // true if OnAfterInvoke event was fired
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.MaximumRetries(5);
+                c.RetryOnException<FaultException>();
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnBeforeInvoke += (sender, args) => attempts++;
+                c.OnAfterInvoke += (sender, args) => fired = true;
+            });
+            try { proxy.VoidMethod("test"); }
+            catch { }
+            Assert.AreEqual(5, attempts, "Assumption failed: Should attempt to call service method 5 times");
+            Assert.IsFalse(fired, "OnAfterInvoke was called when it should not have been!");
+        }
+        #endregion
     }
 }
