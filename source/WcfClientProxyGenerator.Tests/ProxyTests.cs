@@ -246,6 +246,7 @@ namespace WcfClientProxyGenerator.Tests
         #endregion
 
         #region OnBeforeInvoke and OnAfterInvoke support
+
         [Test]
         public void Proxy_OnBeforeInvoke_IsFired()
         {
@@ -633,6 +634,54 @@ namespace WcfClientProxyGenerator.Tests
             });
             proxy.VoidMethod("test");
         }
+
+        #endregion
+
+        #region Better error messages tests
+
+        [ServiceContract]
+        private interface IPrivateTestService
+        {
+            [OperationContract]
+            void TestMethod();
+        }
+
+        public interface INonServiceInterface
+        {
+            [OperationContract]
+            void TestMethod();
+        }
+
+        [ServiceContract]
+        public interface INoOperationsInterface
+        {
+            void NonOperationTestMethod();
+        }
+
+        [Test]
+        public void Proxy_GivesProperException_IfInterfaceNotPublic()
+        {
+            var mockService = new Mock<IPrivateTestService>();
+            Assert.Throws<InvalidOperationException>(delegate { WcfClientProxy.Create<IPrivateTestService>(); });
+            // error message not checked here, but it should be quite readable
+        }
+
+        [Test]
+        public void Proxy_GivesProperException_IfNotServiceContract()
+        {
+            var mockService = new Mock<INonServiceInterface>();
+            Assert.Throws<InvalidOperationException>(delegate { WcfClientProxy.Create<INonServiceInterface>(); });
+            // error message not checked here, but it should be quite readable
+        }
+
+        [Test]
+        public void Proxy_GivesProperException_IfZeroOperationContracts()
+        {
+            var mockService = new Mock<INoOperationsInterface>();
+            Assert.Throws<InvalidOperationException>(delegate { WcfClientProxy.Create<INoOperationsInterface>(); });
+            // error message not checked here, but it should be quite readable
+        }
+
         #endregion
     }
 }
