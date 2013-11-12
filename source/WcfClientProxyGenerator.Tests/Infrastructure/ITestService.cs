@@ -13,6 +13,15 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
         void VoidMethod(string input);
 
         [OperationContract]
+        void VoidMethodNoParameters();
+
+        [OperationContract]
+        void VoidMethodIntParameter(int input);
+
+        [OperationContract]
+        int IntMethod();
+
+        [OperationContract]
         Response TestMethodComplex(Request request);
 
         [OperationContract]

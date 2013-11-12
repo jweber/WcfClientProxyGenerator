@@ -30,6 +30,37 @@ namespace WcfClientProxyGenerator
         }
 
         #region IRetryingProxyConfigurator
+        /// <summary>
+        /// Fires before the invocation of a service method, at every retry.
+        /// </summary>
+        public event OnInvokeHandler OnBeforeInvoke
+        {
+            add
+            {
+                _actionInvoker.OnBeforeInvoke += value;
+            }
+
+            remove
+            {
+                _actionInvoker.OnBeforeInvoke -= value;
+            }
+        }
+
+        /// <summary>
+        /// Fires after the successful invocation of a method.
+        /// </summary>
+        public event OnInvokeHandler OnAfterInvoke
+        {
+            add
+            {
+                _actionInvoker.OnAfterInvoke += value;
+            }
+
+            remove
+            {
+                _actionInvoker.OnAfterInvoke -= value;
+            }
+        }
 
         public void UseDefaultEndpoint()
         {
