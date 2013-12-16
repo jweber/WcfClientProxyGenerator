@@ -119,6 +119,10 @@ Will print:
     ITestService.AddNumbers called with parameters: 3, 42
     ITestService.AddNumbers returned value: 45
 
+#### ChannelFactory
+Allows access to WCF extensibility features from code for advanced use cases.
+Can be used, for example, to add endpoint behaviors and change client credentials used to connect to services.
+
 Examples
 --------
 The following interface defines the contract for the service:
