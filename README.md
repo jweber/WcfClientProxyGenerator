@@ -90,7 +90,7 @@ For example, to wait an exponentially growing amount of time starting at 500 mil
     });
 
 #### OnBeforeInvoke & OnAfterInvoke
-Allows you to configure an event handlers that are called every time a method is called on the service.
+Allows configuring event handlers that are called every time a method is called on the service.
 Events will receive information which method was called and with what parameters in the `OnInvokeHandlerArguments` structure.
 
 The OnBeforeInvoke event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
@@ -121,7 +121,7 @@ Will print:
 
 #### OnException
 Like [OnBeforeInvoke and OnAfterInvoke](#onbeforeinvoke--onafterinvoke), but for exceptions.
-Allows you to configure an event handler that is called if a service method call results in an exception,
+Allows configuring an event handler that is called if a service method call results in an exception,
 such as a communication failure or a FaultException originating from the service.
 Configuring this event handler will not affect to the exception that is thrown to user code.
 
