@@ -41,6 +41,11 @@ namespace WcfClientProxyGenerator
         public OnInvokeHandler OnAfterInvoke { get; set; }
 
         /// <summary>
+        /// Fires when an exception happens during the invocation of a service method, at every retry.
+        /// </summary>
+        public OnExceptionHandler OnException { get; set; }
+
+        /// <summary>
         /// The method that initializes new WCF action providers
         /// </summary>
         private readonly Func<TServiceInterface> _wcfActionProviderCreator;
@@ -164,6 +169,19 @@ namespace WcfClientProxyGenerator
                     }
                     catch (Exception ex)
                     {
+                        // fire OnException event when exception happened
+                        if (OnException != null)
+                        {
+                            OnException(this, new OnExceptionHandlerArguments()
+                            {
+                                Exception = ex,
+                                ServiceType = typeof(TServiceInterface),
+                                RetryCounter = i,
+                                InvokeInfo = invokeInfo,
+                            });
+                        }
+                        
+                        // determine whether to retry the service call
                         if (ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;

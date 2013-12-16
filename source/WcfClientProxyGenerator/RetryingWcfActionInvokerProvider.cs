@@ -62,6 +62,39 @@ namespace WcfClientProxyGenerator
             }
         }
 
+        /// <summary>
+        /// Fires after the successful invocation of a method.
+        /// </summary>
+        public event OnExceptionHandler OnException
+        {
+            add
+            {
+                _actionInvoker.OnException += value;
+            }
+
+            remove
+            {
+                _actionInvoker.OnException -= value;
+            }
+        }
+
+        /// <summary>
+        /// Allows access to WCF extensibility features.
+        /// </summary>
+        public ChannelFactory ChannelFactory
+        {
+            get
+            {
+                // if requested without endpoint set, use default
+                if (_channelFactory == null)
+                {
+                    UseDefaultEndpoint();
+                }
+
+                return _channelFactory;
+            }
+        }
+
         public void UseDefaultEndpoint()
         {
             _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>();
