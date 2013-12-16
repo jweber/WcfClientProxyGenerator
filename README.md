@@ -90,7 +90,7 @@ For example, to wait an exponentially growing amount of time starting at 500 mil
     });
 
 #### OnBeforeInvoke & OnAfterInvoke
-Allows you to configure an event handlers that are called every time a method is called on the service.
+Allows configuring event handlers that are called every time a method is called on the service.
 Events will receive information which method was called and with what parameters in the `OnInvokeHandlerArguments` structure.
 
 The OnBeforeInvoke event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
@@ -118,6 +118,23 @@ Will print:
 
     ITestService.AddNumbers called with parameters: 3, 42
     ITestService.AddNumbers returned value: 45
+
+#### OnException
+Like [OnBeforeInvoke and OnAfterInvoke](#onbeforeinvoke--onafterinvoke), but for exceptions.
+Allows configuring an event handler that is called if a service method call results in an exception,
+such as a communication failure or a FaultException originating from the service.
+Configuring this event handler will not affect to the exception that is thrown to user code.
+
+For example, to log information of all exceptions that happen:
+````csharp
+ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
+     c.OnException += (sender, args) => {
+        Console.WriteLine("Exception during service call to {0}.{1}: {2}",
+            args.ServiceType.Name, args.InvokeInfo.MethodName,
+            args.Exception);
+    };
+});
+````
 
 Examples
 --------
