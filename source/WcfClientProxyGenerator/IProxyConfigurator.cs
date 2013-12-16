@@ -20,5 +20,11 @@ namespace WcfClientProxyGenerator
         /// This event fires only when the method has been successfully called.
         /// </summary>
         event OnInvokeHandler OnAfterInvoke;
+
+        /// <summary>
+        /// Event that is fired if the service call fails with an exception.
+        /// This event is fired for every failed attempt to call the service method.
+        /// </summary>
+        event OnExceptionHandler OnException;
     }
 }

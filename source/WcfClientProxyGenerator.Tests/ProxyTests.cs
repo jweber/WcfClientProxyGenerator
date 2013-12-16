@@ -637,6 +637,119 @@ namespace WcfClientProxyGenerator.Tests
 
         #endregion
 
+        #region OnException support
+        [Test]
+        public void Proxy_OnException_NoException_NotFired()
+        {
+            var mockService = new Mock<ITestService>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            bool hasFired = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnException += (sender, args) => hasFired = true;
+            });
+            proxy.VoidMethod("test");
+            Assert.IsFalse(hasFired);
+        }
+
+        [Test]
+        public void Proxy_OnException_NoHandler_Compatibility()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.VoidMethod("test")).Throws(new FaultException());
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+            });
+            Assert.Catch<FaultException>(() => proxy.VoidMethod("test"));
+        }
+
+        [Test]
+        public void Proxy_OnException_IsFired()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.VoidMethod("test")).Throws(new FaultException());
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            bool hasFired = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnException += (sender, args) => hasFired = true;
+            });
+            Assert.Catch<FaultException>(() => proxy.VoidMethod("test"));
+            Assert.IsTrue(hasFired);
+        }
+
+        [Test]
+        public void Proxy_OnException_FiresOnEveryRetry()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.VoidMethod("test")).Throws(new FaultException());
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            int fireCount = 0;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.MaximumRetries(5);
+                c.RetryOnException<FaultException>();
+                c.SetDelayPolicy(() => { return new ConstantDelayPolicy(TimeSpan.FromSeconds(0)); });
+                c.OnException += (sender, args) => fireCount++;
+            });
+            Assert.Catch<Exception>(() => proxy.VoidMethod("test"));
+            Assert.AreEqual(5, fireCount);
+        }
+
+        [Test]
+        public void Proxy_OnException_MultipleHandlersAreFired()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.VoidMethod("test")).Throws(new FaultException());
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            bool hasFired1 = false;
+            bool hasFired2 = false;
+            bool hasFired3 = false;
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnException += (sender, args) => hasFired1 = true;
+                c.OnException += (sender, args) => hasFired2 = true;
+                c.OnException += (sender, args) => hasFired3 = true;
+            });
+            Assert.Catch<FaultException>(() => proxy.VoidMethod("test"));
+            Assert.IsTrue(hasFired1);
+            Assert.IsTrue(hasFired2);
+            Assert.IsTrue(hasFired3);
+        }
+
+        [Test]
+        public void Proxy_OnException_InformationSetCorrectly()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.VoidMethod("test")).Throws(new FaultException());
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnException += (sender, args) =>
+                {
+                    Assert.IsInstanceOf<FaultException>(args.Exception, "Exception");
+                    Assert.AreEqual("VoidMethod", args.InvokeInfo.MethodName, "InvokeInfo.MethodName");
+                    Assert.AreEqual(typeof(ITestService), args.ServiceType, "ServiceType");
+                };
+            });
+            Assert.Catch<FaultException>(() => proxy.VoidMethod("test"));
+        }
+
+        #endregion
+
         #region Better error messages tests
 
         [ServiceContract]

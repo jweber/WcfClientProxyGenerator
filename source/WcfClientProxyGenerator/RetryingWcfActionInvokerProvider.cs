@@ -62,6 +62,22 @@ namespace WcfClientProxyGenerator
             }
         }
 
+        /// <summary>
+        /// Fires after the successful invocation of a method.
+        /// </summary>
+        public event OnExceptionHandler OnException
+        {
+            add
+            {
+                _actionInvoker.OnException += value;
+            }
+
+            remove
+            {
+                _actionInvoker.OnException -= value;
+            }
+        }
+
         public void UseDefaultEndpoint()
         {
             _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>();
