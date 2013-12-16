@@ -119,6 +119,23 @@ Will print:
     ITestService.AddNumbers called with parameters: 3, 42
     ITestService.AddNumbers returned value: 45
 
+#### OnException
+Like [OnBeforeInvoke and OnAfterInvoke](#onbeforeinvoke--onafterinvoke), but for exceptions.
+Allows you to configure an event handler that is called if a service method call results in an exception,
+such as a communication failure or a FaultException originating from the service.
+Configuring this event handler will not affect to the exception that is thrown to user code.
+
+For example, to log information of all exceptions that happen:
+````csharp
+ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
+     c.OnException += (sender, args) => {
+        Console.WriteLine("Exception during service call to {0}.{1}: {2}",
+            args.ServiceType.Name, args.InvokeInfo.MethodName,
+            args.Exception);
+    };
+});
+````
+
 Examples
 --------
 The following interface defines the contract for the service:
