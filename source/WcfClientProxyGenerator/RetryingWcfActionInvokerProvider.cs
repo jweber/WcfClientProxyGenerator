@@ -62,6 +62,23 @@ namespace WcfClientProxyGenerator
             }
         }
 
+        /// <summary>
+        /// Allows access to WCF extensibility features.
+        /// </summary>
+        public ChannelFactory ChannelFactory
+        {
+            get
+            {
+                // if requested without endpoint set, use default
+                if (_channelFactory == null)
+                {
+                    UseDefaultEndpoint();
+                }
+
+                return _channelFactory;
+            }
+        }
+
         public void UseDefaultEndpoint()
         {
             _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>();

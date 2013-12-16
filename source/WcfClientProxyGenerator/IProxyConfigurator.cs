@@ -20,5 +20,14 @@ namespace WcfClientProxyGenerator
         /// This event fires only when the method has been successfully called.
         /// </summary>
         event OnInvokeHandler OnAfterInvoke;
+
+        /// <summary>
+        /// Allows access to WCF extensibility features.
+        /// </summary>
+        /// <remarks>
+        /// Make sure this is called after any other endpoint-modifying configuration operations,
+        /// as not doing so will not produce expected results.
+        /// </remarks>
+        ChannelFactory ChannelFactory { get; }
     }
 }
