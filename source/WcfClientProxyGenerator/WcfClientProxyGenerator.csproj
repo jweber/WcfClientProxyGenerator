@@ -32,11 +32,13 @@
     <DefineConstants>NET45</DefineConstants>
     <OutputPath>bin\$(Configuration)\net-4.5</OutputPath>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <DocumentationFile>bin\$(Configuration)\net-4.5\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Framework)' == 'NET40'">
     <DefineConstants>NET40</DefineConstants>
     <OutputPath>bin\$(Configuration)\net-4.0</OutputPath>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <DocumentationFile>bin\$(Configuration)\net-4.0\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

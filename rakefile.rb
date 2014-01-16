@@ -94,7 +94,10 @@ namespace :nuget do
     nuspec.tags = "wcf service proxy dynamic"
     nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.0\\#{PROJECT_NAME}.dll", 'lib\net40'  
     nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.5\\#{PROJECT_NAME}.dll", 'lib\net45'
-    
+
+    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.0\\#{PROJECT_NAME}.xml", 'lib\net40'  
+    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.5\\#{PROJECT_NAME}.xml", 'lib\net45'
+
     nuspec.working_directory = 'build'
     nuspec.output_file = "#{PROJECT_NAME}.nuspec"
   end
