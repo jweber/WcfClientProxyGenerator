@@ -46,6 +46,8 @@ namespace WcfClientProxyGenerator
         public static Type GenerateType<TActionInvokerProvider>()
             where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
+            CheckServiceInterfaceValidity(typeof(TServiceInterface));
+
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
             var typeBuilder = moduleBuilder.DefineType(
@@ -65,6 +67,11 @@ namespace WcfClientProxyGenerator
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                 .Where(t => t.HasAttribute<OperationContractAttribute>());
 
+            if (!serviceMethods.Any())
+            {
+                throw new InvalidOperationException(String.Format("Service interface {0} has no OperationContact methods. Is this a proper WCF service interface?", typeof(TServiceInterface).Name));
+            }
+
             foreach (var serviceMethod in serviceMethods)
             {
                 GenerateServiceProxyMethod(serviceMethod, typeBuilder);
@@ -77,6 +84,19 @@ namespace WcfClientProxyGenerator
 #endif
 
             return generatedType;
+        }
+
+        private static void CheckServiceInterfaceValidity(Type type)
+        {
+            if (!type.IsPublic && !type.IsNestedPublic)
+            {
+                throw new InvalidOperationException(String.Format("Service interface {0} is not declared public. WcfClientProxyGenerator cannot work with non-public service interfaces.", type.Name));
+            }
+
+            if (!type.HasAttribute<ServiceContractAttribute>())
+            {
+                throw new InvalidOperationException(String.Format("Service interface {0} is not marked with ServiceContract attribute. Is this a proper WCF service interface?", type.Name));
+            }
         }
 
         private static void SetDebuggerDisplay(TypeBuilder typeBuilder, string display)
@@ -105,6 +125,7 @@ namespace WcfClientProxyGenerator
                 .Select(m => m.ParameterType)
                 .ToArray();
 
+            // TReturn Method(TParamType1 arg1, TParamType2 arg2, ...) {
             var methodBuilder = typeBuilder.DefineMethod(
                 methodInfo.Name,
                 MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual,
@@ -124,21 +145,39 @@ namespace WcfClientProxyGenerator
             FieldBuilder[] outputFields = serviceCallWrapperFields.Where(f => f.Name.StartsWith("out")).ToArray();
 
             var ilGenerator = methodBuilder.GetILGenerator();
+
+            // IActionInvoker<TServiceInterface> local0;
             ilGenerator.DeclareLocal(typeof(IActionInvoker<TServiceInterface>));
 
+            // (void methods) Action<TServiceInterface> local1;
+            // (methods with return value) Func<TServiceInterface, TReturnType> local1;
             ilGenerator.DeclareLocal(methodInfo.ReturnType == typeof(void)
                 ? typeof(Action<>).MakeGenericType(typeof(TServiceInterface))
                 : typeof(Func<,>).MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType));
 
+            // MethodType local2;
             ilGenerator.DeclareLocal(serviceCallWrapperType);
             
+            // local variable to store result to
+            // TResult local3;
             if (methodInfo.ReturnType != typeof(void))
                 ilGenerator.DeclareLocal(methodInfo.ReturnType);
+            else
+                ilGenerator.DeclareLocal(typeof(bool)); // generate unused variable to make referencing local variables easier
+
+            // local variable to store invocation information (which method and parameters)
+            // InvokeInfo local4;
+            ilGenerator.DeclareLocal(typeof(InvokeInfo));
+
+            // local variable to store parameter information
+            // object[] local5;
+            ilGenerator.DeclareLocal(typeof(object[]));
 
             var serviceCallWrapperCtor = serviceCallWrapperType.GetConstructor(Type.EmptyTypes);
             if (serviceCallWrapperCtor == null)
                 throw new Exception("Parameterless constructor not found for type: " + serviceCallWrapperType);
 
+            // local2 = new MethodType();
             ilGenerator.Emit(OpCodes.Newobj, serviceCallWrapperCtor);
             ilGenerator.Emit(OpCodes.Stloc_2);
             ilGenerator.Emit(OpCodes.Ldloc_2);
@@ -156,6 +195,8 @@ namespace WcfClientProxyGenerator
                     ilGenerator.Emit(OpCodes.Ldloc_2);
             }
 
+            // arg0 is RetryingWcfActionInvokerProvider<TServiceInterface>
+            // local0 = arg0.ActionInvoker;
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ldarg_0);
             
@@ -167,6 +208,8 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Call, channelProperty);
             ilGenerator.Emit(OpCodes.Stloc_0);
             
+            // create method that is called by the Invoke() in RetryingWcfActionInvoker
+            // local1 = new Action<TServiceInterface>(service => wrappermethod(service));
             var serviceCallWrapperGetMethod = serviceCallWrapperType
                 .GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
             
@@ -176,9 +219,37 @@ namespace WcfClientProxyGenerator
             
             ilGenerator.Emit(OpCodes.Newobj, ctor);
             ilGenerator.Emit(OpCodes.Stloc_1);
+
+            // create InvokeInfo structure to hold data
+            ilGenerator.Emit(OpCodes.Newobj, typeof(InvokeInfo).GetConstructor(Type.EmptyTypes));
+            ilGenerator.Emit(OpCodes.Stloc, 4);
+            ilGenerator.Emit(OpCodes.Ldloc, 4);
+            ilGenerator.Emit(OpCodes.Ldstr, methodInfo.Name);
+            ilGenerator.Emit(OpCodes.Callvirt, typeof(InvokeInfo).GetMethod("set_MethodName"));
+
+            // store parameters used to InvokeInfo.Parameters structure
+            ilGenerator.Emit(OpCodes.Ldc_I4, parameterTypes.Length);
+            ilGenerator.Emit(OpCodes.Newarr, typeof(object));
+            ilGenerator.Emit(OpCodes.Stloc, 5);
+            for (int i = 0; i < parameterTypes.Length; i++)
+            {
+                ilGenerator.Emit(OpCodes.Ldloc, 5); // object[], parameters
+                ilGenerator.Emit(OpCodes.Ldc_I4, i);
+                ilGenerator.Emit(OpCodes.Ldarg, i + 1);
+                if (parameterTypes[i].IsValueType)
+                {
+                    ilGenerator.Emit(OpCodes.Box, parameterTypes[i]);
+                }
+                ilGenerator.Emit(OpCodes.Stelem_Ref);
+            }
+            ilGenerator.Emit(OpCodes.Ldloc, 4); // InvokeInfo
+            ilGenerator.Emit(OpCodes.Ldloc, 5); // object[] parameters
+            ilGenerator.Emit(OpCodes.Callvirt, typeof(InvokeInfo).GetMethod("set_Parameters"));
+
+            // call correct Invoke() ActionInvoker.Invoke() with parameters local1 (method to execute) and InvokeInfo
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_1);
-
+            ilGenerator.Emit(OpCodes.Ldloc, 4);
             MethodInfo invokeMethod = GetIActionInvokerInvokeMethod(methodInfo);
 
             ilGenerator.Emit(OpCodes.Callvirt, invokeMethod);
@@ -228,7 +299,7 @@ namespace WcfClientProxyGenerator
                     .MakeGenericType(typeof(TServiceInterface));
 
                 return typeof(IActionInvoker<TServiceInterface>)
-                    .GetMethod("Invoke", new[] { actionType });
+                    .GetMethod("Invoke", new[] { actionType, typeof(InvokeInfo) });
             }
 
             var funcInvokeMethod = typeof(IActionInvoker<TServiceInterface>)

@@ -89,6 +89,52 @@ For example, to wait an exponentially growing amount of time starting at 500 mil
     	c.SetDelayPolicy(() => new ExponentialBackoffDelayPolicy(TimeSpan.FromMilliseconds(500)));
     });
 
+#### OnBeforeInvoke & OnAfterInvoke
+Allows configuring event handlers that are called every time a method is called on the service.
+Events will receive information which method was called and with what parameters in the `OnInvokeHandlerArguments` structure.
+
+The OnBeforeInvoke event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
+The OnAfterInvoke event will fire once after a successful call to a service method.
+
+For example, to log all service calls:
+
+````csharp
+ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
+     c.OnBeforeInvoke += (sender, args) => {
+        Console.WriteLine("{0}.{1} called with parameters: {2}",
+            args.ServiceType.Name, args.InvokeInfo.MethodName,
+            String.Join(", ", args.InvokeInfo.Parameters));
+    };
+    c.OnAfterInvoke += (sender, args) => {
+        Console.WriteLine("{0}.{1} returned value: {2}",
+            args.ServiceType.Name, args.InvokeInfo.MethodName,
+            args.InvokeInfo.ReturnValue);
+    };
+});
+int result = proxy.AddNumbers(3, 42);
+````
+
+Will print:
+
+    ITestService.AddNumbers called with parameters: 3, 42
+    ITestService.AddNumbers returned value: 45
+
+#### OnException
+Like [OnBeforeInvoke and OnAfterInvoke](#onbeforeinvoke--onafterinvoke), but for exceptions.
+Allows configuring an event handler that is called if a service method call results in an exception,
+such as a communication failure or a FaultException originating from the service.
+Configuring this event handler will not affect to the exception that is thrown to user code.
+
+For example, to log information of all exceptions that happen:
+````csharp
+ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
+     c.OnException += (sender, args) => {
+        Console.WriteLine("Exception during service call to {0}.{1}: {2}",
+            args.ServiceType.Name, args.InvokeInfo.MethodName,
+            args.Exception);
+    };
+});
+````
 
 Examples
 --------

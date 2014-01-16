@@ -31,6 +31,21 @@ namespace WcfClientProxyGenerator
         private readonly IDictionary<Type, object> _retryPredicates;
 
         /// <summary>
+        /// Fires before the invocation of a service method, at every retry.
+        /// </summary>
+        public OnInvokeHandler OnBeforeInvoke { get; set; }
+
+        /// <summary>
+        /// Fires after the successful invocation of a method.
+        /// </summary>
+        public OnInvokeHandler OnAfterInvoke { get; set; }
+
+        /// <summary>
+        /// Fires when an exception happens during the invocation of a service method, at every retry.
+        /// </summary>
+        public OnExceptionHandler OnException { get; set; }
+
+        /// <summary>
         /// The method that initializes new WCF action providers
         /// </summary>
         private readonly Func<TServiceInterface> _wcfActionProviderCreator;
@@ -78,16 +93,29 @@ namespace WcfClientProxyGenerator
             _retryPredicates.Add(typeof(TResponse), where);
         }
 
-        public void Invoke(Action<TServiceInterface> method)
+        /// <summary>
+        /// Used to identify void return types in the Invoke() methods below.
+        /// </summary>
+        private struct VoidReturnType { }
+
+        /// <summary>
+        /// This function is called when a proxy's method is called that should return void.
+        /// </summary>
+        /// <param name="method">Method implementing the service call using WCF</param>
+        public void Invoke(Action<TServiceInterface> method, InvokeInfo invokeInfo = null)
         {
             Invoke(provider =>
             {
                 method(provider);
-                return true;
-            });
+                return new VoidReturnType();
+            }, invokeInfo);
         }
 
-        public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method)
+        /// <summary>
+        /// This function is called when a proxy's method is called that should return something.
+        /// </summary>
+        /// <param name="method">Method implementing the service call using WCF</param>
+        public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method, InvokeInfo invokeInfo = null)
         {
             TServiceInterface provider = RefreshProvider(null);
             TResponse lastResponse = default(TResponse);
@@ -100,6 +128,18 @@ namespace WcfClientProxyGenerator
                 {
                     try
                     {
+                        // fire OnBeforeInvoke callback at every retry
+                        if (OnBeforeInvoke != null)
+                        {
+                            OnBeforeInvoke(this, new OnInvokeHandlerArguments()
+                            {
+                                ServiceType = typeof(TServiceInterface),
+                                RetryCounter = i,
+                                InvokeInfo = invokeInfo,
+                            });
+                        }
+
+                        // make the service call
                         TResponse response = method(provider);
                         if (ResponseInRetryable(response))
                         {
@@ -108,10 +148,40 @@ namespace WcfClientProxyGenerator
                             continue;
                         }
                         
+                        // fire OnAfterInvoke callback at successful retry
+                        if (OnAfterInvoke != null)
+                        {
+                            // set return value if non-void
+                            if (typeof(TResponse) != typeof(VoidReturnType))
+                            {
+                                invokeInfo.MethodHasReturnValue = true;
+                                invokeInfo.ReturnValue = response;
+                            }
+                            OnAfterInvoke(this, new OnInvokeHandlerArguments()
+                            {
+                                ServiceType = typeof(TServiceInterface),
+                                RetryCounter = i,
+                                InvokeInfo = invokeInfo,
+                            });
+                        }
+
                         return response;
                     }
                     catch (Exception ex)
                     {
+                        // fire OnException event when exception happened
+                        if (OnException != null)
+                        {
+                            OnException(this, new OnExceptionHandlerArguments()
+                            {
+                                Exception = ex,
+                                ServiceType = typeof(TServiceInterface),
+                                RetryCounter = i,
+                                InvokeInfo = invokeInfo,
+                            });
+                        }
+                        
+                        // determine whether to retry the service call
                         if (ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
