@@ -638,6 +638,7 @@ namespace WcfClientProxyGenerator.Tests
         #endregion
 
         #region OnException support
+
         [Test]
         public void Proxy_OnException_NoException_NotFired()
         {
@@ -742,10 +743,41 @@ namespace WcfClientProxyGenerator.Tests
                 {
                     Assert.IsInstanceOf<FaultException>(args.Exception, "Exception");
                     Assert.AreEqual("VoidMethod", args.InvokeInfo.MethodName, "InvokeInfo.MethodName");
-                    Assert.AreEqual(typeof(ITestService), args.ServiceType, "ServiceType");
+                    Assert.AreEqual(typeof (ITestService), args.ServiceType, "ServiceType");
                 };
             });
             Assert.Catch<FaultException>(() => proxy.VoidMethod("test"));
+        }
+
+        #endregion
+
+        #region ChannelFactory support
+
+        [Test]
+        public void Proxy_ChannelFactory_IfNotConfigured_UsesDefaultEndpoint()
+        {
+            var mockService = new Mock<ITestServiceSingleEndpointConfig>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestServiceSingleEndpointConfig>(new TestServiceSingleEndpointConfigImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestServiceSingleEndpointConfig>(c =>
+            {
+                // assert that the endpoint url is read from app.config
+                Assert.AreEqual(new Uri("http://localhost:23456/TestService2"), c.ChannelFactory.Endpoint.Address.Uri);
+            });
+        }
+
+        [Test]
+        public void Proxy_ChannelFactory_UsesConfiguredEndpoint()
+        {
+            var mockService = new Mock<ITestService>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(new BasicHttpBinding(), new EndpointAddress("http://localhost:23456/SomeOtherTestServicUrl"));
+                // assert that the endpoint is the same
+                Assert.AreEqual(new Uri("http://localhost:23456/SomeOtherTestServicUrl"), c.ChannelFactory.Endpoint.Address.Uri);
+            });
         }
 
         #endregion

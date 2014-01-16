@@ -30,20 +30,14 @@ namespace WcfClientProxyGenerator
         }
 
         #region IRetryingProxyConfigurator
+
         /// <summary>
         /// Fires before the invocation of a service method, at every retry.
         /// </summary>
         public event OnInvokeHandler OnBeforeInvoke
         {
-            add
-            {
-                _actionInvoker.OnBeforeInvoke += value;
-            }
-
-            remove
-            {
-                _actionInvoker.OnBeforeInvoke -= value;
-            }
+            add { _actionInvoker.OnBeforeInvoke += value; }
+            remove { _actionInvoker.OnBeforeInvoke -= value; }
         }
 
         /// <summary>
@@ -51,15 +45,8 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public event OnInvokeHandler OnAfterInvoke
         {
-            add
-            {
-                _actionInvoker.OnAfterInvoke += value;
-            }
-
-            remove
-            {
-                _actionInvoker.OnAfterInvoke -= value;
-            }
+            add { _actionInvoker.OnAfterInvoke += value; }
+            remove { _actionInvoker.OnAfterInvoke -= value; }
         }
 
         /// <summary>
@@ -67,14 +54,24 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public event OnExceptionHandler OnException
         {
-            add
-            {
-                _actionInvoker.OnException += value;
-            }
+            add { _actionInvoker.OnException += value; }
+            remove { _actionInvoker.OnException -= value; }
+        }
 
-            remove
+        /// <summary>
+        /// Allows access to WCF extensibility features.
+        /// </summary>
+        public ChannelFactory ChannelFactory
+        {
+            get
             {
-                _actionInvoker.OnException -= value;
+                // if requested without endpoint set, use default
+                if (_channelFactory == null)
+                {
+                    UseDefaultEndpoint();
+                }
+
+                return _channelFactory;
             }
         }
 

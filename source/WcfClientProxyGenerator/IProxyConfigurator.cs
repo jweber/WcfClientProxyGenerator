@@ -26,5 +26,14 @@ namespace WcfClientProxyGenerator
         /// This event is fired for every failed attempt to call the service method.
         /// </summary>
         event OnExceptionHandler OnException;
+
+        /// <summary>
+        /// Allows access to WCF extensibility features.
+        /// </summary>
+        /// <remarks>
+        /// Make sure this is called after any other endpoint-modifying configuration operations,
+        /// as not doing so will not produce expected results.
+        /// </remarks>
+        ChannelFactory ChannelFactory { get; }
     }
 }

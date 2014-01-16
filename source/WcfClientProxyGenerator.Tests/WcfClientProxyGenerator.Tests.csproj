@@ -70,6 +70,7 @@
     <Compile Include="Infrastructure\TestService2Impl.cs" />
     <Compile Include="DelayPolicyTests.cs" />
     <Compile Include="Infrastructure\OutParamTestServiceImpl.cs" />
+    <Compile Include="Infrastructure\TestServiceSingleEndpointConfigImpl.cs" />
     <Compile Include="ProxyTests.cs" />
     <Compile Include="Infrastructure\InProcTestFactory.cs" />
     <Compile Include="Infrastructure\ITestService.cs" />
