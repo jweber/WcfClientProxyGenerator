@@ -53,7 +53,7 @@ namespace WcfClientProxyGenerator
         public RetryingWcfActionInvoker(
             Func<TServiceInterface> wcfActionProviderCreator, 
             Func<IDelayPolicy> delayPolicyFactory = null,
-            int retryCount = 5)
+            int retryCount = 4)
         {
             RetryCount = retryCount;
             DelayPolicyFactory = delayPolicyFactory ?? DefaultProxyConfigurator.DefaultDelayPolicyFactory;
@@ -124,7 +124,7 @@ namespace WcfClientProxyGenerator
             try
             {
                 Exception mostRecentException = null;
-                for (int i = 0; i < RetryCount; i++)
+                for (int i = 0; i < RetryCount + 1; i++)
                 {
                     try
                     {
@@ -196,8 +196,11 @@ namespace WcfClientProxyGenerator
 
                 if (mostRecentException != null)
                 {
+                    if (RetryCount == 0)
+                        throw mostRecentException;
+
                     throw new WcfRetryFailedException(
-                        string.Format("WCF call failed after {0} retries.", RetryCount),
+                        string.Format("WCF call failed after {0} attempts.", RetryCount),
                         mostRecentException);
                 }
             }

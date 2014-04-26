@@ -175,6 +175,48 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(() => proxy.ChildMethod("test"), Is.EqualTo("OK"));
         }
 
+        [Test, Description("A call made with no retries should not throw the WcfRetryFailedException")]
+        public void Proxy_ConfiguredWithNoRetries_CallsServiceOnce_AndThrowsActualException()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.VoidMethod("test"))
+                .Throws(new FaultException());
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.MaximumRetries(0);
+                c.RetryOnException<FaultException>();
+            });
+
+            Assert.That(() => proxy.VoidMethod("test"), Throws.TypeOf<FaultException>());
+            mockService.Verify(m => m.VoidMethod("test"), Times.Exactly(1));
+        }
+
+        [Test]
+        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsWcfRetryFailedException()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.VoidMethod("test"))
+                .Throws(new FaultException());
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.MaximumRetries(1);
+                c.RetryOnException<FaultException>();
+            });
+
+            Assert.That(() => proxy.VoidMethod("test"), Throws.TypeOf<WcfRetryFailedException>());
+            mockService.Verify(m => m.VoidMethod("test"), Times.Exactly(2));
+        }
+
         #region Out Parameter Support
 
         [Test]
@@ -551,7 +593,7 @@ namespace WcfClientProxyGenerator.Tests
             });
             try { proxy.VoidMethod("test"); }
             catch { }
-            Assert.AreEqual(5, attempts, "Assumption failed: Should attempt to call service method 5 times");
+            Assert.AreEqual(6, attempts, "Assumption failed: Should attempt to call service method 6 times");
             Assert.IsFalse(fired, "OnAfterInvoke was called when it should not have been!");
         }
 
@@ -703,7 +745,7 @@ namespace WcfClientProxyGenerator.Tests
                 c.OnException += (sender, args) => fireCount++;
             });
             Assert.Catch<Exception>(() => proxy.VoidMethod("test"));
-            Assert.AreEqual(5, fireCount);
+            Assert.AreEqual(6, fireCount);
         }
 
         [Test]

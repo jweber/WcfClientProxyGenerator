@@ -53,7 +53,7 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
 
 #### MaximumRetries(int retryCount)
-Sets the maximum amount of times the the proxy will attempt to call the service in the event it encounters a known retry-friendly exception.
+Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception.
 
 #### RetryOnException\<TException\>(Predicate\<TException\> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
