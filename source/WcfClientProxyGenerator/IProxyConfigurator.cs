@@ -5,8 +5,22 @@ namespace WcfClientProxyGenerator
 {
     public interface IProxyConfigurator
     {
+        /// <summary>
+        /// Uses the default endpoint configuration from the web.config or app.config
+        /// </summary>
         void UseDefaultEndpoint();
+
+        /// <summary>
+        /// Specifies the endpoint configuration to use
+        /// </summary>
+        /// <param name="endpointConfigurationName"></param>
         void SetEndpoint(string endpointConfigurationName);
+
+        /// <summary>
+        /// Specifies the binding and address to use
+        /// </summary>
+        /// <param name="binding"></param>
+        /// <param name="endpointAddress"></param>
         void SetEndpoint(Binding binding, EndpointAddress endpointAddress);
 
         /// <summary>

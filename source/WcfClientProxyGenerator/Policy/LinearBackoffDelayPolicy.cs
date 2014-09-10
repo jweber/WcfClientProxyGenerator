@@ -31,10 +31,15 @@ namespace WcfClientProxyGenerator.Policy
         /// <param name="maximumDelay"></param>
         public LinearBackoffDelayPolicy(TimeSpan minimumDelay, TimeSpan maximumDelay)
         {
-            this.minimumDelay= minimumDelay;
+            this.minimumDelay = minimumDelay;
             this.maximumDelay = maximumDelay;
         }
 
+        /// <summary>
+        /// Gets the amount of time that failed calls to the WCF
+        /// service will delay by
+        /// </summary>
+        /// <param name="iteration"></param>
         public TimeSpan GetDelay(int iteration)
         {
             var delay = TimeSpan.FromMilliseconds(this.minimumDelay.TotalMilliseconds * (iteration + 1));
