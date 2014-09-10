@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
@@ -61,6 +62,27 @@ namespace WcfClientProxyGenerator
             }
 
             return proxy;            
+        }
+
+        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>()
+            where TServiceInterface : class
+        {
+            var proxy = Create<TServiceInterface>();
+            return new AsyncProxy<TServiceInterface>(proxy);
+        }
+
+        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>(string endpointConfigurationName)
+            where TServiceInterface : class
+        {
+            var proxy = Create<TServiceInterface>(endpointConfigurationName);
+            return new AsyncProxy<TServiceInterface>(proxy);
+        }
+        
+        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
+            where TServiceInterface : class
+        {
+            var proxy = Create<TServiceInterface>(configurator);
+            return new AsyncProxy<TServiceInterface>(proxy);
         }
 
         private static TServiceInterface CreateProxy<TServiceInterface, TActionInvokerProvider>(params object[] arguments)

@@ -54,6 +54,7 @@
     <Compile Include="..\VersionInfo.cs">
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
+    <Compile Include="Async\IAsyncProxy.cs" />
     <Compile Include="ChannelFactoryProvider.cs" />
     <Compile Include="DefaultProxyConfigurator.cs" />
     <Compile Include="IActionInvoker.cs" />

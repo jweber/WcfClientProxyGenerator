@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Moq;
+﻿using Moq;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Tests.Infrastructure;
-using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator.Tests
 {
