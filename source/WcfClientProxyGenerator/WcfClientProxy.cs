@@ -64,6 +64,18 @@ namespace WcfClientProxyGenerator
             return proxy;            
         }
 
+        #region Async Proxy
+
+        /// <summary>
+        /// Creates an async-friendly wrapped proxy instance of <typeparamref name="TServiceInterface"/> that
+        /// is used to initiate calls to a WCF service. 
+        /// <para>
+        /// Synchronous calls can still be made via the <see cref="IAsyncProxy{TServiceInterface}.Client"/>
+        /// property.
+        /// </para>
+        /// </summary>
+        /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
+        /// <returns>Async friendly wrapper around <typeparamref name="TServiceInterface"/></returns>
         public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>()
             where TServiceInterface : class
         {
@@ -71,19 +83,45 @@ namespace WcfClientProxyGenerator
             return new AsyncProxy<TServiceInterface>(proxy);
         }
 
+        /// <summary>
+        /// Creates an async-friendly wrapped proxy instance of <typeparamref name="TServiceInterface"/> that
+        /// is used to initiate calls to a WCF service. 
+        /// <para>
+        /// Synchronous calls can still be made via the <see cref="IAsyncProxy{TServiceInterface}.Client"/>
+        /// property.
+        /// </para>
+        /// </summary>
+        /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
+        /// <param name="endpointConfigurationName">Name of the WCF service configuration</param>
+        /// <returns>Async friendly wrapper around <typeparamref name="TServiceInterface"/></returns>
         public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>(string endpointConfigurationName)
             where TServiceInterface : class
         {
             var proxy = Create<TServiceInterface>(endpointConfigurationName);
             return new AsyncProxy<TServiceInterface>(proxy);
         }
-        
-        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
+
+        /// <summary>
+        /// Creates an async-friendly wrapped proxy instance of <typeparamref name="TServiceInterface"/> that
+        /// is used to initiate calls to a WCF service. 
+        /// <para>
+        /// Synchronous calls can still be made via the <see cref="IAsyncProxy{TServiceInterface}.Client"/>
+        /// property.
+        /// </para>
+        /// </summary>
+        /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
+        /// <param name="configurator">Lambda that defines how the proxy is configured</param>
+        /// <returns>Async friendly wrapper around <typeparamref name="TServiceInterface"/></returns>
+        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>(
+            Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
         {
             var proxy = Create<TServiceInterface>(configurator);
             return new AsyncProxy<TServiceInterface>(proxy);
         }
+
+        #endregion
+
 
         private static TServiceInterface CreateProxy<TServiceInterface, TActionInvokerProvider>(params object[] arguments)
             where TServiceInterface : class

@@ -56,7 +56,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsyncExtensionTests.cs" Condition="'$(Framework)' == 'NET45'" />
+    <Compile Include="AsyncProxyTests.cs" />
     <Compile Include="BenchmarkTests.cs" />
     <Compile Include="ChannelFactoryProviderTests.cs" />
     <Compile Include="DefaultProxyConfiguratorTests.cs" />

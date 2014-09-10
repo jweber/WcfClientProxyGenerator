@@ -54,7 +54,7 @@
     <Compile Include="..\VersionInfo.cs">
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
-    <Compile Include="Async\IAsyncProxy.cs" />
+    <Compile Include="Async\AsyncProxy.cs" />
     <Compile Include="ChannelFactoryProvider.cs" />
     <Compile Include="DefaultProxyConfigurator.cs" />
     <Compile Include="IActionInvoker.cs" />
@@ -71,7 +71,6 @@
     <Compile Include="DynamicProxyTypeGenerator.cs" />
     <Compile Include="IRetryingProxyConfigurator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Async\AsyncExtensions.cs" Condition="'$(Framework)' == 'NET45'" />
     <Compile Include="Util\AttributeExtensions.cs" />
     <Compile Include="Util\DictionaryExtensions.cs" />
     <Compile Include="Util\TypeExtensions.cs" />
