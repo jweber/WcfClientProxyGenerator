@@ -35,6 +35,25 @@ namespace WcfClientProxyGenerator
         #region IRetryingProxyConfigurator
 
         /// <summary>
+        /// Event that is fired immediately before the service method will be called. This event
+        /// is called only once per request.
+        /// </summary>
+        public event OnCallBeginHandler OnCallBegin
+        {
+            add { _actionInvoker.OnCallBegin += value; }
+            remove { _actionInvoker.OnCallBegin -= value; }
+        }
+
+        /// <summary>
+        /// Event that is fired immediately after the request successfully or unsuccessfully completes.
+        /// </summary>
+        public event OnCallEndHandler OnCallEnd
+        {
+            add { _actionInvoker.OnCallEnd += value; }
+            remove { _actionInvoker.OnCallEnd -= value; }
+        }
+
+        /// <summary>
         /// Fires before the invocation of a service method, at every retry.
         /// </summary>
         public event OnInvokeHandler OnBeforeInvoke

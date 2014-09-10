@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using System.ServiceModel;
 using System.Threading;
@@ -29,6 +30,17 @@ namespace WcfClientProxyGenerator
         public Func<IDelayPolicy> DelayPolicyFactory { get; set; }
 
         private readonly IDictionary<Type, object> _retryPredicates;
+
+        /// <summary>
+        /// Event that is fired immediately before the service method will be called. This event
+        /// is called only once per request.
+        /// </summary>
+        public event OnCallBeginHandler OnCallBegin;
+
+        /// <summary>
+        /// Event that is fired immediately after the request successfully or unsuccessfully completes.
+        /// </summary>
+        public event OnCallEndHandler OnCallEnd;
 
         /// <summary>
         /// Fires before the invocation of a service method, at every retry.
@@ -115,14 +127,26 @@ namespace WcfClientProxyGenerator
         /// This function is called when a proxy's method is called that should return something.
         /// </summary>
         /// <param name="method">Method implementing the service call using WCF</param>
+        /// <param name="invokeInfo"></param>
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method, InvokeInfo invokeInfo = null)
         {
             TServiceInterface provider = RefreshProvider(null);
             TResponse lastResponse = default(TResponse);
             IDelayPolicy delayPolicy = DelayPolicyFactory();
 
+            var sw = Stopwatch.StartNew();
+
             try
             {
+                if (OnCallBegin != null)
+                {
+                    OnCallBegin(this, new OnCallBeginHandlerArguments
+                    {
+                        ServiceType = typeof(TServiceInterface),
+                        InvokeInfo = invokeInfo
+                    });
+                }
+
                 Exception mostRecentException = null;
                 for (int i = 0; i < RetryCount + 1; i++)
                 {
@@ -141,13 +165,7 @@ namespace WcfClientProxyGenerator
 
                         // make the service call
                         TResponse response = method(provider);
-                        if (ResponseInRetryable(response))
-                        {
-                            lastResponse = response;
-                            Delay(i, delayPolicy, ref provider);
-                            continue;
-                        }
-                        
+
                         // fire OnAfterInvoke callback at successful retry
                         if (OnAfterInvoke != null)
                         {
@@ -157,11 +175,37 @@ namespace WcfClientProxyGenerator
                                 invokeInfo.MethodHasReturnValue = true;
                                 invokeInfo.ReturnValue = response;
                             }
+
                             OnAfterInvoke(this, new OnInvokeHandlerArguments()
                             {
                                 ServiceType = typeof(TServiceInterface),
                                 RetryCounter = i,
                                 InvokeInfo = invokeInfo,
+                            });
+                        }
+
+                        if (ResponseInRetryable(response))
+                        {
+                            lastResponse = response;
+                            Delay(i, delayPolicy, ref provider);
+                            continue;
+                        }
+
+                        sw.Stop();
+
+                        if (OnCallEnd != null)
+                        {
+                            if (typeof (TResponse) != typeof (VoidReturnType))
+                            {
+                                invokeInfo.MethodHasReturnValue = true;
+                                invokeInfo.ReturnValue = response;
+                            }
+
+                            OnCallEnd(this, new OnCallEndHandlerArguments
+                            {
+                                ServiceType = typeof(TServiceInterface),
+                                InvokeInfo = invokeInfo,
+                                CallDuration = sw.Elapsed
                             });
                         }
 

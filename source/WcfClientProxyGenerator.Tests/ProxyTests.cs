@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.ServiceModel;
+using System.Threading;
 using System.Threading.Tasks;
 using Moq;
 using NUnit.Framework;
@@ -675,6 +677,71 @@ namespace WcfClientProxyGenerator.Tests
                 c.OnAfterInvoke += handler;
             });
             proxy.VoidMethod("test");
+        }
+
+        #endregion
+
+        #region OnCallBegin and OnCallEnd support
+
+        [Test]
+        public void OnCallBegin_IsFired()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.TestMethod("test"))
+                .Returns("OK");
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var resetEvent = new AutoResetEvent(false);
+            
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnCallBegin += (invoker, args) =>
+                {
+                    Assert.That(args.InvokeInfo.MethodName, Is.EqualTo("TestMethod"));
+                    
+                    resetEvent.Set();
+                };
+            });
+
+            proxy.TestMethod("test");
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
+                Assert.Fail("OnCallBegin was not triggered");
+        }
+
+        [Test]
+        public void OnCallEnd_IsFired()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.TestMethod("test"))
+                .Callback(() => Thread.Sleep(500))
+                .Returns("OK");
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var resetEvent = new AutoResetEvent(false);
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.OnCallEnd += (invoker, args) =>
+                {
+                    Assert.That(args.InvokeInfo.MethodName, Is.EqualTo("TestMethod"));
+                    Assert.That(args.InvokeInfo.ReturnValue, Is.EqualTo("OK"));
+                    Assert.That(args.CallDuration, Is.GreaterThan(TimeSpan.MinValue));
+
+                    resetEvent.Set();
+                };
+            });
+
+            proxy.TestMethod("test");
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
+                Assert.Fail("OnCallEnd was not triggered");
         }
 
         #endregion

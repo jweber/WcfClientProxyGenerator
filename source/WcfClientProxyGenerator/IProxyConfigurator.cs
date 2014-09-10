@@ -24,6 +24,17 @@ namespace WcfClientProxyGenerator
         void SetEndpoint(Binding binding, EndpointAddress endpointAddress);
 
         /// <summary>
+        /// Event that is fired immediately before the service method will be called. This event
+        /// is called only once per request.
+        /// </summary>
+        event OnCallBeginHandler OnCallBegin;
+
+        /// <summary>
+        /// Event that is fired immediately after the request successfully or unsuccessfully completes.
+        /// </summary>
+        event OnCallEndHandler OnCallEnd;
+
+        /// <summary>
         /// Event that is fired when the method is about to be called.
         /// The event is fired for every attempt to call the service method.
         /// </summary>
