@@ -1,10 +1,13 @@
-﻿using System;
+﻿#define OUTPUT_PROXY_DLL
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
+using System.Threading.Tasks;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
@@ -50,15 +53,6 @@ namespace WcfClientProxyGenerator
 
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
-            var typeBuilder = moduleBuilder.DefineType(
-                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name,
-                TypeAttributes.Public | TypeAttributes.Class,
-                typeof(TActionInvokerProvider));
-            
-            typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
-
-            SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
-
             var interfaceTypeHierarchy = typeof(TServiceInterface)
                 .GetAllInheritedTypes(includeInterfaces: true)
                 .Where(t => t.IsInterface);
@@ -72,13 +66,50 @@ namespace WcfClientProxyGenerator
                 throw new InvalidOperationException(String.Format("Service interface {0} has no OperationContact methods. Is this a proper WCF service interface?", typeof(TServiceInterface).Name));
             }
 
+            var asyncInterfaceBuilder = moduleBuilder.DefineType(
+                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async",
+                TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract);
+
+            asyncInterfaceBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
+
+            var attributeCtor = typeof(ServiceContractAttribute)
+                .GetConstructor(Type.EmptyTypes);
+
+            var attributeBuilder = new CustomAttributeBuilder(attributeCtor, new object[0]);
+            asyncInterfaceBuilder.SetCustomAttribute(attributeBuilder);
+
+            foreach (var serviceMethod in serviceMethods)
+                GenerateAsyncTaskMethod(serviceMethod, asyncInterfaceBuilder);
+
+            Type asyncInterface = asyncInterfaceBuilder.CreateType();
+
+            // build proxy
+
+            var typeBuilder = moduleBuilder.DefineType(
+                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name,
+                TypeAttributes.Public | TypeAttributes.Class,
+                typeof(TActionInvokerProvider));
+            
+            //typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
+            typeBuilder.AddInterfaceImplementation(asyncInterface);
+
+            SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
+            
+            interfaceTypeHierarchy = asyncInterface
+                .GetAllInheritedTypes(includeInterfaces: true)
+                .Where(t => t.IsInterface);
+
+            serviceMethods = interfaceTypeHierarchy
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                .Where(t => t.HasAttribute<OperationContractAttribute>());
+
             foreach (var serviceMethod in serviceMethods)
             {
                 GenerateServiceProxyMethod(serviceMethod, typeBuilder);
             }
 
             Type generatedType = typeBuilder.CreateType();
-
+            
 #if OUTPUT_PROXY_DLL 
             DynamicProxyAssembly.AssemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
 #endif
@@ -101,14 +132,48 @@ namespace WcfClientProxyGenerator
 
         private static void SetDebuggerDisplay(TypeBuilder typeBuilder, string display)
         {
-            var attributCtor = typeof(DebuggerDisplayAttribute)
+            var attributeCtor = typeof(DebuggerDisplayAttribute)
                 .GetConstructor(new[] { typeof(string) });
            
-            if (attributCtor == null)
+            if (attributeCtor == null)
                 throw new NotImplementedException("No constructor found on type 'DebuggerDisplayAttribute' that takes an argument of 'string'");
 
-            var attributeBuilder = new CustomAttributeBuilder(attributCtor, new object[] { display });
+            var attributeBuilder = new CustomAttributeBuilder(attributeCtor, new object[] { display });
             typeBuilder.SetCustomAttribute(attributeBuilder);
+        }
+
+        private static void GenerateAsyncTaskMethod(
+            MethodInfo methodInfo,
+            TypeBuilder typeBuilder)
+        {
+            var parameterTypes = methodInfo.GetParameters()
+                .Select(m => m.ParameterType)
+                .ToArray();
+
+            Type returnType = methodInfo.ReturnType;
+            if (returnType == typeof(void))
+            {
+                returnType = typeof(Task);
+            }
+            else
+            {
+                returnType = typeof(Task<>).MakeGenericType(returnType);
+            }
+
+            var methodBuilder = typeBuilder.DefineMethod(
+                methodInfo.Name + "Async",
+                MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual | MethodAttributes.Abstract,
+                returnType,
+                parameterTypes);
+
+            for (int i = 1; i <= parameterTypes.Length; i++)
+                methodBuilder.DefineParameter(i, ParameterAttributes.None, "arg" + i);
+
+            var attributeCtor = typeof(OperationContractAttribute)
+                .GetConstructor(Type.EmptyTypes);
+
+            var attributeBuilder = new CustomAttributeBuilder(attributeCtor, new object[0]);
+            methodBuilder.SetCustomAttribute(attributeBuilder);
         }
 
         /// <summary>

@@ -25,22 +25,22 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(result, Is.EqualTo("OK"));
         }
 
-        [Test]
-        public async Task AsyncProxy_VoidMethod()
-        {
-            var mockService = new Mock<ITestService>();
-            mockService
-                .Setup(m => m.VoidMethod("good"))
-                .Callback<string>(input => Assert.That(input, Is.EqualTo("good")));
-
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
-
-            var proxy = WcfClientProxy.CreateAsync<ITestService>(c =>
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
-
-            await proxy.CallAsync(m => m.VoidMethod("good"));
-            mockService.Verify(m => m.VoidMethod("good"));
-        }
+//        [Test]
+//        public async Task AsyncProxy_VoidMethod()
+//        {
+//            var mockService = new Mock<ITestService>();
+//            mockService
+//                .Setup(m => m.VoidMethod("good"))
+//                .Callback<string>(input => Assert.That(input, Is.EqualTo("good")));
+//
+//            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+//
+//            var proxy = WcfClientProxy.CreateAsync<ITestService>(c =>
+//                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+//
+//            await proxy.CallAsync(m => m.VoidMethod("good"));
+//            mockService.Verify(m => m.VoidMethod("good"));
+//        }
 
         [Test]
         public void AsyncProxy_CanCallIntoSyncProxy()

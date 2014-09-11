@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Reflection;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Util;
 
@@ -117,6 +118,15 @@ namespace WcfClientProxyGenerator
             where TServiceInterface : class
         {
             var proxy = Create<TServiceInterface>(configurator);
+
+            var dynamicAsyncType = Type.GetType(
+                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async, WcfClientProxyGenerator.DynamicProxy");
+
+            var asyncProxyType = typeof(AsyncProxy<>)
+                .MakeGenericType(dynamicAsyncType);
+
+            var asyncProxy = Activator.CreateInstance(asyncProxyType, new[] { proxy });
+
             return new AsyncProxy<TServiceInterface>(proxy);
         }
 

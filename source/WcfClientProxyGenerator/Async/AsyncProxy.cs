@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,7 +11,7 @@ namespace WcfClientProxyGenerator.Async
     /// interface.
     /// </summary>
     /// <typeparam name="TServiceInterface"></typeparam>
-    public interface IAsyncProxy<out TServiceInterface>
+    public interface IAsyncProxy<TServiceInterface>
         where TServiceInterface : class
     {
         /// <summary>
@@ -23,31 +25,7 @@ namespace WcfClientProxyGenerator.Async
         /// <typeparam name="TResponse"></typeparam>
         /// <param name="method"></param>
         /// <returns></returns>
-        Task<TResponse> CallAsync<TResponse>(Func<TServiceInterface, TResponse> method);
-
-        /// <summary>
-        /// Make a <see cref="Task"/> based async call to a WCF method on <see cref="TServiceInterface"/>
-        /// </summary>
-        /// <typeparam name="TResponse"></typeparam>
-        /// <param name="method"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<TResponse> CallAsync<TResponse>(Func<TServiceInterface, TResponse> method, CancellationToken cancellationToken);
-        
-        /// <summary>
-        /// Make a <see cref="Task"/> based async call to a WCF method on <see cref="TServiceInterface"/>
-        /// </summary>
-        /// <param name="method"></param>
-        /// <returns></returns>
-        Task CallAsync(Action<TServiceInterface> method);
-
-        /// <summary>
-        /// Make a <see cref="Task"/> based async call to a WCF method on <see cref="TServiceInterface"/>
-        /// </summary>
-        /// <param name="method"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task CallAsync(Action<TServiceInterface> method, CancellationToken cancellationToken);
+        Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method);
     }
 
     class AsyncProxy<TServiceInterface> : IAsyncProxy<TServiceInterface>
@@ -62,34 +40,23 @@ namespace WcfClientProxyGenerator.Async
 
         public TServiceInterface Client { get { return this.provider; } }
 
-        public Task<TResponse> CallAsync<TResponse>(Func<TServiceInterface, TResponse> method)
+        public Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method)
         {
-            return this.CallAsync(method, CancellationToken.None);
-        }
+            var methodCall = method.Body as MethodCallExpression;
 
-        public Task<TResponse> CallAsync<TResponse>(Func<TServiceInterface, TResponse> method, CancellationToken cancellationToken)
-        {
-            return Task.Factory.StartNew(
-                state => method((TServiceInterface) state), 
-                this.provider,
-                cancellationToken, 
-                TaskCreationOptions.DenyChildAttach, 
-                TaskScheduler.Default);
-        }
+            var asyncMethod = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async");
+            object[] args = methodCall.Arguments.Select(m => m).ToArray();
 
-        public Task CallAsync(Action<TServiceInterface> method)
-        {
-            return this.CallAsync(method, CancellationToken.None);
-        }
+            var parameter = Expression.Parameter(this.provider.GetType(), "svc");
+            var asyncCall = Expression
+                .Call(parameter, asyncMethod, methodCall.Arguments);
 
-        public Task CallAsync(Action<TServiceInterface> method, CancellationToken cancellationToken)
-        {
-            return Task.Factory.StartNew(
-                state => method((TServiceInterface) state),
-                this.provider,
-                cancellationToken,
-                TaskCreationOptions.DenyChildAttach,
-                TaskScheduler.Default);
+            var l = Expression.Lambda(asyncCall, parameter);
+            var cl = l.Compile();
+            var r = cl.DynamicInvoke(this.provider);
+
+            //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
+            return null;
         }
     }
 }
