@@ -250,7 +250,8 @@ namespace WcfClientProxyGenerator
             }
             finally
             {
-                DisposeProvider(provider);
+                // TODO: really not dispose to make async work?
+                //DisposeProvider(provider);
             }
 
             return lastResponse;

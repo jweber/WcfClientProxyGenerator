@@ -52,9 +52,7 @@ namespace WcfClientProxyGenerator
         public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
         {
-            var proxy = CreateProxy<
-                TServiceInterface, 
-                RetryingWcfActionInvokerProvider<TServiceInterface>>();
+            var proxy = CreateProxy<TServiceInterface>();
 
             if (configurator != null)
             {
@@ -144,21 +142,19 @@ namespace WcfClientProxyGenerator
         #endregion
 
 
-        private static TServiceInterface CreateProxy<TServiceInterface, TActionInvokerProvider>(params object[] arguments)
+        private static TServiceInterface CreateProxy<TServiceInterface>(params object[] arguments)
             where TServiceInterface : class
-            where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
-            var proxyType = GetProxyType<TServiceInterface, TActionInvokerProvider>();
+            var proxyType = GetProxyType<TServiceInterface>();
             return (TServiceInterface) FastActivator.CreateInstance(proxyType);
         }
 
-        private static Type GetProxyType<TServiceInterface, TActionInvokerProvider>()
+        private static Type GetProxyType<TServiceInterface>()
             where TServiceInterface : class
-            where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
             return ProxyCache.GetOrAddSafe(
                 typeof(TServiceInterface), 
-                _ => DynamicProxyTypeGenerator<TServiceInterface>.GenerateType<TActionInvokerProvider>());
+                _ => DynamicProxyTypeGenerator<TServiceInterface>.GenerateType(typeof(RetryingWcfActionInvokerProvider<>)));
         }  
     }
 }

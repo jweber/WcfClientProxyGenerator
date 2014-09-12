@@ -56,7 +56,7 @@ namespace WcfClientProxyGenerator.Async
             var r = cl.DynamicInvoke(this.provider);
 
             //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
-            return null;
+            return r as Task<TResponse>;
         }
     }
 }

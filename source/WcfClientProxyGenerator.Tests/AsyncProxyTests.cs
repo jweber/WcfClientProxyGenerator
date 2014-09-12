@@ -1,4 +1,7 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using Moq;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
@@ -11,17 +14,23 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public async Task AsyncProxy_MethodWithReturnValue()
         {
-            var mockService = new Mock<ITestService>();
+            var mockService = new Mock<ITestService2>();
             mockService
                 .Setup(m => m.TestMethod("good"))
-                .Returns("OK");
+                .Returns("OK")
+                .Callback(() => Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId));
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+            var serviceHost = InProcTestFactory.CreateHost<ITestService2>(new TestService2Impl(mockService));
 
-            var proxy = WcfClientProxy.CreateAsync<ITestService>(c =>
+            var proxy = WcfClientProxy.CreateAsync<ITestService2>(c =>
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
+            Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
+
             string result = await proxy.CallAsync(m => m.TestMethod("good"));
+
+            Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
+
             Assert.That(result, Is.EqualTo("OK"));
         }
 
