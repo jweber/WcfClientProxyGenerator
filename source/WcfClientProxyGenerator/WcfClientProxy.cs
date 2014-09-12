@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
+using System.ServiceModel;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Util;
 
@@ -119,15 +122,23 @@ namespace WcfClientProxyGenerator
         {
             var proxy = Create<TServiceInterface>(configurator);
 
-            var dynamicAsyncType = Type.GetType(
-                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async, WcfClientProxyGenerator.DynamicProxy");
+            var interfaces = proxy.GetType().GetInterfaces();
+
+//            var dynamicAsyncType = Type.GetType(
+//                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async, WcfClientProxyGenerator.DynamicProxy");
+
+            var dynamicAsyncType = interfaces.Single(m => m.FullName == "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async");
 
             var asyncProxyType = typeof(AsyncProxy<>)
-                .MakeGenericType(dynamicAsyncType);
+                .MakeGenericType(typeof(TServiceInterface));
 
-            var asyncProxy = Activator.CreateInstance(asyncProxyType, new[] { proxy });
+            var ctors = asyncProxyType.GetConstructor(new [] { dynamicAsyncType });
 
-            return new AsyncProxy<TServiceInterface>(proxy);
+            var asyncProxy = Activator.CreateInstance(asyncProxyType, new object[] { proxy });
+
+            var cast = asyncProxy as IAsyncProxy<TServiceInterface>;
+            return cast;
+            //return new AsyncProxy<TServiceInterface>(proxy);
         }
 
         #endregion
