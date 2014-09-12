@@ -183,11 +183,16 @@ namespace WcfClientProxyGenerator
             var replyActionProp = typeof(OperationContractAttribute)
                 .GetProperty("ReplyAction");
 
+            var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
+            string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
+            string defaultAction = string.Format("{0}/{1}/{2}", serviceNamespace, typeof(TServiceInterface).Name, methodInfo.Name);
+            string defaultReplyAction = defaultAction + "Response";
+
             var attributeBuilder = new CustomAttributeBuilder(
                 attributeCtor, 
                 new object[0], 
                 new [] { actionProp, replyActionProp }, 
-                new object[] { originalOperationContract.Action, originalOperationContract.ReplyAction });
+                new object[] { originalOperationContract.Action ?? defaultAction, originalOperationContract.ReplyAction ?? defaultReplyAction });
 
             methodBuilder.SetCustomAttribute(attributeBuilder);
         }
@@ -379,13 +384,24 @@ namespace WcfClientProxyGenerator
         {
             if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
             {
-                var funcInvokeAsyncMethod = (typeof(IActionInvoker<TServiceInterface>))
-                    .GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                    .First(m => m.Name == "InvokeAsync" && m.ReturnType != typeof(Task));
+                if (methodInfo.ReturnType.IsGenericType)
+                {
+                    var funcInvokeAsyncMethod = (typeof(IActionInvoker<TServiceInterface>))
+                        .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                        .First(m => m.Name == "InvokeAsync" && m.ReturnType != typeof(Task));
 
-                var taskReturnType = methodInfo.ReturnType.GenericTypeArguments[0];
+                    var taskReturnType = methodInfo.ReturnType.GenericTypeArguments[0];
 
-                return funcInvokeAsyncMethod.MakeGenericMethod(new[] { taskReturnType });
+                    return funcInvokeAsyncMethod.MakeGenericMethod(new[] { taskReturnType });                    
+                }
+                else
+                {
+                    var invokeAsyncMethod = typeof(IActionInvoker<TServiceInterface>)
+                        .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                        .First(m => m.Name == "InvokeAsync" && m.ReturnType == typeof(Task));
+
+                    return invokeAsyncMethod;
+                }
             }
 
             if (methodInfo.ReturnType == typeof(void))

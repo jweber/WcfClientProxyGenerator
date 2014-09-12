@@ -26,6 +26,8 @@ namespace WcfClientProxyGenerator.Async
         /// <param name="method"></param>
         /// <returns></returns>
         Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method);
+
+        Task CallAsync(Expression<Action<TServiceInterface>> method);
     }
 
     class AsyncProxy<TServiceInterface> : IAsyncProxy<TServiceInterface>
@@ -57,6 +59,24 @@ namespace WcfClientProxyGenerator.Async
 
             //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
             return r as Task<TResponse>;
+        }
+
+        public Task CallAsync(Expression<Action<TServiceInterface>> method)
+        {
+            var methodCall = method.Body as MethodCallExpression;
+
+            var asyncMethod = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async");
+
+            var parameter = Expression.Parameter(this.provider.GetType(), "svc");
+            var asyncCall = Expression
+                .Call(parameter, asyncMethod, methodCall.Arguments);
+
+            var l = Expression.Lambda(asyncCall, parameter);
+            var cl = l.Compile();
+            var r = cl.DynamicInvoke(this.provider);
+
+            //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
+            return r as Task;
         }
     }
 }

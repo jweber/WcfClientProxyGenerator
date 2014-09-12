@@ -15,15 +15,15 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public async Task AsyncProxy_MethodWithReturnValue()
         {
-            var mockService = new Mock<ITestService2>();
+            var mockService = new Mock<ITestService>();
             mockService
                 .SetupSequence(m => m.TestMethod("good"))
                 .Returns("BAD")
                 .Returns("OK");
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService2>(new TestService2Impl(mockService));
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxy.CreateAsync<ITestService2>(c =>
+            var proxy = WcfClientProxy.CreateAsync<ITestService>(c =>
             {
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
                 c.RetryOnResponse<string>(s => s == "BAD");
@@ -36,6 +36,36 @@ namespace WcfClientProxyGenerator.Tests
             Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
 
             Assert.That(result, Is.EqualTo("OK"));
+        }
+        
+        [Test]
+        public async Task AsyncProxy_VoidMethod()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.VoidMethod("good"))
+                .Callback(() =>
+                {
+                    Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
+                    resetEvent.Set();
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsync<ITestService>(c => 
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            await proxy.CallAsync(m => m.VoidMethod("good"));
+
+            Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(2)))
+                Assert.Fail("Callback never triggered");
+
         }
 
 //        [Test]

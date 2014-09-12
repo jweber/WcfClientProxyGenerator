@@ -7,7 +7,7 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
     public interface ITestService
     {
         //[OperationContract(Action = "TestMethod", ReplyAction = "*")]
-        [OperationContractAttribute]
+        [OperationContract]
         string TestMethod(string input);
 
         [OperationContract]

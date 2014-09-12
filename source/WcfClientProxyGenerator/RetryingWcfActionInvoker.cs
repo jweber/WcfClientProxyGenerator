@@ -161,11 +161,11 @@ namespace WcfClientProxyGenerator
             }, invokeInfo);
         }
 
-        public async Task InvokeAsync(Func<TServiceInterface, Task> method, InvokeInfo invokeInfo = null)
+        public Task InvokeAsync(Func<TServiceInterface, Task> method, InvokeInfo invokeInfo = null)
         {
-            await InvokeAsync(provider =>
+            return InvokeAsync(async provider =>
             {
-                method(provider);
+                await method(provider);
                 return Task.FromResult(true);
             }, invokeInfo);
         }
