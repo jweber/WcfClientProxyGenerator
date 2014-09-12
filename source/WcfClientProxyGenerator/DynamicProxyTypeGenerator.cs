@@ -376,6 +376,17 @@ namespace WcfClientProxyGenerator
 
         private static MethodInfo GetIActionInvokerInvokeMethod(MethodInfo methodInfo)
         {
+            if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
+            {
+                var funcInvokeAsyncMethod = (typeof(IActionInvoker<TServiceInterface>))
+                    .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                    .First(m => m.Name == "InvokeAsync" && m.ReturnType != typeof(Task));
+
+                var taskReturnType = methodInfo.ReturnType.GenericTypeArguments[0];
+
+                return funcInvokeAsyncMethod.MakeGenericMethod(new[] { taskReturnType });
+            }
+
             if (methodInfo.ReturnType == typeof(void))
             {
                 Type actionType = typeof(Action<>)

@@ -6,11 +6,37 @@ using System.Reflection;
 using System.ServiceModel;
 using System.Threading;
 using System.Linq;
+using System.Threading.Tasks;
 using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
+    public interface ITestAsync : ITest
+    {
+        Task<string> TestAsync(string input);
+    }
+
+    public interface ITest
+    {
+        string Test(string input);
+    }
+
+    internal class TestInvoker : RetryingWcfActionInvokerProvider<ITestAsync>, ITestAsync
+    {
+        public string Test(string input)
+        {
+            return base.ActionInvoker.Invoke(m => m.Test(input));
+        }
+
+        public Task<string> TestAsync(string input)
+        {
+            var response = base.ActionInvoker.InvokeAsync<string>(m => m.TestAsync(input));
+            return response;
+            //return base.ActionInvoker.Invoke(m => m.TestAsync(input));
+        }
+    }
+
     internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
         where TServiceInterface : class
     {
@@ -121,6 +147,13 @@ namespace WcfClientProxyGenerator
                 method(provider);
                 return new VoidReturnType();
             }, invokeInfo);
+        }
+
+        public async Task<TResponse> InvokeAsync<TResponse>(Func<TServiceInterface, Task<TResponse>> method, InvokeInfo invokeInfo = null)
+        {
+            TServiceInterface provider = RefreshProvider(null);
+            TResponse response = await method(provider);
+            return response;
         }
 
         /// <summary>
@@ -250,8 +283,7 @@ namespace WcfClientProxyGenerator
             }
             finally
             {
-                // TODO: really not dispose to make async work?
-                //DisposeProvider(provider);
+                DisposeProvider(provider);
             }
 
             return lastResponse;

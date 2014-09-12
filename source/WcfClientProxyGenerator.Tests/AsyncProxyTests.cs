@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -16,14 +17,17 @@ namespace WcfClientProxyGenerator.Tests
         {
             var mockService = new Mock<ITestService2>();
             mockService
-                .Setup(m => m.TestMethod("good"))
-                .Returns("OK")
-                .Callback(() => Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId));
+                .SetupSequence(m => m.TestMethod("good"))
+                .Returns("BAD")
+                .Returns("OK");
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService2>(new TestService2Impl(mockService));
 
             var proxy = WcfClientProxy.CreateAsync<ITestService2>(c =>
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.RetryOnResponse<string>(s => s == "BAD");
+            });
 
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
