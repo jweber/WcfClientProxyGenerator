@@ -15,11 +15,13 @@ namespace WcfClientProxyGenerator
     public interface ITestAsync : ITest
     {
         Task<string> TestAsync(string input);
+        Task VoidAsync(string input);
     }
 
     public interface ITest
     {
         string Test(string input);
+        void Void(string input);
     }
 
     internal class TestInvoker : RetryingWcfActionInvokerProvider<ITestAsync>, ITestAsync
@@ -34,6 +36,16 @@ namespace WcfClientProxyGenerator
             var response = base.ActionInvoker.InvokeAsync<string>(m => m.TestAsync(input));
             return response;
             //return base.ActionInvoker.Invoke(m => m.TestAsync(input));
+        }
+
+        public void Void(string input)
+        {
+            base.ActionInvoker.Invoke(m => m.Void(input));
+        }
+
+        public Task VoidAsync(string input)
+        {
+            return base.ActionInvoker.InvokeAsync(m => m.VoidAsync(input));
         }
     }
 
@@ -149,11 +161,71 @@ namespace WcfClientProxyGenerator
             }, invokeInfo);
         }
 
+        public async Task InvokeAsync(Func<TServiceInterface, Task> method, InvokeInfo invokeInfo = null)
+        {
+            await InvokeAsync(provider =>
+            {
+                method(provider);
+                return Task.FromResult(true);
+            }, invokeInfo);
+        }
+
         public async Task<TResponse> InvokeAsync<TResponse>(Func<TServiceInterface, Task<TResponse>> method, InvokeInfo invokeInfo = null)
         {
             TServiceInterface provider = RefreshProvider(null);
-            TResponse response = await method(provider);
-            return response;
+            TResponse lastResponse = default(TResponse);
+            IDelayPolicy delayPolicy = DelayPolicyFactory();
+
+            try
+            {
+                Exception mostRecentException = null;
+                for (int i = 0; i < RetryCount; i++)
+                {
+                    try
+                    {
+                        TResponse response = await method(provider);
+
+                        if (ResponseInRetryable(response))
+                        {
+                            lastResponse = response;
+                            provider = await DelayAsync(i, delayPolicy, provider);
+                            continue;
+                        }
+
+                        return response;
+                    }
+                    catch (Exception ex)
+                    {
+                        // determine whether to retry the service call
+                        if (ExceptionIsRetryable(ex))
+                        {
+                            mostRecentException = ex;
+#if CSHARP60
+                            provider = await DelayAsync(i, delayPolicy, provider);
+#else
+                            provider = Delay(i, delayPolicy, provider);
+#endif
+                        }
+                        else
+                        {
+                            throw;
+                        }                    
+                    }
+                }
+
+                if (mostRecentException != null)
+                {
+                    throw new WcfRetryFailedException(
+                        string.Format("WCF call failed after {0} retries.", RetryCount),
+                        mostRecentException);
+                }
+            }
+            finally
+            {
+                DisposeProvider(provider);
+            }
+            
+            return lastResponse;
         }
 
         /// <summary>
@@ -220,7 +292,7 @@ namespace WcfClientProxyGenerator
                         if (ResponseInRetryable(response))
                         {
                             lastResponse = response;
-                            Delay(i, delayPolicy, ref provider);
+                            provider = Delay(i, delayPolicy, provider);
                             continue;
                         }
 
@@ -262,7 +334,7 @@ namespace WcfClientProxyGenerator
                         if (ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
-                            Delay(i, delayPolicy, ref provider);
+                            provider = Delay(i, delayPolicy, provider);
                         }
                         else
                         {
@@ -289,10 +361,16 @@ namespace WcfClientProxyGenerator
             return lastResponse;
         }
 
-        private void Delay(int iteration, IDelayPolicy delayPolicy, ref TServiceInterface provider)
+        private TServiceInterface Delay(int iteration, IDelayPolicy delayPolicy, TServiceInterface provider)
         {
             Thread.Sleep(delayPolicy.GetDelay(iteration));
-            provider = RefreshProvider(provider);
+            return RefreshProvider(provider);
+        }
+
+        private async Task<TServiceInterface> DelayAsync(int iteration, IDelayPolicy delayPolicy, TServiceInterface provider)
+        {
+            await Task.Delay(delayPolicy.GetDelay(iteration));
+            return RefreshProvider(provider);
         }
 
         private bool ExceptionIsRetryable(Exception ex)

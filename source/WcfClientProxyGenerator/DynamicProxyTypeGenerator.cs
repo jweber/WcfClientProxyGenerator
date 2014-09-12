@@ -1,4 +1,5 @@
 ﻿#define OUTPUT_PROXY_DLL
+// TODO: Remove this
 
 using System;
 using System.Collections.Generic;
