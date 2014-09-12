@@ -23,7 +23,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxy.CreateAsync<ITestService>(c =>
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
             {
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
                 c.RetryOnResponse<string>(s => s == "BAD");
@@ -36,6 +36,35 @@ namespace WcfClientProxyGenerator.Tests
             Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
 
             Assert.That(result, Is.EqualTo("OK"));
+        }
+
+        [Test]
+        public async Task AsyncProxy_MethodWithReturnValue2()
+        {
+            var request = new Request() { RequestMessage = "test" };
+
+            var mockService = new Mock<ITestService>();
+            mockService
+                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns(new Response { ResponseMessage = "test", StatusCode = 1 })
+                .Returns(new Response { ResponseMessage  = "test", StatusCode = 0 });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.RetryOnResponse<Response>(s => s.StatusCode == 1);
+            });
+
+            Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            var result = await proxy.CallAsync(m => m.TestMethodComplex(request));
+
+            Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            Assert.That(result.StatusCode, Is.EqualTo(0));
+            Assert.That(result.ResponseMessage, Is.EqualTo("test"));
         }
         
         [Test]
@@ -54,7 +83,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxy.CreateAsync<ITestService>(c => 
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c => 
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
@@ -78,7 +107,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 //
-//            var proxy = WcfClientProxy.CreateAsync<ITestService>(c =>
+//            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
 //                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 //
 //            await proxy.CallAsync(m => m.VoidMethod("good"));
@@ -95,7 +124,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxy.CreateAsync<ITestService>(c =>
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
 
             string result = proxy.Client.TestMethod("good");

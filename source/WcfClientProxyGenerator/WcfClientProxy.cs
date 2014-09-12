@@ -78,11 +78,10 @@ namespace WcfClientProxyGenerator
         /// </summary>
         /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
         /// <returns>Async friendly wrapper around <typeparamref name="TServiceInterface"/></returns>
-        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>()
+        public static IAsyncProxy<TServiceInterface> CreateAsyncProxy<TServiceInterface>()
             where TServiceInterface : class
         {
-            var proxy = Create<TServiceInterface>();
-            return new AsyncProxy<TServiceInterface>(proxy);
+            return CreateAsyncProxy<TServiceInterface>(c => c.UseDefaultEndpoint());
         }
 
         /// <summary>
@@ -96,11 +95,10 @@ namespace WcfClientProxyGenerator
         /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
         /// <param name="endpointConfigurationName">Name of the WCF service configuration</param>
         /// <returns>Async friendly wrapper around <typeparamref name="TServiceInterface"/></returns>
-        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>(string endpointConfigurationName)
+        public static IAsyncProxy<TServiceInterface> CreateAsyncProxy<TServiceInterface>(string endpointConfigurationName)
             where TServiceInterface : class
         {
-            var proxy = Create<TServiceInterface>(endpointConfigurationName);
-            return new AsyncProxy<TServiceInterface>(proxy);
+            return CreateAsyncProxy<TServiceInterface>(c => c.SetEndpoint(endpointConfigurationName));
         }
 
         /// <summary>
@@ -114,7 +112,7 @@ namespace WcfClientProxyGenerator
         /// <typeparam name="TServiceInterface">Interface of the WCF service</typeparam>
         /// <param name="configurator">Lambda that defines how the proxy is configured</param>
         /// <returns>Async friendly wrapper around <typeparamref name="TServiceInterface"/></returns>
-        public static IAsyncProxy<TServiceInterface> CreateAsync<TServiceInterface>(
+        public static IAsyncProxy<TServiceInterface> CreateAsyncProxy<TServiceInterface>(
             Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
         {
