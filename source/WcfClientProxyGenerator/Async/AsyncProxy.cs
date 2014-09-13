@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace WcfClientProxyGenerator.Async
@@ -26,7 +26,12 @@ namespace WcfClientProxyGenerator.Async
         /// <param name="method"></param>
         /// <returns></returns>
         Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method);
-
+        
+        /// <summary>
+        /// Make a <see cref="Task"/> based async call to a WCF method on <see cref="TServiceInterface"/>
+        /// </summary>
+        /// <param name="method"></param>
+        /// <returns></returns>
         Task CallAsync(Expression<Action<TServiceInterface>> method);
     }
 
@@ -47,15 +52,31 @@ namespace WcfClientProxyGenerator.Async
             var methodCall = method.Body as MethodCallExpression;
 
             var asyncMethod = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async");
-            object[] args = methodCall.Arguments.Select(m => m).ToArray();
 
-            var parameter = Expression.Parameter(this.provider.GetType(), "svc");
+            var proxyParam = Expression.Parameter(this.provider.GetType(), "proxy");
+
+            var methodArgs = new ParameterExpression[methodCall.Arguments.Count];
+            for (int i = 0; i < methodCall.Arguments.Count; i++)
+            {
+                var ce = methodCall.Arguments[i] as ConstantExpression;
+                methodArgs[i] = Expression.Parameter(ce.Type, "arg" + (i+1));
+            }
+
             var asyncCall = Expression
-                .Call(parameter, asyncMethod, methodCall.Arguments);
+                .Call(proxyParam, asyncMethod, methodArgs);
 
-            var l = Expression.Lambda(asyncCall, parameter);
+            var lambdaArgs = new List<ParameterExpression>(methodArgs.Length + 1);
+            lambdaArgs.Add(proxyParam);
+            lambdaArgs.AddRange(methodArgs);
+
+            var l = Expression.Lambda(asyncCall, lambdaArgs);
             var cl = l.Compile();
-            var r = cl.DynamicInvoke(this.provider);
+
+            var invokeArgs = new List<object>();
+            invokeArgs.Add(this.provider);
+            invokeArgs.AddRange(methodCall.Arguments.Cast<ConstantExpression>().Select(m => m.Value));
+
+            var r = cl.DynamicInvoke(invokeArgs);
 
             //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
             return r as Task<TResponse>;

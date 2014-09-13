@@ -14,8 +14,8 @@ namespace WcfClientProxyGenerator
     /// </summary>
     public static class WcfClientProxy
     {
-        private static readonly ConcurrentDictionary<Type, Lazy<Type>> ProxyCache 
-            = new ConcurrentDictionary<Type, Lazy<Type>>();
+        private static readonly ConcurrentDictionary<Type, Lazy<GeneratedTypes>> ProxyCache 
+            = new ConcurrentDictionary<Type, Lazy<GeneratedTypes>>();
 
         /// <summary>
         /// Creates a proxy instance of <typeparamref name="TServiceInterface"/> that
@@ -52,7 +52,9 @@ namespace WcfClientProxyGenerator
         public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
         {
-            var proxy = CreateProxy<TServiceInterface>();
+            var proxy = CreateProxy<
+                TServiceInterface,
+                RetryingWcfActionInvokerProvider<TServiceInterface>>();
 
             if (configurator != null)
             {
@@ -69,8 +71,7 @@ namespace WcfClientProxyGenerator
         #region Async Proxy
 
         /// <summary>
-        /// Creates an async-friendly wrapped proxy instance of <typeparamref name="TServiceInterface"/> that
-        /// is used to initiate calls to a WCF service. 
+        /// Creates a wrapper for calling synchronously defined WCF methods asynchronously.
         /// <para>
         /// Synchronous calls can still be made via the <see cref="IAsyncProxy{TServiceInterface}.Client"/>
         /// property.
@@ -85,8 +86,7 @@ namespace WcfClientProxyGenerator
         }
 
         /// <summary>
-        /// Creates an async-friendly wrapped proxy instance of <typeparamref name="TServiceInterface"/> that
-        /// is used to initiate calls to a WCF service. 
+        /// Creates a wrapper for calling synchronously defined WCF methods asynchronously.
         /// <para>
         /// Synchronous calls can still be made via the <see cref="IAsyncProxy{TServiceInterface}.Client"/>
         /// property.
@@ -102,8 +102,7 @@ namespace WcfClientProxyGenerator
         }
 
         /// <summary>
-        /// Creates an async-friendly wrapped proxy instance of <typeparamref name="TServiceInterface"/> that
-        /// is used to initiate calls to a WCF service. 
+        /// Creates a wrapper for calling synchronously defined WCF methods asynchronously.
         /// <para>
         /// Synchronous calls can still be made via the <see cref="IAsyncProxy{TServiceInterface}.Client"/>
         /// property.
@@ -118,41 +117,31 @@ namespace WcfClientProxyGenerator
         {
             var proxy = Create<TServiceInterface>(configurator);
 
-            var interfaces = proxy.GetType().GetInterfaces();
-
-//            var dynamicAsyncType = Type.GetType(
-//                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async, WcfClientProxyGenerator.DynamicProxy");
-
-            var dynamicAsyncType = interfaces.Single(m => m.FullName == "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async");
-
             var asyncProxyType = typeof(AsyncProxy<>)
                 .MakeGenericType(typeof(TServiceInterface));
 
-            var ctors = asyncProxyType.GetConstructor(new [] { dynamicAsyncType });
-
-            var asyncProxy = Activator.CreateInstance(asyncProxyType, new object[] { proxy });
-
-            var cast = asyncProxy as IAsyncProxy<TServiceInterface>;
-            return cast;
-            //return new AsyncProxy<TServiceInterface>(proxy);
+            var asyncProxy = FastActivator.CreateInstance(asyncProxyType, new object[] { proxy });
+            return asyncProxy as IAsyncProxy<TServiceInterface>;
         }
 
         #endregion
 
 
-        private static TServiceInterface CreateProxy<TServiceInterface>(params object[] arguments)
+        private static TServiceInterface CreateProxy<TServiceInterface, TActionInvokerProvider>()
             where TServiceInterface : class
+            where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
-            var proxyType = GetProxyType<TServiceInterface>();
-            return (TServiceInterface) FastActivator.CreateInstance(proxyType);
+            var types = GetGeneratedTypes<TServiceInterface, TActionInvokerProvider>();
+            return (TServiceInterface) FastActivator.CreateInstance(types.Proxy);
         }
 
-        private static Type GetProxyType<TServiceInterface>()
+        private static GeneratedTypes GetGeneratedTypes<TServiceInterface, TActionInvokerProvider>()
             where TServiceInterface : class
+            where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
             return ProxyCache.GetOrAddSafe(
                 typeof(TServiceInterface), 
-                _ => DynamicProxyTypeGenerator<TServiceInterface>.GenerateType(typeof(RetryingWcfActionInvokerProvider<>)));
+                _ => DynamicProxyTypeGenerator<TServiceInterface>.GenerateTypes<TActionInvokerProvider>());
         }  
     }
 }

@@ -36,6 +36,12 @@ namespace WcfClientProxyGenerator
         public static ModuleBuilder ModuleBuilder { get; private set; }
     }
 
+    internal class GeneratedTypes
+    {
+        public Type Proxy { get; set; }
+        public Type AsyncInterface { get; set; }
+    }
+
     /// <summary>
     /// Dynamic type generator for WCF interfaces. Builds an implementation
     /// of <typeparamref name="TServiceInterface"/> at runtime that passes calls
@@ -47,7 +53,8 @@ namespace WcfClientProxyGenerator
     internal static class DynamicProxyTypeGenerator<TServiceInterface>
         where TServiceInterface : class
     {
-        public static Type GenerateType(Type actionInvokerProviderType)
+        public static GeneratedTypes GenerateTypes<TActionInvokerProvider>()
+            where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
             CheckServiceInterfaceValidity(typeof(TServiceInterface));
 
@@ -59,12 +66,62 @@ namespace WcfClientProxyGenerator
 
             var serviceMethods = interfaceTypeHierarchy
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                .Where(t => t.HasAttribute<OperationContractAttribute>());
+                .Where(t => t.HasAttribute<OperationContractAttribute>())
+                .ToList();
 
             if (!serviceMethods.Any())
             {
                 throw new InvalidOperationException(String.Format("Service interface {0} has no OperationContact methods. Is this a proper WCF service interface?", typeof(TServiceInterface).Name));
             }
+
+            var asyncInterfaceType = GenerateAsyncInterface(serviceMethods);
+
+            // build proxy
+
+            var genericActionInvokerType = typeof(TActionInvokerProvider)
+                .GetGenericTypeDefinition()
+                .MakeGenericType(asyncInterfaceType);
+
+            var typeBuilder = moduleBuilder.DefineType(
+                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name,
+                TypeAttributes.Public | TypeAttributes.Class,
+                genericActionInvokerType);
+            
+            //typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
+            typeBuilder.AddInterfaceImplementation(asyncInterfaceType);
+
+            SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
+            
+            interfaceTypeHierarchy = asyncInterfaceType
+                .GetAllInheritedTypes(includeInterfaces: true)
+                .Where(t => t.IsInterface);
+
+            serviceMethods = interfaceTypeHierarchy
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                .Where(t => t.HasAttribute<OperationContractAttribute>())
+                .ToList();
+
+            foreach (var serviceMethod in serviceMethods)
+            {
+                GenerateServiceProxyMethod(asyncInterfaceType, serviceMethod, typeBuilder);
+            }
+
+            Type proxyType = typeBuilder.CreateType();
+            
+#if OUTPUT_PROXY_DLL 
+            DynamicProxyAssembly.AssemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
+#endif
+
+            return new GeneratedTypes
+            {
+                Proxy = proxyType,
+                AsyncInterface = asyncInterfaceType
+            };
+        }
+
+        private static Type GenerateAsyncInterface(IEnumerable<MethodInfo> serviceMethods)
+        {
+            var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
             var asyncInterfaceBuilder = moduleBuilder.DefineType(
                 "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async",
@@ -75,49 +132,21 @@ namespace WcfClientProxyGenerator
             var attributeCtor = typeof(ServiceContractAttribute)
                 .GetConstructor(Type.EmptyTypes);
 
+            if (attributeCtor == null)
+                throw new NullReferenceException("Could not locate default constructor for ServiceContractAttribute");
+
             var attributeBuilder = new CustomAttributeBuilder(attributeCtor, new object[0]);
             asyncInterfaceBuilder.SetCustomAttribute(attributeBuilder);
 
-            foreach (var serviceMethod in serviceMethods)
+            var nonAsyncServiceMethods = serviceMethods
+                .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType));
+
+            foreach (var serviceMethod in nonAsyncServiceMethods)
                 GenerateAsyncTaskMethod(serviceMethod, asyncInterfaceBuilder);
 
             Type asyncInterface = asyncInterfaceBuilder.CreateType();
 
-            // build proxy
-
-            var genericActionInvokerType = actionInvokerProviderType
-                .MakeGenericType(asyncInterface);
-
-            var typeBuilder = moduleBuilder.DefineType(
-                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name,
-                TypeAttributes.Public | TypeAttributes.Class,
-                genericActionInvokerType);
-            
-            //typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
-            typeBuilder.AddInterfaceImplementation(asyncInterface);
-
-            SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
-            
-            interfaceTypeHierarchy = asyncInterface
-                .GetAllInheritedTypes(includeInterfaces: true)
-                .Where(t => t.IsInterface);
-
-            serviceMethods = interfaceTypeHierarchy
-                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                .Where(t => t.HasAttribute<OperationContractAttribute>());
-
-            foreach (var serviceMethod in serviceMethods)
-            {
-                GenerateServiceProxyMethod(asyncInterface, serviceMethod, typeBuilder);
-            }
-
-            Type generatedType = typeBuilder.CreateType();
-            
-#if OUTPUT_PROXY_DLL 
-            DynamicProxyAssembly.AssemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
-#endif
-
-            return generatedType;
+            return asyncInterface;
         }
 
         private static void CheckServiceInterfaceValidity(Type type)
