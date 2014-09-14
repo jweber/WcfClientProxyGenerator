@@ -29,6 +29,14 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             return string.Format("Echo: {0}", input);
         }
 
+        public string TestMethod(string input, string two)
+        {
+            if (_mock != null)
+                return _mock.Object.TestMethod(input, two);
+
+            return string.Format("Echo: {0}, {1}", input, two);
+        }
+
         public void VoidMethod(string input)
         {
             if (_mock != null)

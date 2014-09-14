@@ -21,6 +21,8 @@ namespace WcfClientProxyGenerator.Tests
                 .Returns("BAD")
                 .Returns("OK");
 
+            mockService.Setup(m => m.TestMethod("second", "two")).Returns("2");
+
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
             var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
@@ -32,10 +34,12 @@ namespace WcfClientProxyGenerator.Tests
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
             string result = await proxy.CallAsync(m => m.TestMethod("good"));
+            string result2 = await proxy.CallAsync(m => m.TestMethod("second", "two"));
 
             Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
 
             Assert.That(result, Is.EqualTo("OK"));
+            Assert.That(result2, Is.EqualTo("2"));
         }
 
         [Test]

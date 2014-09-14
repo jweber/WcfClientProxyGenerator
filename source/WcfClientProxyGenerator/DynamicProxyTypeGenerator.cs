@@ -1,5 +1,4 @@
 ﻿#define OUTPUT_PROXY_DLL
-// TODO: Remove this
 
 using System;
 using System.Collections.Generic;
@@ -20,6 +19,14 @@ namespace WcfClientProxyGenerator
     {
         static DynamicProxyAssembly()
         {
+            Initialize();
+        }
+
+        public static AssemblyBuilder AssemblyBuilder { get; private set; }
+        public static ModuleBuilder ModuleBuilder { get; private set; }
+
+        internal static void Initialize()
+        {
             var assemblyName = new AssemblyName("WcfClientProxyGenerator.DynamicProxy");
             var appDomain = System.Threading.Thread.GetDomain();
 
@@ -29,11 +36,8 @@ namespace WcfClientProxyGenerator
 #else
             AssemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
             ModuleBuilder = AssemblyBuilder.DefineDynamicModule(assemblyName.Name);
-#endif
+#endif            
         }
-
-        public static AssemblyBuilder AssemblyBuilder { get; private set; }
-        public static ModuleBuilder ModuleBuilder { get; private set; }
     }
 
     internal class GeneratedTypes
@@ -87,7 +91,6 @@ namespace WcfClientProxyGenerator
                 TypeAttributes.Public | TypeAttributes.Class,
                 genericActionInvokerType);
             
-            //typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
             typeBuilder.AddInterfaceImplementation(asyncInterfaceType);
 
             SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
@@ -212,16 +215,41 @@ namespace WcfClientProxyGenerator
             var replyActionProp = typeof(OperationContractAttribute)
                 .GetProperty("ReplyAction");
 
+            var nameProp = typeof(OperationContractAttribute)
+                .GetProperty("Name");
+
             var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
             string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
-            string defaultAction = string.Format("{0}/{1}/{2}", serviceNamespace, typeof(TServiceInterface).Name, methodInfo.Name);
+            string defaultAction = string.Format("{0}/{1}/{2}", 
+                serviceNamespace, 
+                typeof(TServiceInterface).Name, 
+                originalOperationContract.Name ?? methodInfo.Name);
+
             string defaultReplyAction = defaultAction + "Response";
+
+            var propertyInfos = new List<PropertyInfo>
+            {
+                actionProp, 
+                replyActionProp
+            };
+
+            var propertyValues = new List<object>
+            {
+                originalOperationContract.Action ?? defaultAction,
+                originalOperationContract.ReplyAction ?? defaultReplyAction
+            };
+
+            if (!string.IsNullOrEmpty(originalOperationContract.Name))
+            {
+                propertyInfos.Add(nameProp);
+                propertyValues.Add(originalOperationContract.Name);
+            }
 
             var attributeBuilder = new CustomAttributeBuilder(
                 attributeCtor, 
                 new object[0], 
-                new [] { actionProp, replyActionProp }, 
-                new object[] { originalOperationContract.Action ?? defaultAction, originalOperationContract.ReplyAction ?? defaultReplyAction });
+                propertyInfos.ToArray(), 
+                propertyValues.ToArray());
 
             methodBuilder.SetCustomAttribute(attributeBuilder);
         }
@@ -462,10 +490,14 @@ namespace WcfClientProxyGenerator
                 .Where(t => t.IsByRef)
                 .ToArray();
 
+            string className = string.Format("{0}_{1}", 
+                methodInfo.Name,
+                string.Join("_", parameterTypes.Select(m => m.Name)));
+
             string typeName = string.Format(
                 "WcfClientProxyGenerator.DynamicProxy.{0}Support.{1}",
                 typeof(TServiceInterface).Name,
-                methodInfo.Name);
+                className);
 
             var serviceCallTypeBuilder = DynamicProxyAssembly.ModuleBuilder.DefineType(typeName);
 

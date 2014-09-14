@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator.Async
 {
@@ -47,36 +49,56 @@ namespace WcfClientProxyGenerator.Async
 
         public TServiceInterface Client { get { return this.provider; } }
 
+        private static readonly ConcurrentDictionary<int, Lazy<Delegate>> CallAsyncFuncCache 
+            = new ConcurrentDictionary<int, Lazy<Delegate>>(); 
+
+
         public Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method)
         {
             var methodCall = method.Body as MethodCallExpression;
+            
+            var args = (from arg in methodCall.Arguments
+                        let argAsObj = Expression.Convert(arg, typeof(object))
+                        select Expression.Lambda<Func<object>>(argAsObj, null)
+                            .Compile()()).ToArray();
 
-            var asyncMethod = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async");
+            int offset = methodCall.Method.GetHashCode();
+            int key = offset;
+//            foreach (object o in args)
+//                key = key ^ (o == null ? offset : o.GetType().GetHashCode() << offset++);
 
-            var proxyParam = Expression.Parameter(this.provider.GetType(), "proxy");
-
-            var methodArgs = new ParameterExpression[methodCall.Arguments.Count];
-            for (int i = 0; i < methodCall.Arguments.Count; i++)
+            var cl = CallAsyncFuncCache.GetOrAddSafe(key, _ =>
             {
-                var ce = methodCall.Arguments[i] as ConstantExpression;
-                methodArgs[i] = Expression.Parameter(ce.Type, "arg" + (i+1));
-            }
+                var asyncMethod = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async");
 
-            var asyncCall = Expression
-                .Call(proxyParam, asyncMethod, methodArgs);
+                var proxyParam = Expression.Parameter(this.provider.GetType(), "proxy");
 
-            var lambdaArgs = new List<ParameterExpression>(methodArgs.Length + 1);
-            lambdaArgs.Add(proxyParam);
-            lambdaArgs.AddRange(methodArgs);
+                var methodArgs = new ParameterExpression[methodCall.Arguments.Count];
+                for (int i = 0; i < args.Length; i++)
+                {
+                    methodArgs[i] = Expression.Parameter(args[i].GetType(), "arg" + (i+1));
+                }
 
-            var l = Expression.Lambda(asyncCall, lambdaArgs);
-            var cl = l.Compile();
+                var asyncCall = Expression
+                    .Call(proxyParam, asyncMethod, methodArgs);
+
+                var lambdaArgs = new List<ParameterExpression>(methodArgs.Length + 1);
+                lambdaArgs.Add(proxyParam);
+                lambdaArgs.AddRange(methodArgs);
+
+                var l = Expression.Lambda(asyncCall, lambdaArgs);
+                Delegate del = l.Compile();
+
+                return del;
+            });
+
+
 
             var invokeArgs = new List<object>();
             invokeArgs.Add(this.provider);
-            invokeArgs.AddRange(methodCall.Arguments.Cast<ConstantExpression>().Select(m => m.Value));
+            invokeArgs.AddRange(args);
 
-            var r = cl.DynamicInvoke(invokeArgs);
+            var r = cl.DynamicInvoke(invokeArgs.ToArray());
 
             //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
             return r as Task<TResponse>;
