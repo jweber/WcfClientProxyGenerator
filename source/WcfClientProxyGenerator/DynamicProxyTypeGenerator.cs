@@ -1,6 +1,4 @@
-﻿#define OUTPUT_PROXY_DLL
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -226,7 +224,7 @@ namespace WcfClientProxyGenerator
             string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
             string defaultAction = string.Format("{0}/{1}/{2}", 
                 serviceNamespace, 
-                typeof(TServiceInterface).Name, 
+                methodInfo.DeclaringType.Name, 
                 originalOperationContract.Name ?? methodInfo.Name);
 
             string defaultReplyAction = defaultAction + "Response";

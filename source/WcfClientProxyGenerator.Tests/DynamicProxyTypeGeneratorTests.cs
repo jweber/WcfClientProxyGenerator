@@ -78,7 +78,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void AsyncMethodSignature_IsCreatedForSyncMethodWithReturnValue()
+        public void AsyncInterface_AsyncMethodSignature_IsCreatedForSyncMethodWithReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
 
@@ -88,7 +88,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void AsyncMethodSignature_IsCreatedForSyncMethodWithoutReturnValue()
+        public void AsyncInterface_AsyncMethodSignature_IsCreatedForSyncMethodWithoutReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
 
@@ -98,7 +98,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void AsyncMethodSignature_IsNotCreated_ForAlreadyAsyncMethodWithReturnValue()
+        public void AsyncInterface_AsyncMethodSignature_IsNotCreated_ForAlreadyAsyncMethodWithReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
 
@@ -109,7 +109,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void AsyncMethodSignature_IsNotCreated_ForAlreadyAsyncMethodWithNoReturnValue()
+        public void AsyncInterface_AsyncMethodSignature_IsNotCreated_ForAlreadyAsyncMethodWithNoReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
 
@@ -120,7 +120,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void Default_ActionAndReplyAction_AttributeValuesAreGenerated()
+        public void AsyncInterface_Default_ActionAndReplyAction_AttributeValuesAreGenerated()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
 
@@ -133,7 +133,37 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void CustomAction_IsUsedOnAsyncMethod()
+        public void AsyncInterface_DefaultAction_NamespaceIsDerivedFromDeclaringType()
+        {
+            var types = this.GenerateTypes<IChildService>();
+
+            var childMethod = types.AsyncInterface.GetMethod("ChildMethodAsync");
+            var childMethodAttr = childMethod.GetCustomAttribute<OperationContractAttribute>();
+
+            var baseMethod = types.AsyncInterface.GetMethod("VoidMethodAsync");
+            var baseMethodAttr = baseMethod.GetCustomAttribute<OperationContractAttribute>();
+
+            Assert.That(childMethodAttr.Action, Is.EqualTo("http://tempuri.org/IChildService/ChildMethod"));
+            Assert.That(baseMethodAttr.Action, Is.EqualTo("http://tempuri.org/ITestService/VoidMethod"));
+        }
+
+        [Test]
+        public void AsyncInterface_DefaultReplyAction_NamespaceIsDerivedFromDeclaringType()
+        {
+            var types = this.GenerateTypes<IChildService>();
+
+            var childMethod = types.AsyncInterface.GetMethod("ChildMethodAsync");
+            var childMethodAttr = childMethod.GetCustomAttribute<OperationContractAttribute>();
+
+            var baseMethod = types.AsyncInterface.GetMethod("VoidMethodAsync");
+            var baseMethodAttr = baseMethod.GetCustomAttribute<OperationContractAttribute>();
+
+            Assert.That(childMethodAttr.ReplyAction, Is.EqualTo("http://tempuri.org/IChildService/ChildMethodResponse"));
+            Assert.That(baseMethodAttr.ReplyAction, Is.EqualTo("http://tempuri.org/ITestService/VoidMethodResponse"));
+        }
+
+        [Test]
+        public void AsyncInterface_CustomAction_IsUsedOnAsyncMethod()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
 
@@ -145,7 +175,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void CustomReplyAction_IsUsedOnAsyncMethod()
+        public void AsyncInterface_CustomReplyAction_IsUsedOnAsyncMethod()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
 
@@ -157,7 +187,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void CustomName_IsUsedOnAsyncMethod()
+        public void AsyncInterface_CustomName_IsUsedOnAsyncMethod()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
 
@@ -169,7 +199,7 @@ namespace WcfClientProxyGenerator.Tests
         }
         
         [Test]
-        public void CustomName_IsUsedToBuildDefaultActionAndReplyAction()
+        public void AsyncInterface_CustomName_IsUsedToBuildDefaultActionAndReplyAction()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
 
