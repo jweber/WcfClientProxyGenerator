@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
+using System.ServiceModel.Channels;
+using System.ServiceModel.Configuration;
 using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -176,13 +179,6 @@ namespace WcfClientProxyGenerator.Tests
 
             Assert.That(attr.Action, Is.EqualTo("http://tempuri.org/IOperationContractInterface/NewName"));
             Assert.That(attr.ReplyAction, Is.EqualTo("http://tempuri.org/IOperationContractInterface/NewNameResponse"));
-        }
-
-        [Test]
-        public void Test()
-        {
-            //var types = this.GenerateTypes<ITestService>();
-            var p = WcfClientProxy.Create<ITestService>();
         }
     }
 }

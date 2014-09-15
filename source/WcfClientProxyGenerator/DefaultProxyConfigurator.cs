@@ -6,6 +6,7 @@ namespace WcfClientProxyGenerator
     internal static class DefaultProxyConfigurator
     {
         public static void Configure<TServiceInterface>(IRetryingProxyConfigurator proxy)
+            where TServiceInterface : class
         {
             proxy.UseDefaultEndpoint();
         }

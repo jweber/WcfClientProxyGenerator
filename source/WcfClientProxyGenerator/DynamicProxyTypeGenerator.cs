@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
 using System.Threading.Tasks;
+using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
@@ -132,14 +133,17 @@ namespace WcfClientProxyGenerator
 
             asyncInterfaceBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
 
-            var attributeCtor = typeof(ServiceContractAttribute)
+            var generatedAsyncInterfaceAttrCtor = typeof(GeneratedAsyncInterfaceAttribute)
                 .GetConstructor(Type.EmptyTypes);
 
-            if (attributeCtor == null)
-                throw new NullReferenceException("Could not locate default constructor for ServiceContractAttribute");
+            var generatedAsyncInterfaceAttrBuilder = new CustomAttributeBuilder(generatedAsyncInterfaceAttrCtor, new object[0]);
+            asyncInterfaceBuilder.SetCustomAttribute(generatedAsyncInterfaceAttrBuilder);
 
-            var attributeBuilder = new CustomAttributeBuilder(attributeCtor, new object[0]);
-            asyncInterfaceBuilder.SetCustomAttribute(attributeBuilder);
+            var serviceContractAttrCtor = typeof(ServiceContractAttribute)
+                .GetConstructor(Type.EmptyTypes);
+
+            var serviceContractAttrBuilder = new CustomAttributeBuilder(serviceContractAttrCtor, new object[0]);
+            asyncInterfaceBuilder.SetCustomAttribute(serviceContractAttrBuilder);
 
             var nonAsyncServiceMethods = serviceMethods
                 .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType));
