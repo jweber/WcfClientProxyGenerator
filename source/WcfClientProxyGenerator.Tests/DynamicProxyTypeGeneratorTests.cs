@@ -182,7 +182,7 @@ namespace WcfClientProxyGenerator.Tests
         public void Test()
         {
             //var types = this.GenerateTypes<ITestService>();
-            var p = WcfClientProxy.Create<ITestService>("ITestService");
+            var p = WcfClientProxy.Create<ITestService>();
         }
     }
 }

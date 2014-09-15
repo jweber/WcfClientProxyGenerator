@@ -347,6 +347,7 @@ namespace WcfClientProxyGenerator
             
             var channelProperty = typeof(RetryingWcfActionInvokerProvider<>)
                 .MakeGenericType(asyncInterfaceType)
+                //.MakeGenericType(typeof(TServiceInterface))
                 .GetMethod(
                     "get_ActionInvoker", 
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty);
