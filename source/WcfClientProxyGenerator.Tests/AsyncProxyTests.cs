@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.ServiceModel;
 using System.Threading;
@@ -101,22 +102,40 @@ namespace WcfClientProxyGenerator.Tests
 
         }
 
-//        [Test]
-//        public async Task AsyncProxy_VoidMethod()
-//        {
-//            var mockService = new Mock<ITestService>();
-//            mockService
-//                .Setup(m => m.VoidMethod("good"))
-//                .Callback<string>(input => Assert.That(input, Is.EqualTo("good")));
-//
-//            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
-//
-//            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
-//                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
-//
-//            await proxy.CallAsync(m => m.VoidMethod("good"));
-//            mockService.Verify(m => m.VoidMethod("good"));
-//        }
+        [Test]
+        public async Task AsyncProxy_MultipleConcurrentCalls()
+        {
+            int iterations = 20;
+
+            var mockService = new Mock<ITestService2>();
+            mockService
+                .Setup(m => m.TestMethod(It.IsAny<string>()))
+                .Returns((string s) => "Echo: " + s)
+                .Callback((string s) => Console.WriteLine("Callback: " + s));
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService2>(new TestService2Impl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService2>(c =>
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            var tasks = new List<Task>();
+            for (int i = 0; i < iterations; i++)
+            {
+                int i1 = i;
+                tasks.Add(proxy.CallAsync(m => m.TestMethod(i1.ToString())));
+                Console.WriteLine("Queued task: " + i);
+            }
+
+            Console.WriteLine("Waiting tasks...");
+
+            Task.WaitAll(tasks.ToArray());
+
+            for (int i = 0; i < iterations; i++)
+            {
+                string result = ((Task<string>) tasks[i]).Result;
+                Assert.That(result, Is.EqualTo("Echo: " + i));
+            }
+        }
 
         [Test]
         public void AsyncProxy_CanCallIntoSyncProxy()
