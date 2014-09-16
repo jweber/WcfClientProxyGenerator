@@ -64,44 +64,41 @@ namespace WcfClientProxyGenerator.Async
 
             int offset = methodCall.Method.GetHashCode();
             int key = offset;
-//            foreach (object o in args)
-//                key = key ^ (o == null ? offset : o.GetType().GetHashCode() << offset++);
+            foreach (object o in args)
+                key = key ^ (o == null ? offset : o.GetType().GetHashCode() << offset++);
 
             var cl = CallAsyncFuncCache.GetOrAddSafe(key, _ =>
             {
-                var asyncMethod = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async");
+                var methodInfo = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async", args.Select(m => m.GetType()).ToArray());
 
                 var proxyParam = Expression.Parameter(this.provider.GetType(), "proxy");
 
-                var methodArgs = new ParameterExpression[methodCall.Arguments.Count];
-                for (int i = 0; i < args.Length; i++)
+                var methodParameters = methodInfo.GetParameters();
+                var delegateParameters = new ParameterExpression[methodCall.Arguments.Count];
+                for (int i = 0; i < methodParameters.Length; i++)
                 {
-                    methodArgs[i] = Expression.Parameter(args[i].GetType(), "arg" + (i+1));
+                    delegateParameters[i] = Expression.Parameter(
+                        methodParameters[i].ParameterType, 
+                        methodParameters[i].Name);
                 }
 
-                var asyncCall = Expression
-                    .Call(proxyParam, asyncMethod, methodArgs);
+                var invokeExpr = Expression.Call(proxyParam, methodInfo, delegateParameters);
 
-                var lambdaArgs = new List<ParameterExpression>(methodArgs.Length + 1);
+                var lambdaArgs = new List<ParameterExpression>(delegateParameters.Length + 1);
                 lambdaArgs.Add(proxyParam);
-                lambdaArgs.AddRange(methodArgs);
+                lambdaArgs.AddRange(delegateParameters);
 
-                var l = Expression.Lambda(asyncCall, lambdaArgs);
-                Delegate del = l.Compile();
+                var lambdaExpression = Expression.Lambda(invokeExpr, lambdaArgs);
+                Delegate @delegate = lambdaExpression.Compile();
 
-                return del;
+                return @delegate;
             });
-
-
 
             var invokeArgs = new List<object>();
             invokeArgs.Add(this.provider);
             invokeArgs.AddRange(args);
 
-            var r = cl.DynamicInvoke(invokeArgs.ToArray());
-
-            //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
-            return r as Task<TResponse>;
+            return cl.DynamicInvoke(invokeArgs.ToArray()) as Task<TResponse>;
         }
 
         public Task CallAsync(Expression<Action<TServiceInterface>> method)
