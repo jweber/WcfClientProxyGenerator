@@ -64,6 +64,7 @@
     <Compile Include="DictionaryExtensionsTests.cs" />
     <Compile Include="DynamicProxyTypeGeneratorTests.cs" />
     <Compile Include="FastActivatorTests.cs" />
+    <Compile Include="Infrastructure\AssertExt.cs" />
     <Compile Include="Infrastructure\ChildServiceImpl.cs" />
     <Compile Include="Infrastructure\IChildService.cs" />
     <Compile Include="Infrastructure\ITestService2.cs" />
