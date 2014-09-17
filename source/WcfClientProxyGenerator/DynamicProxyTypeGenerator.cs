@@ -187,6 +187,10 @@ namespace WcfClientProxyGenerator
                 .Select(m => m.ParameterType)
                 .ToArray();
 
+            // Task based async methods cannot have byref parameters
+            if (parameterTypes.Any(m => m.IsByRef))
+                return;
+
             Type returnType = methodInfo.ReturnType;
             if (returnType == typeof(void))
             {

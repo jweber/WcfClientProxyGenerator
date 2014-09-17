@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading.Tasks;
 using WcfClientProxyGenerator.Util;
 
@@ -49,31 +50,35 @@ namespace WcfClientProxyGenerator.Async
 
         public TServiceInterface Client { get { return this.provider; } }
 
+        // async call delegate / async call not supported reason
         private static readonly ConcurrentDictionary<int, Lazy<Delegate>> CallAsyncFuncCache 
-            = new ConcurrentDictionary<int, Lazy<Delegate>>(); 
-
+            = new ConcurrentDictionary<int, Lazy<Delegate>>();
 
         public Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method)
         {
             var methodCall = method.Body as MethodCallExpression;
-            
-            var args = (from arg in methodCall.Arguments
-                        let argAsObj = Expression.Convert(arg, typeof(object))
-                        select Expression.Lambda<Func<object>>(argAsObj, null)
-                            .Compile()()).ToArray();
+            if (methodCall == null)
+                throw new NotSupportedException("Calls made to .CallAsync() must be of type 'MethodCallExpression'");
 
-            int offset = methodCall.Method.GetHashCode();
-            int key = offset;
-            foreach (object o in args)
-                key = key ^ (o == null ? offset : o.GetType().GetHashCode() << offset++);
+            var methodParameters = methodCall.Method.GetParameters().ToArray();
 
-            var cl = CallAsyncFuncCache.GetOrAddSafe(key, _ =>
+            if (methodParameters.Any(m => m.ParameterType.IsByRef))
             {
-                var methodInfo = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async", args.Select(m => m.GetType()).ToArray());
+                throw new NotSupportedException(
+                    string.Format("OperationContract method '{0}' has parameters '{1}' marked as out or ref. These are not currently supported in async calls.",
+                        methodCall.Method.Name, 
+                        methodParameters.Where(m => m.ParameterType.IsByRef).Select(m => m.Name)));
+            }
+
+            int cacheKey = GetMethodCallExpressionHashCode(methodCall, methodParameters.Select(m => m.ParameterType));
+            var cachedDelegate = CallAsyncFuncCache.GetOrAddSafe(cacheKey, _ =>
+            {
+                var methodParameterTypes = methodParameters.Select(m => m.ParameterType).ToArray();
+                var methodInfo = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async", methodParameterTypes)
+                                 ?? this.provider.GetType().GetMethod(methodCall.Method.Name, methodParameterTypes);
 
                 var proxyParam = Expression.Parameter(this.provider.GetType(), "proxy");
 
-                var methodParameters = methodInfo.GetParameters();
                 var delegateParameters = new ParameterExpression[methodCall.Arguments.Count];
                 for (int i = 0; i < methodParameters.Length; i++)
                 {
@@ -94,11 +99,13 @@ namespace WcfClientProxyGenerator.Async
                 return @delegate;
             });
 
-            var invokeArgs = new List<object>();
-            invokeArgs.Add(this.provider);
-            invokeArgs.AddRange(args);
+            var argumentValues = (from arg in methodCall.Arguments
+                                  let argAsObj = Expression.Convert(arg, typeof (object))
+                                  select Expression.Lambda<Func<object>>(argAsObj, null)
+                                      .Compile()()).ToArray();
 
-            return cl.DynamicInvoke(invokeArgs.ToArray()) as Task<TResponse>;
+            var invokeArgs = new object[] { this.provider }.Concat(argumentValues);
+            return cachedDelegate.DynamicInvoke(invokeArgs.ToArray()) as Task<TResponse>;
         }
 
         public Task CallAsync(Expression<Action<TServiceInterface>> method)
@@ -117,6 +124,16 @@ namespace WcfClientProxyGenerator.Async
 
             //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
             return r as Task;
+        }
+
+        private static int GetMethodCallExpressionHashCode(MethodCallExpression methodCall, IEnumerable<Type> parameterTypes)
+        {
+            int offset = methodCall.Method.GetHashCode();
+            int key = offset;
+            foreach (var parameterType in parameterTypes)
+                key = key ^ (parameterType == null ? offset : parameterType.GetHashCode() << offset++);
+
+            return key;
         }
     }
 }

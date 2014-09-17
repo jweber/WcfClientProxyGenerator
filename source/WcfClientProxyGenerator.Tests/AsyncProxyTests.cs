@@ -153,5 +153,25 @@ namespace WcfClientProxyGenerator.Tests
             string result = proxy.Client.TestMethod("good");
             Assert.That(result, Is.EqualTo("OK"));
         }
+
+        [Test]
+        public void AsyncProxy_CallingMethodWithByRefParams_ThrowsNotSupportedException()
+        {
+            var mockService = new Mock<IOutParamTestService>();
+
+            byte[] expectedOutParam = { 0x01 };
+            mockService
+                .Setup(m => m.SingleOutParam(out expectedOutParam))
+                .Returns(100);
+
+            var serviceHost = InProcTestFactory.CreateHost<IOutParamTestService>(new OutParamTestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<IOutParamTestService>(c =>
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            byte[] resultingOutParam;
+
+            Assert.That(() => proxy.CallAsync(m => m.SingleOutParam(out resultingOutParam)), Throws.TypeOf<NotSupportedException>());
+        }
     }
 }
