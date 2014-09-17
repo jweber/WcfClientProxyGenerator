@@ -38,6 +38,12 @@ namespace WcfClientProxyGenerator.Async
         Task CallAsync(Expression<Action<TServiceInterface>> method);
     }
 
+    internal static class AsyncProxyCacheHolder
+    {
+        internal static readonly ConcurrentDictionary<int, Lazy<Delegate>> Cache
+            = new ConcurrentDictionary<int, Lazy<Delegate>>();
+    }
+
     class AsyncProxy<TServiceInterface> : IAsyncProxy<TServiceInterface>
         where TServiceInterface : class
     {
@@ -50,13 +56,20 @@ namespace WcfClientProxyGenerator.Async
 
         public TServiceInterface Client { get { return this.provider; } }
 
-        // async call delegate / async call not supported reason
-        private static readonly ConcurrentDictionary<int, Lazy<Delegate>> CallAsyncFuncCache 
-            = new ConcurrentDictionary<int, Lazy<Delegate>>();
-
         public Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method)
         {
-            var methodCall = method.Body as MethodCallExpression;
+            return this.InvokeCallAsyncDelegate<Task<TResponse>>(method.Body);
+        }
+
+        public Task CallAsync(Expression<Action<TServiceInterface>> method)
+        {
+            return this.InvokeCallAsyncDelegate<Task>(method.Body);
+        }
+
+        private TResponse InvokeCallAsyncDelegate<TResponse>(Expression expression)
+            where TResponse : Task
+        {
+            var methodCall = expression as MethodCallExpression;
             if (methodCall == null)
                 throw new NotSupportedException("Calls made to .CallAsync() must be of type 'MethodCallExpression'");
 
@@ -70,12 +83,31 @@ namespace WcfClientProxyGenerator.Async
                         methodParameters.Where(m => m.ParameterType.IsByRef).Select(m => m.Name)));
             }
 
+            var cachedDelegate = this.GetCallAsyncDelegate(methodCall, methodParameters);
+            var argumentValues = this.GetMethodCallArgumentValues(methodCall);
+
+            var invokeArgs = new object[] { this.provider }.Concat(argumentValues);
+            return cachedDelegate.DynamicInvoke(invokeArgs.ToArray()) as TResponse;
+        }
+
+        private Delegate GetCallAsyncDelegate(MethodCallExpression methodCall, ParameterInfo[] methodParameters)
+        {
             int cacheKey = GetMethodCallExpressionHashCode(methodCall, methodParameters.Select(m => m.ParameterType));
-            var cachedDelegate = CallAsyncFuncCache.GetOrAddSafe(cacheKey, _ =>
+            return AsyncProxyCacheHolder.Cache.GetOrAddSafe(cacheKey, _ =>
             {
                 var methodParameterTypes = methodParameters.Select(m => m.ParameterType).ToArray();
                 var methodInfo = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async", methodParameterTypes)
                                  ?? this.provider.GetType().GetMethod(methodCall.Method.Name, methodParameterTypes);
+
+                if (methodInfo == null)
+                    throw new NotSupportedException(
+                        string.Format("CallAsync could not locate the appropriate method based on '{0}' to call asynchronously", methodCall.Method.Name));
+
+                if (!typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
+                    throw new NotSupportedException(
+                        string.Format("Method '{0}' has return type of '{1}' which is not based on 'Task' and cannot be used for asynchronous calls",
+                            methodInfo.Name,
+                            methodInfo.ReturnType.ToString()));
 
                 var proxyParam = Expression.Parameter(this.provider.GetType(), "proxy");
 
@@ -89,41 +121,22 @@ namespace WcfClientProxyGenerator.Async
 
                 var invokeExpr = Expression.Call(proxyParam, methodInfo, delegateParameters);
 
-                var lambdaArgs = new List<ParameterExpression>(delegateParameters.Length + 1);
-                lambdaArgs.Add(proxyParam);
-                lambdaArgs.AddRange(delegateParameters);
-
-                var lambdaExpression = Expression.Lambda(invokeExpr, lambdaArgs);
+                var lambdaParamaters = new[] { proxyParam }.Concat(delegateParameters);
+                var lambdaExpression = Expression.Lambda(invokeExpr, lambdaParamaters);
                 Delegate @delegate = lambdaExpression.Compile();
 
                 return @delegate;
             });
-
-            var argumentValues = (from arg in methodCall.Arguments
-                                  let argAsObj = Expression.Convert(arg, typeof (object))
-                                  select Expression.Lambda<Func<object>>(argAsObj, null)
-                                      .Compile()()).ToArray();
-
-            var invokeArgs = new object[] { this.provider }.Concat(argumentValues);
-            return cachedDelegate.DynamicInvoke(invokeArgs.ToArray()) as Task<TResponse>;
         }
 
-        public Task CallAsync(Expression<Action<TServiceInterface>> method)
+        private object[] GetMethodCallArgumentValues(MethodCallExpression methodCall)
         {
-            var methodCall = method.Body as MethodCallExpression;
+            var arguments = from arg in methodCall.Arguments
+                            let argAsObj = Expression.Convert(arg, typeof(object))
+                            select Expression.Lambda<Func<object>>(argAsObj, null)
+                                .Compile()();
 
-            var asyncMethod = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async");
-
-            var parameter = Expression.Parameter(this.provider.GetType(), "svc");
-            var asyncCall = Expression
-                .Call(parameter, asyncMethod, methodCall.Arguments);
-
-            var l = Expression.Lambda(asyncCall, parameter);
-            var cl = l.Compile();
-            var r = cl.DynamicInvoke(this.provider);
-
-            //var asyncMethod = this.provider.GetType().GetMethod("TestMethodAsync");
-            return r as Task;
+            return arguments.ToArray();
         }
 
         private static int GetMethodCallExpressionHashCode(MethodCallExpression methodCall, IEnumerable<Type> parameterTypes)

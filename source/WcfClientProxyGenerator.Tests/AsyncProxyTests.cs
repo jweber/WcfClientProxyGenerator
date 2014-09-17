@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -99,7 +97,6 @@ namespace WcfClientProxyGenerator.Tests
 
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(2)))
                 Assert.Fail("Callback never triggered");
-
         }
 
         [Test]

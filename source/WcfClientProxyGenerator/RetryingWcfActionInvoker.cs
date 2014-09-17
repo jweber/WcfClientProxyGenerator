@@ -12,43 +12,6 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
-    public interface ITestAsync : ITest
-    {
-        Task<string> TestAsync(string input);
-        Task VoidAsync(string input);
-    }
-
-    public interface ITest
-    {
-        string Test(string input);
-        void Void(string input);
-    }
-
-    internal class TestInvoker : RetryingWcfActionInvokerProvider<ITestAsync>, ITestAsync
-    {
-        public string Test(string input)
-        {
-            return base.ActionInvoker.Invoke(m => m.Test(input));
-        }
-
-        public Task<string> TestAsync(string input)
-        {
-            var response = base.ActionInvoker.InvokeAsync<string>(m => m.TestAsync(input));
-            return response;
-            //return base.ActionInvoker.Invoke(m => m.TestAsync(input));
-        }
-
-        public void Void(string input)
-        {
-            base.ActionInvoker.Invoke(m => m.Void(input));
-        }
-
-        public Task VoidAsync(string input)
-        {
-            return base.ActionInvoker.InvokeAsync(m => m.VoidAsync(input));
-        }
-    }
-
     internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
         where TServiceInterface : class
     {
