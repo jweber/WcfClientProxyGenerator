@@ -48,7 +48,7 @@ nunit :test => :compile do |nunit|
   mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
   
   nunit.command = nunit_path
-  nunit.assemblies "source/#{PROJECT_NAME}.Tests/bin/#{$config}/net-4.5/#{PROJECT_NAME}.Tests.dll"
+  nunit.assemblies "source/#{PROJECT_NAME}.Tests/bin/#{$config}/#{PROJECT_NAME}.Tests.dll"
   #nunit.options '/xml=nunit-console-output.xml'
   
   nunit.options = "/framework=#{CLR_TOOLS_VERSION}", '/noshadow', '/nologo', '/labels', "\"/xml=#{File.join(ARTIFACTS_PATH, "nunit-test-results.xml")}\""
