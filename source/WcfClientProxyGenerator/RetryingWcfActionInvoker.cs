@@ -69,7 +69,7 @@ namespace WcfClientProxyGenerator
         /// <summary>
         /// Event that is fired immediately after the request successfully or unsuccessfully completes.
         /// </summary>
-        public event OnCallEndHandler OnCallEnd = delegate { };
+        public event OnCallSuccessHandler OnCallSuccess = delegate { };
 
         /// <summary>
         /// Fires before the invocation of a service method, at every retry.
@@ -140,9 +140,81 @@ namespace WcfClientProxyGenerator
             }, invokeInfo);
         }
 
+        /// <summary>
+        /// This function is called when a proxy's method is called that should return something.
+        /// </summary>
+        /// <param name="method">Method implementing the service call using WCF</param>
+        /// <param name="invokeInfo"></param>
+        public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method, InvokeInfo invokeInfo = null)
+        {
+            TServiceInterface provider = this.RefreshProvider(null);
+            TResponse lastResponse = default(TResponse);
+            IDelayPolicy delayPolicy = this.DelayPolicyFactory();
+
+            var sw = Stopwatch.StartNew();
+
+            try
+            {
+                this.HandleOnCallBegin(invokeInfo);
+
+                Exception mostRecentException = null;
+                for (int i = 0; i < this.RetryCount; i++)
+                {
+                    try
+                    {
+                        this.HandleOnBeforeInvoke(i, invokeInfo);
+
+                        // make the service call
+                        TResponse response = method(provider);
+
+                        this.HandleOnAfterInvoke(i, response, invokeInfo);
+
+                        if (this.ResponseInRetryable(response))
+                        {
+                            lastResponse = response;
+                            provider = this.Delay(i, delayPolicy, provider);
+                            continue;
+                        }
+
+                        sw.Stop();
+                        this.HandleOnCallSuccess(sw.Elapsed, response, (i + 1), invokeInfo);
+    
+                        return response;
+                    }
+                    catch (Exception ex)
+                    {
+                        this.HandleOnException(ex, i, invokeInfo);
+
+                        if (this.ExceptionIsRetryable(ex))
+                        {
+                            mostRecentException = ex;
+                            provider = this.Delay(i, delayPolicy, provider);
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                }
+
+                if (mostRecentException != null)
+                {
+                    throw new WcfRetryFailedException(
+                        string.Format("WCF call failed after {0} retries.", this.RetryCount),
+                        mostRecentException);
+                }
+            }
+            finally
+            {
+                this.DisposeProvider(provider);
+            }
+
+            return lastResponse;
+        }
+
         public Task InvokeAsync(Func<TServiceInterface, Task> method, InvokeInfo invokeInfo = null)
         {
-            return InvokeAsync(async provider =>
+            return this.InvokeAsync(async provider =>
             {
                 await method(provider);
                 return Task.FromResult(true);
@@ -162,7 +234,7 @@ namespace WcfClientProxyGenerator
                 this.HandleOnCallBegin(invokeInfo);
 
                 Exception mostRecentException = null;
-                for (int i = 0; i < RetryCount; i++)
+                for (int i = 0; i < RetryCount + 1; i++)
                 {
                     try
                     {
@@ -180,7 +252,7 @@ namespace WcfClientProxyGenerator
                         }
 
                         sw.Stop();
-                        this.HandleOnCallEnd(sw.Elapsed, response, invokeInfo);
+                        this.HandleOnCallSuccess(sw.Elapsed, response, (i + 1), invokeInfo);
 
                         return response;
                     }
@@ -207,78 +279,6 @@ namespace WcfClientProxyGenerator
 
                 if (mostRecentException != null)
                 {
-                    throw new WcfRetryFailedException(
-                        string.Format("WCF call failed after {0} retries.", RetryCount),
-                        mostRecentException);
-                }
-            }
-            finally
-            {
-                DisposeProvider(provider);
-            }
-            
-            return lastResponse;
-        }
-
-        /// <summary>
-        /// This function is called when a proxy's method is called that should return something.
-        /// </summary>
-        /// <param name="method">Method implementing the service call using WCF</param>
-        /// <param name="invokeInfo"></param>
-        public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method, InvokeInfo invokeInfo = null)
-        {
-            TServiceInterface provider = RefreshProvider(null);
-            TResponse lastResponse = default(TResponse);
-            IDelayPolicy delayPolicy = DelayPolicyFactory();
-
-            var sw = Stopwatch.StartNew();
-
-            try
-            {
-                this.HandleOnCallBegin(invokeInfo);
-
-                Exception mostRecentException = null;
-                for (int i = 0; i < RetryCount + 1; i++)
-                {
-                    try
-                    {
-                        this.HandleOnBeforeInvoke(i, invokeInfo);
-
-                        // make the service call
-                        TResponse response = method(provider);
-
-                        this.HandleOnAfterInvoke(i, response, invokeInfo);
-
-                        if (ResponseInRetryable(response))
-                        {
-                            lastResponse = response;
-                            provider = Delay(i, delayPolicy, provider);
-                            continue;
-                        }
-
-                        sw.Stop();
-                        this.HandleOnCallEnd(sw.Elapsed, response, invokeInfo);
-    
-                        return response;
-                    }
-                    catch (Exception ex)
-                    {
-                        this.HandleOnException(ex, i, invokeInfo);
-
-                        if (ExceptionIsRetryable(ex))
-                        {
-                            mostRecentException = ex;
-                            provider = Delay(i, delayPolicy, provider);
-                        }
-                        else
-                        {
-                            throw;
-                        }
-                    }
-                }
-
-                if (mostRecentException != null)
-                {
                     if (RetryCount == 0)
                         throw mostRecentException;
 
@@ -291,7 +291,7 @@ namespace WcfClientProxyGenerator
             {
                 DisposeProvider(provider);
             }
-
+            
             return lastResponse;
         }
 
@@ -331,7 +331,7 @@ namespace WcfClientProxyGenerator
             });            
         }
 
-        private void HandleOnCallEnd(TimeSpan callDuration, object response, InvokeInfo invokeInfo)
+        private void HandleOnCallSuccess(TimeSpan callDuration, object response, int requestAttempts, InvokeInfo invokeInfo)
         {
             if (invokeInfo != null && response.GetType() != typeof (VoidReturnType))
             {
@@ -339,11 +339,12 @@ namespace WcfClientProxyGenerator
                 invokeInfo.ReturnValue = response;
             }
 
-            this.OnCallEnd(this, new OnCallEndHandlerArguments
+            this.OnCallSuccess(this, new OnCallSuccessHandlerArguments
             {
                 ServiceType = _originalServiceInterfaceType,
                 InvokeInfo = invokeInfo,
-                CallDuration = callDuration
+                CallDuration = callDuration,
+                RequestAttempts = requestAttempts
             });
         }
 

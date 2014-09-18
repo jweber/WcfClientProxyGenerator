@@ -876,7 +876,7 @@ namespace WcfClientProxyGenerator.Tests
 
         #endregion
 
-        #region OnCallBegin and OnCallEnd support
+        #region OnCallBegin and OnCallSuccess support
 
         [Test]
         public void Proxy_OnCallBegin_IsFired()
@@ -908,7 +908,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void Proxy_OnCallEnd_IsFired()
+        public void Proxy_OnCallSuccess_IsFired()
         {
             var mockService = new Mock<ITestService>();
             mockService
@@ -923,7 +923,7 @@ namespace WcfClientProxyGenerator.Tests
             var proxy = WcfClientProxy.Create<ITestService>(c =>
             {
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
-                c.OnCallEnd += (invoker, args) =>
+                c.OnCallSuccess += (invoker, args) =>
                 {
                     Assert.That(args.InvokeInfo.MethodName, Is.EqualTo("TestMethod"));
                     Assert.That(args.InvokeInfo.ReturnValue, Is.EqualTo("OK"));
@@ -936,7 +936,7 @@ namespace WcfClientProxyGenerator.Tests
             proxy.TestMethod("test");
 
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
-                Assert.Fail("OnCallEnd was not triggered");
+                Assert.Fail("OnCallSuccess was not triggered");
         }
 
         #region AsyncProxy
@@ -971,7 +971,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public async Task AsyncProxy_OnCallEnd_IsFired()
+        public async Task AsyncProxy_OnCallSuccess_IsFired()
         {
             var mockService = new Mock<ITestService>();
             mockService
@@ -986,7 +986,7 @@ namespace WcfClientProxyGenerator.Tests
             var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
             {
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
-                c.OnCallEnd += (invoker, args) =>
+                c.OnCallSuccess += (invoker, args) =>
                 {
                     Assert.That(args.InvokeInfo.MethodName, Is.EqualTo("TestMethodAsync"));
                     Assert.That(args.InvokeInfo.ReturnValue, Is.EqualTo("OK"));
@@ -999,7 +999,7 @@ namespace WcfClientProxyGenerator.Tests
             await proxy.CallAsync(m => m.TestMethod("test"));
 
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
-                Assert.Fail("OnCallEnd was not triggered");
+                Assert.Fail("OnCallSuccess was not triggered");
         }
 
         #endregion

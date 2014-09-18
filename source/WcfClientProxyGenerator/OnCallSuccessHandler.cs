@@ -2,7 +2,7 @@
 
 namespace WcfClientProxyGenerator
 {
-    public class OnCallEndHandlerArguments
+    public class OnCallSuccessHandlerArguments
     {
         /// <summary>
         /// Information on which method was invoked and with what parameters.
@@ -18,12 +18,18 @@ namespace WcfClientProxyGenerator
         /// Duration of the call
         /// </summary>
         public TimeSpan CallDuration { get; set; }
+
+        /// <summary>
+        /// Amount of tries made to the service before the
+        /// request was successful
+        /// </summary>
+        public int RequestAttempts { get; set; }
     }
 
     /// <summary>
-    /// Callback type used for the OnCallEnd event
+    /// Callback type used for the OnCallSuccess event
     /// </summary>
     /// <param name="invoker">References the object that fired this event</param>
     /// <param name="args">Event information including method name and service type</param>
-    public delegate void OnCallEndHandler(object invoker, OnCallEndHandlerArguments args);
+    public delegate void OnCallSuccessHandler(object invoker, OnCallSuccessHandlerArguments args);
 }

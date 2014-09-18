@@ -64,7 +64,7 @@
     <Compile Include="InvokeInfo.cs" />
     <Compile Include="IProxyConfigurator.cs" />
     <Compile Include="OnCallBeginHandler.cs" />
-    <Compile Include="OnCallEndHandler.cs" />
+    <Compile Include="OnCallSuccessHandler.cs" />
     <Compile Include="OnExceptionHandler.cs" />
     <Compile Include="OnInvokeHandler.cs" />
     <Compile Include="Policy\ConstantDelayPolicy.cs" />

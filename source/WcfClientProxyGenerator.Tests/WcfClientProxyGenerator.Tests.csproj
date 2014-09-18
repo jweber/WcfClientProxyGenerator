@@ -57,7 +57,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsyncProxyTests.cs" />
+    <Compile Include="AsyncTests.cs" />
     <Compile Include="BenchmarkTests.cs" />
     <Compile Include="ChannelFactoryProviderTests.cs" />
     <Compile Include="DefaultProxyConfiguratorTests.cs" />

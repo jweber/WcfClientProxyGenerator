@@ -46,10 +46,10 @@ namespace WcfClientProxyGenerator
         /// <summary>
         /// Event that is fired immediately after the request successfully or unsuccessfully completes.
         /// </summary>
-        public event OnCallEndHandler OnCallEnd
+        public event OnCallSuccessHandler OnCallSuccess
         {
-            add { _actionInvoker.OnCallEnd += value; }
-            remove { _actionInvoker.OnCallEnd -= value; }
+            add { _actionInvoker.OnCallSuccess += value; }
+            remove { _actionInvoker.OnCallSuccess -= value; }
         }
 
         /// <summary>

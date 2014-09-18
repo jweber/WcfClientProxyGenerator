@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -9,10 +10,72 @@ using WcfClientProxyGenerator.Tests.Infrastructure;
 namespace WcfClientProxyGenerator.Tests
 {
     [TestFixture]
-    public class AsyncProxyTests
+    public class AsyncTests
     {
         [Test]
-        public async Task AsyncProxy_MethodWithReturnValue()
+        public async Task ServiceContractDefinedAsyncMethod_WithReturnValue()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<IAsyncTestInterface>();
+            mockService
+                .Setup(m => m.ReturnMethodDefinedAsync("test"))
+                .Returns(Task.FromResult("response"))
+                .Callback(() =>
+                {
+                    Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
+                    resetEvent.Set();                    
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<IAsyncTestInterface>(new AsyncTestInterfaceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<IAsyncTestInterface>(c =>
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            string result = await proxy.ReturnMethodDefinedAsync("test");
+
+            Console.WriteLine("Contination thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            Assert.That(result, Is.EqualTo("response"));
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(2)))
+                Assert.Fail("Callback never called");
+        }
+        
+        [Test]
+        public async Task ServiceContractDefinedAsyncMethod_WithNoReturnValue()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<IAsyncTestInterface>();
+            mockService
+                .Setup(m => m.VoidMethodDefinedAsync("test"))
+                .Returns(Task.FromResult(true))
+                .Callback(() =>
+                {
+                    Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
+                    resetEvent.Set();            
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<IAsyncTestInterface>(new AsyncTestInterfaceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<IAsyncTestInterface>(c =>
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            await proxy.VoidMethodDefinedAsync("test");
+
+            Console.WriteLine("Contination thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(2)))
+                Assert.Fail("Callback never called");
+        }
+
+        [Test]
+        public async Task CallAsync_MethodWithReturnValue()
         {
             var mockService = new Mock<ITestService>();
             mockService
@@ -42,7 +105,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public async Task AsyncProxy_MethodWithReturnValue2()
+        public async Task CallAsync_MethodWithReturnValue2()
         {
             var request = new Request() { RequestMessage = "test" };
 
@@ -71,7 +134,7 @@ namespace WcfClientProxyGenerator.Tests
         }
         
         [Test]
-        public async Task AsyncProxy_VoidMethod()
+        public async Task CallAsync_VoidMethod()
         {
             var resetEvent = new AutoResetEvent(false);
 
@@ -100,7 +163,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public async Task AsyncProxy_MultipleConcurrentCalls()
+        public async Task CallAsync_MultipleConcurrentCalls()
         {
             int iterations = 20;
 
@@ -135,7 +198,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void AsyncProxy_CanCallIntoSyncProxy()
+        public void CallAsync_CanCallIntoSyncProxy()
         {
             var mockService = new Mock<ITestService>();
             mockService
@@ -152,7 +215,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void AsyncProxy_CallingMethodWithByRefParams_ThrowsNotSupportedException()
+        public void CallAsync_CallingMethodWithByRefParams_ThrowsNotSupportedException()
         {
             var mockService = new Mock<IOutParamTestService>();
 

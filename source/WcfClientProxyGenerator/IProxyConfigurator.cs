@@ -30,9 +30,9 @@ namespace WcfClientProxyGenerator
         event OnCallBeginHandler OnCallBegin;
 
         /// <summary>
-        /// Event that is fired immediately after the request successfully or unsuccessfully completes.
+        /// Event that is fired immediately after the request successfully completes.
         /// </summary>
-        event OnCallEndHandler OnCallEnd;
+        event OnCallSuccessHandler OnCallSuccess;
 
         /// <summary>
         /// Event that is fired when the method is about to be called.

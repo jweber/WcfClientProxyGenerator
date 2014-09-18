@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
-using System.ServiceModel.Channels;
-using System.ServiceModel.Configuration;
-using System.Text;
 using System.Threading.Tasks;
+using Moq;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -37,6 +32,36 @@ namespace WcfClientProxyGenerator.Tests
 
         [OperationContract]
         Task VoidMethodDefinedAsync(string input);
+    }
+
+    public class AsyncTestInterfaceImpl : IAsyncTestInterface
+    {
+        private readonly Mock<IAsyncTestInterface> _mock;
+
+        public AsyncTestInterfaceImpl(Mock<IAsyncTestInterface> mock)
+        {
+            this._mock = mock;
+        }
+
+        public string ReturnMethod(string input)
+        {
+            return _mock.Object.ReturnMethod(input);
+        }
+
+        public void VoidMethod(string input)
+        {
+            _mock.Object.VoidMethod(input);
+        }
+
+        public Task<string> ReturnMethodDefinedAsync(string input)
+        {
+            return _mock.Object.ReturnMethodDefinedAsync(input);
+        }
+
+        public Task VoidMethodDefinedAsync(string input)
+        {
+            return _mock.Object.VoidMethodDefinedAsync(input);
+        }
     }
 
     [ServiceContract]
