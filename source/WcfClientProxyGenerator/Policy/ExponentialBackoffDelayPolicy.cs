@@ -35,6 +35,11 @@ namespace WcfClientProxyGenerator.Policy
             this.maximumDelay = maximumDelay;
         }
 
+        /// <summary>
+        /// Gets the amount of time that failed calls to the WCF
+        /// service will delay by
+        /// </summary>
+        /// <param name="iteration"></param>
         public TimeSpan GetDelay(int iteration)
         {
             double delay = Math.Pow(2d, iteration) * this.minimumDelay.TotalMilliseconds;

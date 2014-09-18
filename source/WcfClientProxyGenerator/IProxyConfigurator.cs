@@ -5,9 +5,34 @@ namespace WcfClientProxyGenerator
 {
     public interface IProxyConfigurator
     {
+        /// <summary>
+        /// Uses the default endpoint configuration from the web.config or app.config
+        /// </summary>
         void UseDefaultEndpoint();
+
+        /// <summary>
+        /// Specifies the endpoint configuration to use
+        /// </summary>
+        /// <param name="endpointConfigurationName"></param>
         void SetEndpoint(string endpointConfigurationName);
+
+        /// <summary>
+        /// Specifies the binding and address to use
+        /// </summary>
+        /// <param name="binding"></param>
+        /// <param name="endpointAddress"></param>
         void SetEndpoint(Binding binding, EndpointAddress endpointAddress);
+
+        /// <summary>
+        /// Event that is fired immediately before the service method will be called. This event
+        /// is called only once per request.
+        /// </summary>
+        event OnCallBeginHandler OnCallBegin;
+
+        /// <summary>
+        /// Event that is fired immediately after the request successfully completes.
+        /// </summary>
+        event OnCallSuccessHandler OnCallSuccess;
 
         /// <summary>
         /// Event that is fired when the method is about to be called.

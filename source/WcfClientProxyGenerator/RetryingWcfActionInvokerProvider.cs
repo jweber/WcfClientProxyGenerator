@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Policy;
 
 namespace WcfClientProxyGenerator
@@ -30,6 +32,25 @@ namespace WcfClientProxyGenerator
         }
 
         #region IRetryingProxyConfigurator
+
+        /// <summary>
+        /// Event that is fired immediately before the service method will be called. This event
+        /// is called only once per request.
+        /// </summary>
+        public event OnCallBeginHandler OnCallBegin
+        {
+            add { _actionInvoker.OnCallBegin += value; }
+            remove { _actionInvoker.OnCallBegin -= value; }
+        }
+
+        /// <summary>
+        /// Event that is fired immediately after the request successfully or unsuccessfully completes.
+        /// </summary>
+        public event OnCallSuccessHandler OnCallSuccess
+        {
+            add { _actionInvoker.OnCallSuccess += value; }
+            remove { _actionInvoker.OnCallSuccess -= value; }
+        }
 
         /// <summary>
         /// Fires before the invocation of a service method, at every retry.
@@ -77,12 +98,30 @@ namespace WcfClientProxyGenerator
 
         public void UseDefaultEndpoint()
         {
-            _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>();
+            // If TServiceInterface is our generated async interface, the ChannelFactory
+            // will look for a config based on the *Async contract. We need to fix this manually.
+            if (typeof(TServiceInterface).GetCustomAttribute<GeneratedAsyncInterfaceAttribute>() != null)
+            {
+                Type originalServiceInterfaceType = typeof(TServiceInterface).GetInterfaces()[0];
+                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(originalServiceInterfaceType);
+            }
+            else
+            {
+                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(typeof(TServiceInterface));    
+            }
         }
 
         public void SetEndpoint(string endpointConfigurationName)
         {
-            _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName);
+            if (typeof(TServiceInterface).GetCustomAttribute<GeneratedAsyncInterfaceAttribute>() != null)
+            {
+                Type originalServiceInterfaceType = typeof(TServiceInterface).GetInterfaces()[0];
+                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName, originalServiceInterfaceType);
+            }
+            else
+            {
+                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName);    
+            }
         }
 
         public void SetEndpoint(Binding binding, EndpointAddress endpointAddress)

@@ -32,15 +32,9 @@ task :compile do
 end
 
 namespace :build do
-  task :all => [:net40, :net45] do
+  task :all => [:net45] do
   end
 
-  msbuild :net40 => :version do |msb|
-    msb.properties :configuration => $config, :Framework => 'NET40'
-    msb.targets [:clean, :build]
-    msb.solution = "source/#{PROJECT_NAME}.sln"
-  end
-  
   msbuild :net45 => :version do |msb|
     msb.properties :configuration => $config, :Framework => 'NET45'
     msb.targets [:clean, :build]
@@ -54,7 +48,7 @@ nunit :test => :compile do |nunit|
   mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
   
   nunit.command = nunit_path
-  nunit.assemblies "source/#{PROJECT_NAME}.Tests/bin/#{$config}/net-4.5/#{PROJECT_NAME}.Tests.dll"
+  nunit.assemblies "source/#{PROJECT_NAME}.Tests/bin/#{$config}/#{PROJECT_NAME}.Tests.dll"
   #nunit.options '/xml=nunit-console-output.xml'
   
   nunit.options = "/framework=#{CLR_TOOLS_VERSION}", '/noshadow', '/nologo', '/labels', "\"/xml=#{File.join(ARTIFACTS_PATH, "nunit-test-results.xml")}\""
@@ -92,11 +86,8 @@ namespace :nuget do
     nuspec.projectUrl = "https://github.com/jweber/WcfClientProxyGenerator"
     nuspec.title = PROJECT_NAME
     nuspec.tags = "wcf service proxy dynamic"
-    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.0\\#{PROJECT_NAME}.dll", 'lib\net40'  
-    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.5\\#{PROJECT_NAME}.dll", 'lib\net45'
-
-    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.0\\#{PROJECT_NAME}.xml", 'lib\net40'  
-    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\net-4.5\\#{PROJECT_NAME}.xml", 'lib\net45'
+    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.dll", 'lib\net45'
+    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.xml", 'lib\net45'
 
     nuspec.working_directory = 'build'
     nuspec.output_file = "#{PROJECT_NAME}.nuspec"
@@ -126,8 +117,8 @@ task :versioning do
   revision = (ENV['BUILD_NUMBER'] || ver.patch).to_i
   var = SemVer.new(ver.major, ver.minor, revision, ver.special)
   
-  ENV['BUILD_VERSION'] = BUILD_VERSION = ver.format("%M.%m.%p%s") + ".#{commit_data()[0]}"
-  ENV['NUGET_VERSION'] = NUGET_VERSION = ver.format("%M.%m.%p%s")
+  ENV['BUILD_VERSION'] = BUILD_VERSION = ver.format("%M.%m.%p.%s") + ".#{commit_data()[0]}"
+  ENV['NUGET_VERSION'] = NUGET_VERSION = ver.format("%M.%m.%p-%s")
   ENV['FORMAL_VERSION'] = FORMAL_VERSION = "#{ SemVer.new(ver.major, ver.minor, revision).format "%M.%m.%p"}"
   puts "##teamcity[buildNumber '#{BUILD_VERSION}']"  
 end

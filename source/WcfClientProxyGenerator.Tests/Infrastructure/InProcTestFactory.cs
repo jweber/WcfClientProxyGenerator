@@ -62,6 +62,19 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             var endpointAddress = new EndpointAddress(address);
             Hosts[endpointAddress] = host;
 
+            foreach (var endpoint in host.Description.Endpoints)
+            {
+                foreach (var operation in endpoint.Contract.Operations)
+                {
+                    string operationName = operation.Name;
+                    string action = operation.Messages[0].Action;
+                    if (operation.Messages.Count > 1)
+                    {
+                        string replyAction = operation.Messages[1].Action;
+                    }
+                }
+            }
+
             return endpointAddress;
         }
 

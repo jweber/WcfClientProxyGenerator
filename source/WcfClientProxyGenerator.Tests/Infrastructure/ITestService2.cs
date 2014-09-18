@@ -1,4 +1,5 @@
 ﻿using System.ServiceModel;
+using System.Threading.Tasks;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {

@@ -19,6 +19,11 @@ namespace WcfClientProxyGenerator.Policy
             this.delay = delay;
         }
 
+        /// <summary>
+        /// Gets the amount of time that failed calls to the WCF
+        /// service will delay by
+        /// </summary>
+        /// <param name="iteration"></param>
         public TimeSpan GetDelay(int iteration)
         {
             return this.delay;

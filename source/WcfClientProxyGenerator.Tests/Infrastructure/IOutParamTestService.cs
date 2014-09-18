@@ -1,6 +1,4 @@
-﻿using System;
-using System.Runtime.Serialization;
-using System.ServiceModel;
+﻿using System.ServiceModel;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {

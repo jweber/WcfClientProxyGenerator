@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
+using System.Security.Principal;
 using System.ServiceModel;
 using System.Threading;
 using System.Linq;
+using System.Threading.Tasks;
+using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Util;
 
@@ -19,32 +23,10 @@ namespace WcfClientProxyGenerator
         private static ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>> TypeHierarchyCache
             = new ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>>();
 
-        /// <summary>
-        /// Number of times the client will attempt to retry
-        /// calls to the service in the event of some known WCF
-        /// exceptions occurring
-        /// </summary>
-        public int RetryCount { get; set; }
-
-        public Func<IDelayPolicy> DelayPolicyFactory { get; set; }
+        private readonly Type _originalServiceInterfaceType;
 
         private readonly IDictionary<Type, object> _retryPredicates;
-
-        /// <summary>
-        /// Fires before the invocation of a service method, at every retry.
-        /// </summary>
-        public OnInvokeHandler OnBeforeInvoke { get; set; }
-
-        /// <summary>
-        /// Fires after the successful invocation of a method.
-        /// </summary>
-        public OnInvokeHandler OnAfterInvoke { get; set; }
-
-        /// <summary>
-        /// Fires when an exception happens during the invocation of a service method, at every retry.
-        /// </summary>
-        public OnExceptionHandler OnException { get; set; }
-
+        
         /// <summary>
         /// The method that initializes new WCF action providers
         /// </summary>
@@ -65,7 +47,44 @@ namespace WcfClientProxyGenerator
                 { typeof(EndpointNotFoundException), null },
                 { typeof(ServerTooBusyException), null }
             };
+
+            _originalServiceInterfaceType = GetOriginalServiceInterface<TServiceInterface>();
         }
+
+        /// <summary>
+        /// Number of times the client will attempt to retry
+        /// calls to the service in the event of some known WCF
+        /// exceptions occurring
+        /// </summary>
+        public int RetryCount { get; set; }
+
+        public Func<IDelayPolicy> DelayPolicyFactory { get; set; }
+
+        /// <summary>
+        /// Event that is fired immediately before the service method will be called. This event
+        /// is called only once per request.
+        /// </summary>
+        public event OnCallBeginHandler OnCallBegin = delegate { };
+
+        /// <summary>
+        /// Event that is fired immediately after the request successfully or unsuccessfully completes.
+        /// </summary>
+        public event OnCallSuccessHandler OnCallSuccess = delegate { };
+
+        /// <summary>
+        /// Fires before the invocation of a service method, at every retry.
+        /// </summary>
+        public event OnInvokeHandler OnBeforeInvoke = delegate { };
+
+        /// <summary>
+        /// Fires after the successful invocation of a method.
+        /// </summary>
+        public event OnInvokeHandler OnAfterInvoke = delegate { };  
+
+        /// <summary>
+        /// Fires when an exception happens during the invocation of a service method, at every retry.
+        /// </summary>
+        public event OnExceptionHandler OnException = delegate { }; 
 
         public void AddExceptionToRetryOn<TException>(Predicate<TException> where = null)
             where TException : Exception
@@ -98,10 +117,20 @@ namespace WcfClientProxyGenerator
         /// </summary>
         private struct VoidReturnType { }
 
+        private Type GetOriginalServiceInterface<TServiceInterface>()
+        {
+            Type serviceType = typeof(TServiceInterface);
+            if (serviceType.HasAttribute<GeneratedAsyncInterfaceAttribute>())
+                serviceType = serviceType.GetInterfaces()[0];
+
+            return serviceType;
+        }
+
         /// <summary>
         /// This function is called when a proxy's method is called that should return void.
         /// </summary>
         /// <param name="method">Method implementing the service call using WCF</param>
+        /// <param name="invokeInfo"></param>
         public void Invoke(Action<TServiceInterface> method, InvokeInfo invokeInfo = null)
         {
             Invoke(provider =>
@@ -115,82 +144,139 @@ namespace WcfClientProxyGenerator
         /// This function is called when a proxy's method is called that should return something.
         /// </summary>
         /// <param name="method">Method implementing the service call using WCF</param>
+        /// <param name="invokeInfo"></param>
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method, InvokeInfo invokeInfo = null)
         {
-            TServiceInterface provider = RefreshProvider(null);
+            TServiceInterface provider = this.RefreshProvider(null);
             TResponse lastResponse = default(TResponse);
-            IDelayPolicy delayPolicy = DelayPolicyFactory();
+            IDelayPolicy delayPolicy = this.DelayPolicyFactory();
+
+            var sw = Stopwatch.StartNew();
 
             try
             {
+                this.HandleOnCallBegin(invokeInfo);
+
                 Exception mostRecentException = null;
-                for (int i = 0; i < RetryCount + 1; i++)
+                for (int i = 0; i < this.RetryCount + 1; i++)
                 {
                     try
                     {
-                        // fire OnBeforeInvoke callback at every retry
-                        if (OnBeforeInvoke != null)
-                        {
-                            OnBeforeInvoke(this, new OnInvokeHandlerArguments()
-                            {
-                                ServiceType = typeof(TServiceInterface),
-                                RetryCounter = i,
-                                InvokeInfo = invokeInfo,
-                            });
-                        }
+                        this.HandleOnBeforeInvoke(i, invokeInfo);
 
                         // make the service call
                         TResponse response = method(provider);
-                        if (ResponseInRetryable(response))
+
+                        this.HandleOnAfterInvoke(i, response, invokeInfo);
+
+                        if (this.ResponseInRetryable(response))
                         {
                             lastResponse = response;
-                            Delay(i, delayPolicy, ref provider);
+                            provider = this.Delay(i, delayPolicy, provider);
                             continue;
                         }
-                        
-                        // fire OnAfterInvoke callback at successful retry
-                        if (OnAfterInvoke != null)
-                        {
-                            // set return value if non-void
-                            if (typeof(TResponse) != typeof(VoidReturnType))
-                            {
-                                invokeInfo.MethodHasReturnValue = true;
-                                invokeInfo.ReturnValue = response;
-                            }
-                            OnAfterInvoke(this, new OnInvokeHandlerArguments()
-                            {
-                                ServiceType = typeof(TServiceInterface),
-                                RetryCounter = i,
-                                InvokeInfo = invokeInfo,
-                            });
-                        }
 
+                        sw.Stop();
+                        this.HandleOnCallSuccess(sw.Elapsed, response, (i + 1), invokeInfo);
+    
                         return response;
                     }
                     catch (Exception ex)
                     {
-                        // fire OnException event when exception happened
-                        if (OnException != null)
-                        {
-                            OnException(this, new OnExceptionHandlerArguments()
-                            {
-                                Exception = ex,
-                                ServiceType = typeof(TServiceInterface),
-                                RetryCounter = i,
-                                InvokeInfo = invokeInfo,
-                            });
-                        }
-                        
-                        // determine whether to retry the service call
-                        if (ExceptionIsRetryable(ex))
+                        this.HandleOnException(ex, i, invokeInfo);
+
+                        if (this.ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
-                            Delay(i, delayPolicy, ref provider);
+                            provider = this.Delay(i, delayPolicy, provider);
                         }
                         else
                         {
                             throw;
                         }
+                    }
+                }
+
+                if (mostRecentException != null)
+                {
+                    if (RetryCount == 0)
+                        throw mostRecentException;
+
+                    throw new WcfRetryFailedException(
+                        string.Format("WCF call failed after {0} retries.", this.RetryCount),
+                        mostRecentException);
+                }
+            }
+            finally
+            {
+                this.DisposeProvider(provider);
+            }
+
+            return lastResponse;
+        }
+
+        public Task InvokeAsync(Func<TServiceInterface, Task> method, InvokeInfo invokeInfo = null)
+        {
+            return this.InvokeAsync(async provider =>
+            {
+                await method(provider);
+                return Task.FromResult(true);
+            }, invokeInfo);
+        }
+
+        public async Task<TResponse> InvokeAsync<TResponse>(Func<TServiceInterface, Task<TResponse>> method, InvokeInfo invokeInfo = null)
+        {
+            TServiceInterface provider = RefreshProvider(null);
+            TResponse lastResponse = default(TResponse);
+            IDelayPolicy delayPolicy = DelayPolicyFactory();
+
+            var sw = Stopwatch.StartNew();
+
+            try
+            {
+                this.HandleOnCallBegin(invokeInfo);
+
+                Exception mostRecentException = null;
+                for (int i = 0; i < RetryCount + 1; i++)
+                {
+                    try
+                    {
+                        this.HandleOnBeforeInvoke(i, invokeInfo);
+
+                        TResponse response = await method(provider);
+
+                        this.HandleOnAfterInvoke(i, response, invokeInfo);
+
+                        if (ResponseInRetryable(response))
+                        {
+                            lastResponse = response;
+                            provider = await DelayAsync(i, delayPolicy, provider);
+                            continue;
+                        }
+
+                        sw.Stop();
+                        this.HandleOnCallSuccess(sw.Elapsed, response, (i + 1), invokeInfo);
+
+                        return response;
+                    }
+                    catch (Exception ex)
+                    {
+                        this.HandleOnException(ex, i, invokeInfo);
+
+                        // determine whether to retry the service call
+                        if (ExceptionIsRetryable(ex))
+                        {
+                            mostRecentException = ex;
+#if CSHARP60
+                            provider = await DelayAsync(i, delayPolicy, provider);
+#else
+                            provider = Delay(i, delayPolicy, provider);
+#endif
+                        }
+                        else
+                        {
+                            throw;
+                        }                    
                     }
                 }
 
@@ -208,14 +294,84 @@ namespace WcfClientProxyGenerator
             {
                 DisposeProvider(provider);
             }
-
+            
             return lastResponse;
         }
 
-        private void Delay(int iteration, IDelayPolicy delayPolicy, ref TServiceInterface provider)
+        private void HandleOnCallBegin(InvokeInfo invokeInfo)
+        {
+            this.OnCallBegin(this, new OnCallBeginHandlerArguments
+            {
+                ServiceType = _originalServiceInterfaceType,
+                InvokeInfo = invokeInfo
+            });
+        }
+
+        private void HandleOnBeforeInvoke(int retryCounter, InvokeInfo invokeInfo)
+        {
+            this.OnBeforeInvoke(this, new OnInvokeHandlerArguments
+            {
+                ServiceType = _originalServiceInterfaceType,
+                RetryCounter = retryCounter,
+                InvokeInfo = invokeInfo
+            });
+        }
+
+        private void HandleOnAfterInvoke(int retryCounter, object response, InvokeInfo invokeInfo)
+        {
+            // set return value if non-void
+            if (invokeInfo != null && response.GetType() != typeof(VoidReturnType))
+            {
+                invokeInfo.MethodHasReturnValue = true;
+                invokeInfo.ReturnValue = response;
+            }
+
+            this.OnAfterInvoke(this, new OnInvokeHandlerArguments
+            {
+                ServiceType = _originalServiceInterfaceType,
+                RetryCounter = retryCounter,
+                InvokeInfo = invokeInfo,
+            });            
+        }
+
+        private void HandleOnCallSuccess(TimeSpan callDuration, object response, int requestAttempts, InvokeInfo invokeInfo)
+        {
+            if (invokeInfo != null && response.GetType() != typeof (VoidReturnType))
+            {
+                invokeInfo.MethodHasReturnValue = true;
+                invokeInfo.ReturnValue = response;
+            }
+
+            this.OnCallSuccess(this, new OnCallSuccessHandlerArguments
+            {
+                ServiceType = _originalServiceInterfaceType,
+                InvokeInfo = invokeInfo,
+                CallDuration = callDuration,
+                RequestAttempts = requestAttempts
+            });
+        }
+
+        private void HandleOnException(Exception exception, int retryCounter, InvokeInfo invokeInfo)
+        {
+            this.OnException(this, new OnExceptionHandlerArguments
+            {
+                Exception = exception,
+                ServiceType = _originalServiceInterfaceType,
+                RetryCounter = retryCounter,
+                InvokeInfo = invokeInfo,
+            });            
+        }
+
+        private TServiceInterface Delay(int iteration, IDelayPolicy delayPolicy, TServiceInterface provider)
         {
             Thread.Sleep(delayPolicy.GetDelay(iteration));
-            provider = RefreshProvider(provider);
+            return RefreshProvider(provider);
+        }
+
+        private async Task<TServiceInterface> DelayAsync(int iteration, IDelayPolicy delayPolicy, TServiceInterface provider)
+        {
+            await Task.Delay(delayPolicy.GetDelay(iteration));
+            return RefreshProvider(provider);
         }
 
         private bool ExceptionIsRetryable(Exception ex)

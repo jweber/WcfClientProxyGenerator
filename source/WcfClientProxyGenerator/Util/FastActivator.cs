@@ -23,6 +23,11 @@ namespace WcfClientProxyGenerator.Util
             return activator(args);
         }
 
+        internal static void ClearActivatorCache()
+        {
+            ActivatorCache.Clear();
+        }
+
         public static T CreateInstance<T>()
             where T : class, new()
         {
