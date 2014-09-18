@@ -84,7 +84,14 @@ namespace WcfClientProxyGenerator
             Type serviceInterfaceType, 
             string endpointConfigurationName = null)
         {
-            var configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            var configurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile;
+            if (string.IsNullOrEmpty(configurationFile))
+                throw new InvalidOperationException(
+                    "Could not determine the current configuration files being used in the AppDomain");
+
+            var mappedConfigurationFile = new ExeConfigurationFileMap { ExeConfigFilename = configurationFile };
+            var configuration = ConfigurationManager.OpenMappedExeConfiguration(mappedConfigurationFile, ConfigurationUserLevel.None);
+
             if (configuration == null)
                 throw new InvalidOperationException(
                     "Could not load the default configuration file. Unable to locate the default configuration for service type: " +
@@ -106,7 +113,7 @@ namespace WcfClientProxyGenerator
             ChannelEndpointElementCollection endpoints)
         {
             var endpointsForServiceType = endpoints.Cast<ChannelEndpointElement>()
-                .Where(e => e.Contract == serviceInterfaceType.FullName)
+                .Where(e => e.Contract == serviceInterfaceType.FullName || serviceInterfaceType.FullName.EndsWith(e.Contract))
                 .ToList();
 
             if (!string.IsNullOrEmpty(endpointConfigurationName))
