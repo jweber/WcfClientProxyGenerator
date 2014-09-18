@@ -38,15 +38,12 @@ namespace WcfClientProxyGenerator.Async
         Task CallAsync(Expression<Action<TServiceInterface>> method);
     }
 
-    internal static class AsyncProxyCacheHolder
-    {
-        internal static readonly ConcurrentDictionary<int, Lazy<Delegate>> Cache
-            = new ConcurrentDictionary<int, Lazy<Delegate>>();
-    }
-
     class AsyncProxy<TServiceInterface> : IAsyncProxy<TServiceInterface>
         where TServiceInterface : class
     {
+        internal static readonly ConcurrentDictionary<int, Lazy<Delegate>> DelegateCache
+            = new ConcurrentDictionary<int, Lazy<Delegate>>();
+
         private readonly TServiceInterface provider;
 
         public AsyncProxy(TServiceInterface provider)
@@ -93,7 +90,7 @@ namespace WcfClientProxyGenerator.Async
         private Delegate GetCallAsyncDelegate(MethodCallExpression methodCall, ParameterInfo[] methodParameters)
         {
             int cacheKey = GetMethodCallExpressionHashCode(methodCall, methodParameters.Select(m => m.ParameterType));
-            return AsyncProxyCacheHolder.Cache.GetOrAddSafe(cacheKey, _ =>
+            return DelegateCache.GetOrAddSafe(cacheKey, _ =>
             {
                 var methodParameterTypes = methodParameters.Select(m => m.ParameterType).ToArray();
                 var methodInfo = this.provider.GetType().GetMethod(methodCall.Method.Name + "Async", methodParameterTypes)
