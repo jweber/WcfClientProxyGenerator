@@ -16,10 +16,13 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <DefineConstants>NET45</DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>bin\Debug\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -30,9 +33,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Framework)' == 'NET45'">
     <DefineConstants>NET45</DefineConstants>
-    <OutputPath>bin\$(Configuration)\net-4.5</OutputPath>
+    <OutputPath>bin\$(Configuration)</OutputPath>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DocumentationFile>bin\$(Configuration)\net-4.5\WcfClientProxyGenerator.xml</DocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Framework)' == 'NET40'">
     <DefineConstants>NET40</DefineConstants>
