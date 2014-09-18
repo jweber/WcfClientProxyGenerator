@@ -158,7 +158,7 @@ namespace WcfClientProxyGenerator
                 this.HandleOnCallBegin(invokeInfo);
 
                 Exception mostRecentException = null;
-                for (int i = 0; i < this.RetryCount; i++)
+                for (int i = 0; i < this.RetryCount + 1; i++)
                 {
                     try
                     {
@@ -199,6 +199,9 @@ namespace WcfClientProxyGenerator
 
                 if (mostRecentException != null)
                 {
+                    if (RetryCount == 0)
+                        throw mostRecentException;
+
                     throw new WcfRetryFailedException(
                         string.Format("WCF call failed after {0} retries.", this.RetryCount),
                         mostRecentException);

@@ -599,6 +599,7 @@ namespace WcfClientProxyGenerator.Tests
             {
                 c.MaximumRetries(5);
                 c.RetryOnException<FaultException<ExceptionDetail>>();
+                c.SetDelayPolicy(() => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(10)));
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
                 c.OnBeforeInvoke += (sender, args) => attempts++;
                 c.OnAfterInvoke += (sender, args) => fired = true;
