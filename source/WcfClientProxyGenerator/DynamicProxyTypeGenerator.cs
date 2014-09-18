@@ -121,7 +121,20 @@ namespace WcfClientProxyGenerator
             };
         }
 
-        private static Type GenerateAsyncInterface(IEnumerable<MethodInfo> serviceMethods)
+        private static bool NonAsyncOperationContractHasMatchingAsyncOperationContract(MethodInfo nonAsyncServiceMethod, IList<MethodInfo> serviceMethods)
+        {
+            var operationContractAttribute = nonAsyncServiceMethod.GetCustomAttribute<OperationContractAttribute>();
+
+            return (from m in serviceMethods
+                    let oca = m.GetCustomAttribute<OperationContractAttribute>()
+                    where m.Name == nonAsyncServiceMethod.Name + "Async"
+                          && typeof (Task).IsAssignableFrom(m.ReturnType)
+                          && operationContractAttribute.Action == oca.Action
+                          && operationContractAttribute.ReplyAction == oca.ReplyAction
+                    select m).Any();
+        }
+
+        private static Type GenerateAsyncInterface(IList<MethodInfo> serviceMethods)
         {
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
@@ -144,7 +157,8 @@ namespace WcfClientProxyGenerator
             asyncInterfaceBuilder.SetCustomAttribute(serviceContractAttrBuilder);
 
             var nonAsyncServiceMethods = serviceMethods
-                .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType));
+                .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType))
+                .Where(m => !NonAsyncOperationContractHasMatchingAsyncOperationContract(m, serviceMethods));
 
             foreach (var serviceMethod in nonAsyncServiceMethods)
                 GenerateAsyncTaskMethod(serviceMethod, asyncInterfaceBuilder);

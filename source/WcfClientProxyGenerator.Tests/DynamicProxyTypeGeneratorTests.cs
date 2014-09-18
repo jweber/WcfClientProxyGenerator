@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
 using System.Threading.Tasks;
@@ -235,5 +236,24 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(attr.Action, Is.EqualTo("http://tempuri.org/IOperationContractInterface/NewName"));
             Assert.That(attr.ReplyAction, Is.EqualTo("http://tempuri.org/IOperationContractInterface/NewNameResponse"));
         }
+
+        [Test]
+        public void AsyncMethodDefinition_NotGeneratedForNonAsyncMethod_WithExistingAsyncDefinition()
+        {
+            var types = this.GenerateTypes<IAsyncTestInterface2>();
+
+            var generatedAsyncMethod = types.AsyncInterface.GetMethod("MethodAsync");
+            Assert.That(generatedAsyncMethod, Is.Null);
+        }
+    }
+
+    [ServiceContract]
+    public interface IAsyncTestInterface2
+    {
+        [OperationContract(Action = "Method", ReplyAction = "MethodResponse")]
+        string Method(string input);
+
+        [OperationContract(Action = "Method", ReplyAction = "MethodResponse")]
+        Task<string> MethodAsync(string input);
     }
 }

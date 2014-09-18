@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +6,6 @@ using Moq;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Tests.Infrastructure;
-using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator.Tests
 {
