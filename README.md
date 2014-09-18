@@ -21,7 +21,21 @@ This is a shortcut to using the overload that accepts an `Action<IRetryingProxyC
 
 #### WcfClientProxy.Create\<TServiceInterface\>(Action\<IRetryingProxyConfigurator\> config)
 Exposes the full configuration available. See the [Configuration](#configuration) section of the documentation.
-	
+
+Async Support
+-------------
+WCF service contract interfaces that define task based async methods will automatically work with the .NET 4.5 async/await support.
+
+Service contracts that don't define task based methods can be used in an async/await fashion by calling the  `WcfClientProxy.CreateAsyncProxy<TServiceInterface>()` method. This call returns a type `IAsyncWrapper<TServiceInterface>` that exposes a `CallAsync()` method.
+
+For example, a service contract interface with method `int MakeCall(string input)` can by asynchrously called like:
+
+    var proxy = WcfClientProxy.CreateAsyncProxy<IService>();
+    int result = await proxy.CallAsync(s => s.MakeCall("test"));
+
+### Limitations
+Methods that define `out` or `ref` parameters are not supported when making async/await calls. Attempts to make async calls using a proxy with these parameter types will result in a runtime exception being thrown.
+
 Configuration
 -------------
 When calling the `WcfClientProxy.Create<TServiceInterface>()` method, a configuration Action is used to setup the proxy. The following configuration options are available at the proxy creation time:
@@ -53,7 +67,7 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
 
 #### MaximumRetries(int retryCount)
-Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception.
+Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception or response. If retryCount is set to 0, then only one request attempt will be made.
 
 #### RetryOnException\<TException\>(Predicate\<TException\> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
@@ -89,12 +103,18 @@ For example, to wait an exponentially growing amount of time starting at 500 mil
     	c.SetDelayPolicy(() => new ExponentialBackoffDelayPolicy(TimeSpan.FromMilliseconds(500)));
     });
 
+#### OnCallBegin
+Event handler that is fired immediately before a service request is made.
+
+#### OnCallSuccess
+Event handler that is fired after the service request completes successfully. Returns the count of call attempts made and the overall elapsed time that the request took.
+
 #### OnBeforeInvoke & OnAfterInvoke
 Allows configuring event handlers that are called every time a method is called on the service.
 Events will receive information which method was called and with what parameters in the `OnInvokeHandlerArguments` structure.
 
-The OnBeforeInvoke event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
-The OnAfterInvoke event will fire once after a successful call to a service method.
+The `OnBeforeInvoke` event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
+The `OnAfterInvoke` event will fire once after a successful call to a service method.
 
 For example, to log all service calls:
 
@@ -171,6 +191,17 @@ If there are known exceptions that you would like the proxy to retry calls on, i
         c.RetryOnException<PossibleCustomException>(e => e.Message == "retry only for this message");
     });
 
+Using this same interface, async/await calls can be made to the `ServiceMethod` operation by creating an async proxy:
+
+    IAsyncWrapper<ITestService> asyncProxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c => c.SetEndpoint(binding, endpointAddress));
+
+Making the request asynchronously is done by using the `CallAsync` method:
+
+    string response = await asyncProxy.CallAsync(m => m.ServiceMethod("request"));
+
+Synchronous calls are still supported using the `IAsyncWrapper<ITestService>` proxy by accessing the `Client` value:
+
+    string response = asyncProxy.Client.ServiceMethod("request");
 
 Delay Policies
 --------------
