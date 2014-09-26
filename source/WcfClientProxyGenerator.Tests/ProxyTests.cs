@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.Remoting.Messaging;
 using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1201,6 +1202,262 @@ namespace WcfClientProxyGenerator.Tests
                 Assert.AreEqual(new Uri("http://localhost:23456/SomeOtherTestServicUrl"), c.ChannelFactory.Endpoint.Address.Uri);
             });
         }
+
+        #endregion
+
+        #region HandleResponse
+
+        [Test]
+        public void HandleResponse_CanChangeResponse_ForSimpleResponseType()
+        {
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(where: r => r.StartsWith("te"), handler: r => "hello: " + r);
+            });
+
+            var response = proxy.TestMethod(expectedInput);
+
+            Assert.That(response, Is.EqualTo("hello: test"));
+        }
+        
+        [Test]
+        public void HandleResponse_CanChangeResponse_ForComplexResponseType()
+        {
+            var mockService = new Mock<ITestService>();
+
+            mockService
+                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns((Request req) => new Response
+                {
+                    ResponseMessage = req.RequestMessage
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<Response>(r =>
+                {
+                    r.ResponseMessage = "hello: " + r.ResponseMessage;
+                    return r;
+                });
+            });
+
+            var request = new Request { RequestMessage = "test" };
+            var response = proxy.TestMethodComplex(request);
+
+            Assert.That(response.ResponseMessage, Is.EqualTo("hello: test"));
+        }    
+    
+        [Test]
+        public void HandleResponse_CanChangeResponse_ForComplexResponse_InterfaceType()
+        {
+            var mockService = new Mock<ITestService>();
+
+            mockService
+                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns((Request req) => new Response
+                {
+                    ResponseMessage = req.RequestMessage,
+                    StatusCode = 100
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                
+                // Rewrite responses with status code of 100
+                c.HandleResponse<IResponseStatus>(r =>
+                {
+                    if (r.StatusCode == 100)
+                    {
+                        return new Response
+                        {
+                            ResponseMessage = "error",
+                            StatusCode = 1
+                        };
+                    }
+                    
+                    return r;
+                });
+            });
+
+            var request = new Request();
+            var response = proxy.TestMethodComplex(request);
+
+            Assert.That(response.ResponseMessage, Is.EqualTo("error"));
+            Assert.That(response.StatusCode, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void HandleResponse_CanThrowException()
+        {
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(where: r => r.StartsWith("te"), handler: r =>
+                {
+                    throw new Exception(r);
+                });
+            });
+
+            Assert.That(() => proxy.TestMethod(expectedInput), 
+                Throws.TypeOf<Exception>()
+                    .With.Message.EqualTo("test"));
+        }
+
+        #region AsyncProxy
+
+
+        [Test]
+        public async Task Async_HandleResponse_CanChangeResponse_ForSimpleResponseType()
+        {
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(where: r => r.StartsWith("te"), handler: r => "hello: " + r);
+            });
+
+            var response = await proxy.CallAsync(m => m.TestMethod(expectedInput));
+
+            Assert.That(response, Is.EqualTo("hello: test"));
+        }
+        
+        [Test]
+        public async Task Async_HandleResponse_CanChangeResponse_ForComplexResponseType()
+        {
+            var mockService = new Mock<ITestService>();
+
+            mockService
+                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns((Request req) => new Response
+                {
+                    ResponseMessage = req.RequestMessage
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<Response>(r =>
+                {
+                    r.ResponseMessage = "hello: " + r.ResponseMessage;
+                    return r;
+                });
+            });
+
+            var request = new Request { RequestMessage = "test" };
+            var response = await proxy.CallAsync(m => m.TestMethodComplex(request));
+
+            Assert.That(response.ResponseMessage, Is.EqualTo("hello: test"));
+        }    
+    
+        [Test]
+        public async Task Async_HandleResponse_CanChangeResponse_ForComplexResponse_InterfaceType()
+        {
+            var mockService = new Mock<ITestService>();
+
+            mockService
+                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns((Request req) => new Response
+                {
+                    ResponseMessage = req.RequestMessage,
+                    StatusCode = 100
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                
+                // Rewrite responses with status code of 100
+                c.HandleResponse<IResponseStatus>(r =>
+                {
+                    if (r.StatusCode == 100)
+                    {
+                        return new Response
+                        {
+                            ResponseMessage = "error",
+                            StatusCode = 1
+                        };
+                    }
+                    
+                    return r;
+                });
+            });
+
+            var request = new Request();
+            var response = await proxy.CallAsync(m => m.TestMethodComplex(request));
+
+            Assert.That(response.ResponseMessage, Is.EqualTo("error"));
+            Assert.That(response.StatusCode, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Async_HandleResponse_CanThrowException()
+        {
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(where: r => r.StartsWith("te"), handler: r =>
+                {
+                    throw new Exception(r);
+                });
+            });
+
+            AssertExt.ThrowsAsync(
+                typeof(Exception), 
+                () => proxy.CallAsync(m => m.TestMethod(expectedInput)),
+                message: "test");
+        }
+
+        #endregion
 
         #endregion
 

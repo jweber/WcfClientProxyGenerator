@@ -1,4 +1,5 @@
-﻿using System.ServiceModel;
+﻿using System;
+using System.ServiceModel;
 using System.ServiceModel.Channels;
 
 namespace WcfClientProxyGenerator
@@ -60,5 +61,26 @@ namespace WcfClientProxyGenerator
         /// as not doing so will not produce expected results.
         /// </remarks>
         ChannelFactory ChannelFactory { get; }
+
+        /// <summary>
+        /// Allows inspecting and modifying the <typeparamref name="TResponse"/> object
+        /// before returning the response to the calling method.
+        /// </summary>
+        /// <typeparam name="TResponse">Type or parent type/interface of the response</typeparam>
+        /// <param name="where">Predicate to filter responses based on its parameters</param>
+        /// <param name="handler">
+        /// Delegate that takes a <typeparamref name="TResponse"/> and returns a <typeparamref name="TResponse"/>
+        /// </param>
+        void HandleResponse<TResponse>(Predicate<TResponse> where, Func<TResponse, TResponse> handler);
+
+        /// <summary>
+        /// Allows inspecting and modifying the <typeparamref name="TResponse"/> object
+        /// before returning the response to the calling method.
+        /// </summary>
+        /// <typeparam name="TResponse">Type or parent type/interface of the response</typeparam>
+        /// <param name="handler">
+        /// Delegate that takes a <typeparamref name="TResponse"/> and returns a <typeparamref name="TResponse"/>
+        /// </param>        
+        void HandleResponse<TResponse>(Func<TResponse, TResponse> handler);
     }
 }

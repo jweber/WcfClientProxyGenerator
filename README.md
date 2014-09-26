@@ -33,7 +33,7 @@ For example, a service contract interface with method `int MakeCall(string input
     var proxy = WcfClientProxy.CreateAsyncProxy<IService>();
     int result = await proxy.CallAsync(s => s.MakeCall("test"));
 
-### Limitations
+### Async Limitations
 Methods that define `out` or `ref` parameters are not supported when making async/await calls. Attempts to make async calls using a proxy with these parameter types will result in a runtime exception being thrown.
 
 Configuration
@@ -65,6 +65,22 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 
 #### SetEndpoint(Binding binding, EndpointAddress endpointAddress)
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
+
+#### HandleResponse\<TResponse\>(Predicate\<TResponse\> where, Func\<TResponse, TResponse\> handler)
+Sets up the proxy to allow inspection and manipulation of responses from the service.
+
+For example, if sensitive information is needed to be stripped out of certain response messages, `HandleResponse` can be used to do this.
+
+    var proxy = WcfClientProxy.Create<IService>(c =>
+    
+        c.HandleResponse<SensitiveInfoResponse>(where: r => r.Password != null, handler: r =>
+        {
+            r.Password = null;
+            return r;
+        });
+    });
+
+`HandleResponse` can also be used to throw exceptions on the client side based on the inspection of responses.
 
 #### MaximumRetries(int retryCount)
 Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception or response. If retryCount is set to 0, then only one request attempt will be made.

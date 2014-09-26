@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Dynamic;
 using System.Reflection;
 using System.Security.Principal;
 using System.ServiceModel;
@@ -23,9 +24,16 @@ namespace WcfClientProxyGenerator
         private static ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>> TypeHierarchyCache
             = new ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>>();
 
+        private static ConcurrentDictionary<Type, Lazy<MethodInfo>> ResponseHandlerPredicateCache
+            = new ConcurrentDictionary<Type, Lazy<MethodInfo>>();
+        
+        private static ConcurrentDictionary<Type, Lazy<MethodInfo>> ResponseHandlerCache
+            = new ConcurrentDictionary<Type, Lazy<MethodInfo>>();
+
         private readonly Type _originalServiceInterfaceType;
 
         private readonly IDictionary<Type, object> _retryPredicates;
+        private readonly IDictionary<Type, ResponseHandlerHolder> _responseHandlers;
         
         /// <summary>
         /// The method that initializes new WCF action providers
@@ -48,7 +56,9 @@ namespace WcfClientProxyGenerator
                 { typeof(ServerTooBusyException), null }
             };
 
-            _originalServiceInterfaceType = GetOriginalServiceInterface<TServiceInterface>();
+            _responseHandlers = new Dictionary<Type, ResponseHandlerHolder>();
+
+            _originalServiceInterfaceType = GetOriginalServiceInterface();
         }
 
         /// <summary>
@@ -112,12 +122,23 @@ namespace WcfClientProxyGenerator
             _retryPredicates.Add(typeof(TResponse), where);
         }
 
+        class ResponseHandlerHolder
+        {
+            public object Predicate { get; set; }
+            public object ResponseHandler { get; set; }
+        }
+
+        public void AddResponseHandler<TResponse>(Func<TResponse, TResponse> handler, Predicate<TResponse> @where)
+        {
+            _responseHandlers.Add(typeof(TResponse), new ResponseHandlerHolder { Predicate = @where, ResponseHandler = handler });
+        }
+
         /// <summary>
         /// Used to identify void return types in the Invoke() methods below.
         /// </summary>
         private struct VoidReturnType { }
 
-        private Type GetOriginalServiceInterface<TServiceInterface>()
+        private Type GetOriginalServiceInterface()
         {
             Type serviceType = typeof(TServiceInterface);
             if (serviceType.HasAttribute<GeneratedAsyncInterfaceAttribute>())
@@ -177,6 +198,9 @@ namespace WcfClientProxyGenerator
                         }
 
                         sw.Stop();
+
+                        response = this.ExecuteResponseHandlers(response);
+
                         this.HandleOnCallSuccess(sw.Elapsed, response, (i + 1), invokeInfo);
     
                         return response;
@@ -255,6 +279,9 @@ namespace WcfClientProxyGenerator
                         }
 
                         sw.Stop();
+
+                        response = this.ExecuteResponseHandlers(response);
+
                         this.HandleOnCallSuccess(sw.Elapsed, response, (i + 1), invokeInfo);
 
                         return response;
@@ -377,6 +404,55 @@ namespace WcfClientProxyGenerator
         private bool ExceptionIsRetryable(Exception ex)
         {
             return EvaluatePredicate(ex.GetType(), ex);
+        }
+
+        private TResponse ExecuteResponseHandlers<TResponse>(TResponse response)
+        {
+            Type @type = typeof(TResponse);
+            var baseTypes = TypeHierarchyCache.GetOrAddSafe(@type, _ =>
+            {
+                return @type.GetAllInheritedTypes();
+            });
+
+            foreach (var baseType in baseTypes)
+                response = this.ExecuteResponseHandlers(response, baseType);
+
+            return response;
+        }
+
+        private TResponse ExecuteResponseHandlers<TResponse>(TResponse response, Type type)
+        {
+            if (!this._responseHandlers.ContainsKey(@type))
+                return response;
+
+            var responseHandlerHolder = this._responseHandlers[@type];
+
+            MethodInfo predicateInvokeMethod = ResponseHandlerPredicateCache.GetOrAddSafe(@type, _ =>
+            {
+                Type predicateType = typeof(Predicate<>).MakeGenericType(@type);
+                return predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
+            });
+
+            bool responseIsHandleable = responseHandlerHolder.Predicate == null
+                                        || (bool) predicateInvokeMethod.Invoke(responseHandlerHolder.Predicate, new object[] { response });
+            
+            if (!responseIsHandleable)
+                return response;
+
+            MethodInfo handlerMethod = ResponseHandlerCache.GetOrAddSafe(@type, _ =>
+            {
+                Type actionType = typeof(Func<,>).MakeGenericType(@type, @type);
+                return actionType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
+            });
+
+            try
+            {
+                return (TResponse) handlerMethod.Invoke(responseHandlerHolder.ResponseHandler, new object[] { response });
+            }
+            catch (TargetInvocationException ex)
+            {
+                throw ex.InnerException;
+            }
         }
 
         private bool ResponseInRetryable<TResponse>(TResponse response)
