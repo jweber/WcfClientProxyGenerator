@@ -72,7 +72,7 @@ Sets up the proxy to allow inspection and manipulation of responses from the ser
 For example, if sensitive information is needed to be stripped out of certain response messages, `HandleResponse` can be used to do this.
 
     var proxy = WcfClientProxy.Create<IService>(c =>
-    
+    {
         c.HandleResponse<SensitiveInfoResponse>(where: r => r.Password != null, handler: r =>
         {
             r.Password = null;
