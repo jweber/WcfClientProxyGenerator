@@ -82,10 +82,10 @@ namespace :nuget do
     nuspec.id = PROJECT_NAME
     nuspec.version = ENV['NUGET_VERSION']
     nuspec.authors = "j.weber"
-    nuspec.description = "Utility to generate fault tolerant and retry capable dynamic proxies for WCF services based on the WCF service interface."
+    nuspec.description = "Utility to generate fault tolerant and highly configurable client proxies for WCF services based on WCF ServiceContracts. Supports making async calls using non async-ready ServiceContracts."
     nuspec.projectUrl = "https://github.com/jweber/WcfClientProxyGenerator"
     nuspec.title = PROJECT_NAME
-    nuspec.tags = "wcf service proxy dynamic"
+    nuspec.tags = "wcf service client proxy dynamic async"
     nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.dll", 'lib\net45'
     nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.xml", 'lib\net45'
 
