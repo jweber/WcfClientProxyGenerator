@@ -121,17 +121,61 @@ namespace WcfClientProxyGenerator
             };
         }
 
-        private static bool NonAsyncOperationContractHasMatchingAsyncOperationContract(MethodInfo nonAsyncServiceMethod, IList<MethodInfo> serviceMethods)
+        private static bool NonAsyncOperationContractHasMatchingAsyncOperationContract(
+            MethodInfo nonAsyncServiceMethod, 
+            IList<MethodInfo> serviceMethods)
         {
-            var operationContractAttribute = nonAsyncServiceMethod.GetCustomAttribute<OperationContractAttribute>();
+            string nonAsyncActionValue = GetOperationContractAction(nonAsyncServiceMethod);
+            string nonAsyncReplyActionValue = GetOperationContractReplyAction(nonAsyncServiceMethod);
 
             return (from m in serviceMethods
-                    let oca = m.GetCustomAttribute<OperationContractAttribute>()
+                    let actionValue = GetOperationContractAction(m)
+                    let replyActionValue = GetOperationContractReplyAction(m)
                     where m.Name == nonAsyncServiceMethod.Name + "Async"
                           && typeof (Task).IsAssignableFrom(m.ReturnType)
-                          && operationContractAttribute.Action == oca.Action
-                          && operationContractAttribute.ReplyAction == oca.ReplyAction
+                          && nonAsyncActionValue == actionValue
+                          && nonAsyncReplyActionValue == replyActionValue
                     select m).Any();
+        }
+
+        private static string GetOperationContractAction(MethodInfo methodInfo)
+        {
+            var operationContractAttr = methodInfo.GetCustomAttribute<OperationContractAttribute>();
+            if (operationContractAttr == null)
+                throw new Exception("No OperationContract attribute when one was expected");
+
+            string action = operationContractAttr.Action;
+            if (action != null)
+                return action;
+
+            var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
+            string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
+            string defaultAction = string.Format("{0}/{1}/{2}", 
+                serviceNamespace, 
+                methodInfo.DeclaringType.Name, 
+                operationContractAttr.Name ?? methodInfo.Name);
+
+            return defaultAction;
+        }
+        
+        private static string GetOperationContractReplyAction(MethodInfo methodInfo)
+        {
+            var operationContractAttr = methodInfo.GetCustomAttribute<OperationContractAttribute>();
+            if (operationContractAttr == null)
+                throw new Exception("No OperationContract attribute when one was expected");
+
+            string replyAction = operationContractAttr.ReplyAction;
+            if (replyAction != null)
+                return replyAction;
+
+            var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
+            string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
+            string defaultAction = string.Format("{0}/{1}/{2}Response", 
+                serviceNamespace, 
+                methodInfo.DeclaringType.Name, 
+                operationContractAttr.Name ?? methodInfo.Name);
+
+            return defaultAction;
         }
 
         private static Type GenerateAsyncInterface(IList<MethodInfo> serviceMethods)
@@ -157,8 +201,8 @@ namespace WcfClientProxyGenerator
             asyncInterfaceBuilder.SetCustomAttribute(serviceContractAttrBuilder);
 
             var nonAsyncServiceMethods = serviceMethods
-                .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType))
-                .Where(m => !NonAsyncOperationContractHasMatchingAsyncOperationContract(m, serviceMethods));
+                .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType)
+                            && !NonAsyncOperationContractHasMatchingAsyncOperationContract(m, serviceMethods));
 
             foreach (var serviceMethod in nonAsyncServiceMethods)
                 GenerateAsyncTaskMethod(serviceMethod, asyncInterfaceBuilder);
@@ -238,14 +282,8 @@ namespace WcfClientProxyGenerator
             var nameProp = typeof(OperationContractAttribute)
                 .GetProperty("Name");
 
-            var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
-            string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
-            string defaultAction = string.Format("{0}/{1}/{2}", 
-                serviceNamespace, 
-                methodInfo.DeclaringType.Name, 
-                originalOperationContract.Name ?? methodInfo.Name);
-
-            string defaultReplyAction = defaultAction + "Response";
+            string actionValue = GetOperationContractAction(methodInfo);
+            string replyActionValue = GetOperationContractReplyAction(methodInfo);
 
             var propertyInfos = new List<PropertyInfo>
             {
@@ -255,8 +293,8 @@ namespace WcfClientProxyGenerator
 
             var propertyValues = new List<object>
             {
-                originalOperationContract.Action ?? defaultAction,
-                originalOperationContract.ReplyAction ?? defaultReplyAction
+                actionValue,
+                replyActionValue
             };
 
             if (!string.IsNullOrEmpty(originalOperationContract.Name))

@@ -9,6 +9,8 @@ using WcfClientProxyGenerator.Tests.Infrastructure;
 
 namespace WcfClientProxyGenerator.Tests
 {
+    #region Test support
+
     [ServiceContract]
     public interface IOverloadedService
     {
@@ -80,6 +82,29 @@ namespace WcfClientProxyGenerator.Tests
         [OperationContract(Name = "NewName")]
         string CustomName();
     }
+
+    [ServiceContract]
+    public interface IAsyncTestInterface2
+    {
+        [OperationContract(Action = "Method", ReplyAction = "MethodResponse")]
+        string Method(string input);
+
+        [OperationContract(Action = "Method", ReplyAction = "MethodResponse")]
+        Task<string> MethodAsync(string input);
+    }
+
+    [ServiceContract]
+    public interface IAsyncTestInterface3
+    {
+        [OperationContract()]
+        string Method(string input);
+
+        [OperationContract(Action = "http://tempuri.org/IAsyncTestInterface3/Method", ReplyAction = "http://tempuri.org/IAsyncTestInterface3/MethodResponse")]
+        Task<string> MethodAsync(string input);
+    }
+
+    #endregion
+
 
     [TestFixture]
     public class DynamicProxyTypeGeneratorTests
@@ -245,15 +270,14 @@ namespace WcfClientProxyGenerator.Tests
             var generatedAsyncMethod = types.AsyncInterface.GetMethod("MethodAsync");
             Assert.That(generatedAsyncMethod, Is.Null);
         }
-    }
 
-    [ServiceContract]
-    public interface IAsyncTestInterface2
-    {
-        [OperationContract(Action = "Method", ReplyAction = "MethodResponse")]
-        string Method(string input);
+        [Test]
+        public void AsyncMethodDefinition_NotGeneratedForNonAsyncMethod_WithExistingAsyncDefinition_NotUsingCustomActionAndReplyAction()
+        {
+            var types = this.GenerateTypes<IAsyncTestInterface3>();
 
-        [OperationContract(Action = "Method", ReplyAction = "MethodResponse")]
-        Task<string> MethodAsync(string input);
+            var generatedAsyncMethod = types.AsyncInterface.GetMethod("MethodAsync");
+            Assert.That(generatedAsyncMethod, Is.Null);
+        }
     }
 }
