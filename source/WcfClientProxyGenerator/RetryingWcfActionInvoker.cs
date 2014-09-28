@@ -243,7 +243,7 @@ namespace WcfClientProxyGenerator
         {
             return this.InvokeAsync(async provider =>
             {
-                await method(provider);
+                await method(provider).ConfigureAwait(false);
                 return Task.FromResult(true);
             }, invokeInfo);
         }
@@ -267,14 +267,14 @@ namespace WcfClientProxyGenerator
                     {
                         this.HandleOnBeforeInvoke(i, invokeInfo);
 
-                        TResponse response = await method(provider);
+                        TResponse response = await method(provider).ConfigureAwait(false);
 
                         this.HandleOnAfterInvoke(i, response, invokeInfo);
 
                         if (ResponseInRetryable(response))
                         {
                             lastResponse = response;
-                            provider = await DelayAsync(i, delayPolicy, provider);
+                            provider = await DelayAsync(i, delayPolicy, provider).ConfigureAwait(false);
                             continue;
                         }
 
@@ -295,7 +295,7 @@ namespace WcfClientProxyGenerator
                         {
                             mostRecentException = ex;
 #if CSHARP60
-                            provider = await DelayAsync(i, delayPolicy, provider);
+                            provider = await DelayAsync(i, delayPolicy, provider).ConfigureAwait(false);
 #else
                             provider = Delay(i, delayPolicy, provider);
 #endif
@@ -397,7 +397,7 @@ namespace WcfClientProxyGenerator
 
         private async Task<TServiceInterface> DelayAsync(int iteration, IDelayPolicy delayPolicy, TServiceInterface provider)
         {
-            await Task.Delay(delayPolicy.GetDelay(iteration));
+            await Task.Delay(delayPolicy.GetDelay(iteration)).ConfigureAwait(false);
             return RefreshProvider(provider);
         }
 
