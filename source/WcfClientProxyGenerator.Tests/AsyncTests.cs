@@ -89,6 +89,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
             {
+                c.MaximumRetries(1);
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
                 c.RetryOnResponse<string>(s => s == "BAD");
             });
@@ -119,6 +120,7 @@ namespace WcfClientProxyGenerator.Tests
 
             var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
             {
+                c.MaximumRetries(1);
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
                 c.RetryOnResponse<Response>(s => s.StatusCode == 1);
             });

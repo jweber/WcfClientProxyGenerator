@@ -9,7 +9,7 @@ namespace WcfClientProxyGenerator
     public interface IRetryingProxyConfigurator : IProxyConfigurator
     {
         /// <summary>
-        /// Specifies the maximum amount of retries should be made
+        /// Specifies the maximum amount of retries that should be made
         /// when known failures happen during a service call.
         /// </summary>
         /// <param name="retryCount"></param>

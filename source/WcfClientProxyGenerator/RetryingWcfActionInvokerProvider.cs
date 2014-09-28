@@ -4,6 +4,7 @@ using System.ServiceModel;
 using System.ServiceModel.Channels;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Policy;
+using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
@@ -141,7 +142,7 @@ namespace WcfClientProxyGenerator
 
         public void SetEndpoint(string endpointConfigurationName)
         {
-            if (typeof(TServiceInterface).GetCustomAttribute<GeneratedAsyncInterfaceAttribute>() != null)
+            if (typeof(TServiceInterface).HasAttribute<GeneratedAsyncInterfaceAttribute>())
             {
                 Type originalServiceInterfaceType = typeof(TServiceInterface).GetInterfaces()[0];
                 _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName, originalServiceInterfaceType);

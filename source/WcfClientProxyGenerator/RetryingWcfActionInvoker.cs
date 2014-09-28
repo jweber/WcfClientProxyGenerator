@@ -43,7 +43,7 @@ namespace WcfClientProxyGenerator
         public RetryingWcfActionInvoker(
             Func<TServiceInterface> wcfActionProviderCreator, 
             Func<IDelayPolicy> delayPolicyFactory = null,
-            int retryCount = 4)
+            int retryCount = 0)
         {
             RetryCount = retryCount;
             DelayPolicyFactory = delayPolicyFactory ?? DefaultProxyConfigurator.DefaultDelayPolicyFactory;

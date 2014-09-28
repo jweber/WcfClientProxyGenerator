@@ -148,7 +148,7 @@ Sets the maximum amount of times the the proxy will additionally attempt to call
 #### RetryOnException\<TException\>(Predicate\<TException\> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
 
-By default, if the following Exceptions are encountered while calling the service, the call will retry up to 5 times:
+By default, the following Exception types are registered to trigger a call retry if the `MaximumRetries` count is greater than 0:
 
 * ChannelTerminatedException
 * EndpointNotFoundException
