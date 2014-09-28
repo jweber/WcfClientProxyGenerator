@@ -83,9 +83,12 @@ Async Support
 -------------
 WCF service contract interfaces that define task based async methods will automatically work with the .NET 4.5 async/await support.
 
+    var proxy = WcfClientProxy.Create<IService>();
+    int result = await proxy.MakeCallAsync("test");
+
 Service contracts that don't define task based methods can be used in an async/await fashion by calling the  `WcfClientProxy.CreateAsyncProxy<TServiceInterface>()` method. This call returns a type `IAsyncProxy<TServiceInterface>` that exposes a `CallAsync()` method.
 
-For example, a service contract interface with method `int MakeCall(string input)` can by asynchrously called like:
+For example, a service contract interface with method `int MakeCall(string input)` can be called asynchronously like:
 
     var proxy = WcfClientProxy.CreateAsyncProxy<IService>();
     int result = await proxy.CallAsync(s => s.MakeCall("test"));
