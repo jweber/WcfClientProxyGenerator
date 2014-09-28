@@ -168,7 +168,7 @@ namespace WcfClientProxyGenerator
         /// <param name="invokeInfo"></param>
         public TResponse Invoke<TResponse>(Func<TServiceInterface, TResponse> method, InvokeInfo invokeInfo = null)
         {
-            TServiceInterface provider = this.RefreshProvider(null);
+            TServiceInterface provider = this.RefreshProvider(null, 0, invokeInfo);
             TResponse lastResponse = default(TResponse);
             IDelayPolicy delayPolicy = this.DelayPolicyFactory();
 
@@ -193,7 +193,7 @@ namespace WcfClientProxyGenerator
                         if (this.ResponseInRetryable(response))
                         {
                             lastResponse = response;
-                            provider = this.Delay(i, delayPolicy, provider);
+                            provider = this.Delay(i, delayPolicy, provider, invokeInfo);
                             continue;
                         }
 
@@ -212,7 +212,7 @@ namespace WcfClientProxyGenerator
                         if (this.ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
-                            provider = this.Delay(i, delayPolicy, provider);
+                            provider = this.Delay(i, delayPolicy, provider, invokeInfo);
                         }
                         else
                         {
@@ -233,7 +233,7 @@ namespace WcfClientProxyGenerator
             }
             finally
             {
-                this.DisposeProvider(provider);
+                this.DisposeProvider(provider, -1, invokeInfo);
             }
 
             return lastResponse;
@@ -250,7 +250,7 @@ namespace WcfClientProxyGenerator
 
         public async Task<TResponse> InvokeAsync<TResponse>(Func<TServiceInterface, Task<TResponse>> method, InvokeInfo invokeInfo = null)
         {
-            TServiceInterface provider = RefreshProvider(null);
+            TServiceInterface provider = RefreshProvider(null, 0, invokeInfo);
             TResponse lastResponse = default(TResponse);
             IDelayPolicy delayPolicy = DelayPolicyFactory();
 
@@ -274,7 +274,7 @@ namespace WcfClientProxyGenerator
                         if (ResponseInRetryable(response))
                         {
                             lastResponse = response;
-                            provider = await DelayAsync(i, delayPolicy, provider).ConfigureAwait(false);
+                            provider = await DelayAsync(i, delayPolicy, provider, invokeInfo).ConfigureAwait(false);
                             continue;
                         }
 
@@ -295,9 +295,9 @@ namespace WcfClientProxyGenerator
                         {
                             mostRecentException = ex;
 #if CSHARP60
-                            provider = await DelayAsync(i, delayPolicy, provider).ConfigureAwait(false);
+                            provider = await DelayAsync(i, delayPolicy, provider, invokeInfo).ConfigureAwait(false);
 #else
-                            provider = Delay(i, delayPolicy, provider);
+                            provider = Delay(i, delayPolicy, provider, invokeInfo);
 #endif
                         }
                         else
@@ -319,7 +319,7 @@ namespace WcfClientProxyGenerator
             }
             finally
             {
-                DisposeProvider(provider);
+                DisposeProvider(provider, -1, invokeInfo);
             }
             
             return lastResponse;
@@ -389,16 +389,24 @@ namespace WcfClientProxyGenerator
             });            
         }
 
-        private TServiceInterface Delay(int iteration, IDelayPolicy delayPolicy, TServiceInterface provider)
+        private TServiceInterface Delay(
+            int iteration, 
+            IDelayPolicy delayPolicy, 
+            TServiceInterface provider, 
+            InvokeInfo invokeInfo)
         {
             Thread.Sleep(delayPolicy.GetDelay(iteration));
-            return RefreshProvider(provider);
+            return RefreshProvider(provider, iteration, invokeInfo);
         }
 
-        private async Task<TServiceInterface> DelayAsync(int iteration, IDelayPolicy delayPolicy, TServiceInterface provider)
+        private async Task<TServiceInterface> DelayAsync(
+            int iteration, 
+            IDelayPolicy delayPolicy, 
+            TServiceInterface provider, 
+            InvokeInfo invokeInfo)
         {
             await Task.Delay(delayPolicy.GetDelay(iteration)).ConfigureAwait(false);
-            return RefreshProvider(provider);
+            return RefreshProvider(provider, iteration, invokeInfo);
         }
 
         private bool ExceptionIsRetryable(Exception ex)
@@ -489,8 +497,9 @@ namespace WcfClientProxyGenerator
         /// Refreshes the proxy by disposing and recreating it if it's faulted.
         /// </summary>
         /// <param name="provider">The provider.</param>
+        /// <param name="retryCount"></param>
         /// <returns></returns>
-        private TServiceInterface RefreshProvider(TServiceInterface provider)
+        private TServiceInterface RefreshProvider(TServiceInterface provider, int retryCount, InvokeInfo invokeInfo)
         {
             var communicationObject = provider as ICommunicationObject;
             if (communicationObject == null)
@@ -503,14 +512,16 @@ namespace WcfClientProxyGenerator
                 return provider;
             }
 
-            DisposeProvider(provider);
+            DisposeProvider(provider, retryCount, invokeInfo);
+            provider = null;
+
             return _wcfActionProviderCreator();
         }
 
-        private void DisposeProvider(TServiceInterface provider)
+        private void DisposeProvider(TServiceInterface provider, int retryCount, InvokeInfo invokeInfo)
         {
             var communicationObject = provider as ICommunicationObject;
-            if (communicationObject == null)
+            if (communicationObject == null || communicationObject.State == CommunicationState.Closed)
             {
                 return;
             }
@@ -525,12 +536,37 @@ namespace WcfClientProxyGenerator
                     success = true;
                 }
             }
+            catch (CommunicationException ex)
+            {
+                this.HandleOnException(ex, retryCount, invokeInfo);
+            }
+            catch (TimeoutException ex)
+            {
+                this.HandleOnException(ex, retryCount, invokeInfo);
+            }
+            catch (Exception ex)
+            {
+                this.HandleOnException(ex, retryCount, invokeInfo);
+                throw;
+            }
             finally
             {
                 if (!success)
                 {
-                    communicationObject.Abort();
+                    this.AbortServiceChannel(communicationObject, retryCount, invokeInfo);
                 }
+            }
+        }
+
+        private void AbortServiceChannel(ICommunicationObject communicationObject, int retryCount, InvokeInfo invokeInfo)
+        {
+            try
+            {
+                communicationObject.Abort();
+            }
+            catch (Exception ex)
+            {
+                this.HandleOnException(ex, retryCount, invokeInfo);
             }
         }
     }
