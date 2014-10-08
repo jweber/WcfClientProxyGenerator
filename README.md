@@ -9,6 +9,63 @@ Installation
 
     NuGet> Install-Package WcfClientProxyGenerator
 
+Examples
+--------
+The following interface defines the contract for the service:
+
+    [ServiceContract]
+    public interface ITestService
+    {
+        [OperationContract]
+        string ServiceMethod(string request);
+
+        [OperationContract]
+        Status ServiceMethod2();
+    }
+
+The proxy can then be created based on this interface by using the `Create` method of the proxy generator:
+
+    ITestService proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(binding, endpointAddress));
+
+The proxy generated is now tolerant of faults and communication exceptions. In this example, if the first request results in a faulted channel, you would normally have to manually dispose of it. With the proxy instance, you can continue using it.
+
+    ITestService proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint("testServiceConfiguration"));
+    var response = proxy.ServiceMethod("request");
+    var response2 = proxy.ServiceMethod("request2"); // even if the previous request resulted in a FaultException this call will still work
+
+If there are known exceptions or responses that you would like the proxy to retry calls on, it can be configured to retry when a custom exception or response is encountered:
+
+    var proxy = WcfClientProxy.Create<ITestService>(c =>
+    {
+        c.SetEndpoint("testServiceConfiguration");
+        c.RetryOnException<CustomException>();
+        c.RetryOnException<PossibleCustomException>(e => e.Message == "retry only for this message");
+        c.RetryOnResponse<IResponseStatus>(r => r.StatusCode == 503 || r.StatusCode == 504);
+    });
+
+Responses can also be intercepted and transformed by the proxy through use of the `HandleResponse` configuration:
+
+    var proxy = WcfClientProxy.Create<ITestService>(c =>
+    {
+        c.SetEndpoint("testServiceConfiguration");
+        c.HandleResponse<IResponseStatus>(where: r => r.StatusCode == 500, handler: r =>
+        {
+            throw new Exception("InternalServerError");
+        });
+    });
+
+Using this same synchronous interface, async/await calls can be made to the `ServiceMethod` operation by creating an async enabled proxy:
+
+    IAsyncProxy<ITestService> asyncProxy = WcfClientProxy.CreateAsyncProxy<ITestService>();
+
+Making the request asynchronously is done by using the `CallAsync` method:
+
+    string response = await asyncProxy.CallAsync(m => m.ServiceMethod("request"));
+
+Synchronous calls are still supported using the `IAsyncProxy<ITestService>` proxy by accessing the `Client` property:
+
+    string response = asyncProxy.Client.ServiceMethod("request");
+
 Usage
 -----
 To create a proxy, use the `WcfClientProxy.Create<TServiceInterface>()` method. There are multiple overloads that can be used to setup and configure the proxy.
@@ -21,7 +78,24 @@ This is a shortcut to using the overload that accepts an `Action<IRetryingProxyC
 
 #### WcfClientProxy.Create\<TServiceInterface\>(Action\<IRetryingProxyConfigurator\> config)
 Exposes the full configuration available. See the [Configuration](#configuration) section of the documentation.
-	
+
+Async Support
+-------------
+WCF service contract interfaces that define task based async methods will automatically work with the .NET 4.5 async/await support.
+
+    var proxy = WcfClientProxy.Create<IService>();
+    int result = await proxy.MakeCallAsync("test");
+
+Service contracts that don't define task based methods can be used in an async/await fashion by calling the  `WcfClientProxy.CreateAsyncProxy<TServiceInterface>()` method. This call returns a type `IAsyncProxy<TServiceInterface>` that exposes a `CallAsync()` method.
+
+For example, a service contract interface with method `int MakeCall(string input)` can be called asynchronously like:
+
+    var proxy = WcfClientProxy.CreateAsyncProxy<IService>();
+    int result = await proxy.CallAsync(s => s.MakeCall("test"));
+
+### Async Limitations
+Methods that define `out` or `ref` parameters are not supported when making async/await calls. Attempts to make async calls using a proxy with these parameter types will result in a runtime exception being thrown.
+
 Configuration
 -------------
 When calling the `WcfClientProxy.Create<TServiceInterface>()` method, a configuration Action is used to setup the proxy. The following configuration options are available at the proxy creation time:
@@ -52,13 +126,29 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 #### SetEndpoint(Binding binding, EndpointAddress endpointAddress)
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
 
+#### HandleResponse\<TResponse\>(Predicate\<TResponse\> where, Func\<TResponse, TResponse\> handler)
+Sets up the proxy to allow inspection and manipulation of responses from the service.
+
+For example, if sensitive information is needed to be stripped out of certain response messages, `HandleResponse` can be used to do this.
+
+    var proxy = WcfClientProxy.Create<IService>(c =>
+    {
+        c.HandleResponse<SensitiveInfoResponse>(where: r => r.Password != null, handler: r =>
+        {
+            r.Password = null;
+            return r;
+        });
+    });
+
+`HandleResponse` can also be used to throw exceptions on the client side based on the inspection of responses.
+
 #### MaximumRetries(int retryCount)
-Sets the maximum amount of times the the proxy will attempt to call the service in the event it encounters a known retry-friendly exception.
+Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception or response. If retryCount is set to 0, then only one request attempt will be made.
 
 #### RetryOnException\<TException\>(Predicate\<TException\> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
 
-By default, if the following Exceptions are encountered while calling the service, the call will retry up to 5 times:
+By default, the following Exception types are registered to trigger a call retry if the `MaximumRetries` count is greater than 0:
 
 * ChannelTerminatedException
 * EndpointNotFoundException
@@ -89,12 +179,18 @@ For example, to wait an exponentially growing amount of time starting at 500 mil
     	c.SetDelayPolicy(() => new ExponentialBackoffDelayPolicy(TimeSpan.FromMilliseconds(500)));
     });
 
+#### OnCallBegin
+Event handler that is fired immediately before a service request is made.
+
+#### OnCallSuccess
+Event handler that is fired after the service request completes successfully. Returns the count of call attempts made and the overall elapsed time that the request took.
+
 #### OnBeforeInvoke & OnAfterInvoke
 Allows configuring event handlers that are called every time a method is called on the service.
 Events will receive information which method was called and with what parameters in the `OnInvokeHandlerArguments` structure.
 
-The OnBeforeInvoke event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
-The OnAfterInvoke event will fire once after a successful call to a service method.
+The `OnBeforeInvoke` event will fire every time a method is attempted to be called, and thus can be fired multiple times if you have a retry policy in place.
+The `OnAfterInvoke` event will fire once after a successful call to a service method.
 
 For example, to log all service calls:
 
@@ -139,38 +235,6 @@ ITestService proxy = WcfClientProxy.Create<ITestService>(c =>
 #### ChannelFactory
 Allows access to WCF extensibility features from code for advanced use cases.
 Can be used, for example, to add endpoint behaviors and change client credentials used to connect to services.
-
-
-Examples
---------
-The following interface defines the contract for the service:
-
-    [ServiceContract]
-    public interface ITestService
-    {
-        [OperationContract]
-        string ServiceMethod(string request);
-    }
-
-The proxy can then be created based on this interface by using the `Create` method of the proxy generator:
-
-    ITestService proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(binding, endpointAddress));
-
-The proxy generated is now tolerant of faults and communication exceptions. In this example, if the first request results in a faulted channel, you would normally have to manually dispose of it. With the proxy instance, you can continue using it.
-
-    ITestService proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint("testServiceConfiguration"));
-    var response = proxy.ServiceMethod("request");
-    var response2 = proxy.ServiceMethod("request2"); // even if the previous request resulted in a FaultException this call will still work
-
-If there are known exceptions that you would like the proxy to retry calls on, it can be configured to retry when a custom exception is encountered:
-
-    var proxy = WcfClientProxy.Create<ITestService>(c =>
-    {
-        c.SetEndpoint("testServiceConfiguration");
-        c.RetryOnException<CustomException>();
-        c.RetryOnException<PossibleCustomException>(e => e.Message == "retry only for this message");
-    });
-
 
 Delay Policies
 --------------

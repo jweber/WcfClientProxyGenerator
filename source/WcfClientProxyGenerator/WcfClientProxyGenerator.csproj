@@ -16,10 +16,13 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>bin\Debug\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -30,9 +33,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Framework)' == 'NET45'">
     <DefineConstants>NET45</DefineConstants>
-    <OutputPath>bin\$(Configuration)\net-4.5</OutputPath>
+    <OutputPath>bin\$(Configuration)</OutputPath>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DocumentationFile>bin\$(Configuration)\net-4.5\WcfClientProxyGenerator.xml</DocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Framework)' == 'NET40'">
     <DefineConstants>NET40</DefineConstants>
@@ -42,6 +45,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Xml.Linq" />
@@ -54,12 +58,16 @@
     <Compile Include="..\VersionInfo.cs">
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
+    <Compile Include="Async\AsyncProxy.cs" />
+    <Compile Include="Async\GeneratedAsyncInterfaceAttribute.cs" />
     <Compile Include="ChannelFactoryProvider.cs" />
     <Compile Include="DefaultProxyConfigurator.cs" />
     <Compile Include="IActionInvoker.cs" />
     <Compile Include="IActionInvokerProvider.cs" />
     <Compile Include="InvokeInfo.cs" />
     <Compile Include="IProxyConfigurator.cs" />
+    <Compile Include="OnCallBeginHandler.cs" />
+    <Compile Include="OnCallSuccessHandler.cs" />
     <Compile Include="OnExceptionHandler.cs" />
     <Compile Include="OnInvokeHandler.cs" />
     <Compile Include="Policy\ConstantDelayPolicy.cs" />
@@ -70,7 +78,6 @@
     <Compile Include="DynamicProxyTypeGenerator.cs" />
     <Compile Include="IRetryingProxyConfigurator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Async\AsyncExtensions.cs" Condition="'$(Framework)' == 'NET45'" />
     <Compile Include="Util\AttributeExtensions.cs" />
     <Compile Include="Util\DictionaryExtensions.cs" />
     <Compile Include="Util\TypeExtensions.cs" />

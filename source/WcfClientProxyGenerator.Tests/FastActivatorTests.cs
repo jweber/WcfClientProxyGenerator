@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Util;
 
@@ -12,6 +8,12 @@ namespace WcfClientProxyGenerator.Tests
     [TestFixture]
     public class FastActivatorTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            FastActivator.ClearActivatorCache();
+        }
+
         [Test]
         public void GenericType_CanBeActivated_UsingParameterlessConstructor()
         {

@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel;
 using System.Text;
 using System.Threading.Tasks;
 using Moq;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {
+    [ServiceBehavior(IncludeExceptionDetailInFaults = true)]
     public class TestServiceImpl : ITestService
     {
             private readonly Mock<ITestService> _mock;
@@ -25,6 +27,14 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
                 return _mock.Object.TestMethod(input);
 
             return string.Format("Echo: {0}", input);
+        }
+
+        public string TestMethod(string input, string two)
+        {
+            if (_mock != null)
+                return _mock.Object.TestMethod(input, two);
+
+            return string.Format("Echo: {0}, {1}", input, two);
         }
 
         public void VoidMethod(string input)

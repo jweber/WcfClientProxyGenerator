@@ -5,6 +5,8 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
+using System.Threading.Tasks;
+using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
@@ -16,6 +18,14 @@ namespace WcfClientProxyGenerator
     {
         static DynamicProxyAssembly()
         {
+            Initialize();
+        }
+
+        public static AssemblyBuilder AssemblyBuilder { get; private set; }
+        public static ModuleBuilder ModuleBuilder { get; private set; }
+
+        internal static void Initialize()
+        {
             var assemblyName = new AssemblyName("WcfClientProxyGenerator.DynamicProxy");
             var appDomain = System.Threading.Thread.GetDomain();
 
@@ -25,11 +35,14 @@ namespace WcfClientProxyGenerator
 #else
             AssemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
             ModuleBuilder = AssemblyBuilder.DefineDynamicModule(assemblyName.Name);
-#endif
+#endif            
         }
+    }
 
-        public static AssemblyBuilder AssemblyBuilder { get; private set; }
-        public static ModuleBuilder ModuleBuilder { get; private set; }
+    internal class GeneratedTypes
+    {
+        public Type Proxy { get; set; }
+        public Type AsyncInterface { get; set; }
     }
 
     /// <summary>
@@ -43,21 +56,12 @@ namespace WcfClientProxyGenerator
     internal static class DynamicProxyTypeGenerator<TServiceInterface>
         where TServiceInterface : class
     {
-        public static Type GenerateType<TActionInvokerProvider>()
+        public static GeneratedTypes GenerateTypes<TActionInvokerProvider>()
             where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>
         {
             CheckServiceInterfaceValidity(typeof(TServiceInterface));
 
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
-
-            var typeBuilder = moduleBuilder.DefineType(
-                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name,
-                TypeAttributes.Public | TypeAttributes.Class,
-                typeof(TActionInvokerProvider));
-            
-            typeBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
-
-            SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
 
             var interfaceTypeHierarchy = typeof(TServiceInterface)
                 .GetAllInheritedTypes(includeInterfaces: true)
@@ -65,25 +69,147 @@ namespace WcfClientProxyGenerator
 
             var serviceMethods = interfaceTypeHierarchy
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                .Where(t => t.HasAttribute<OperationContractAttribute>());
+                .Where(t => t.HasAttribute<OperationContractAttribute>())
+                .ToList();
 
             if (!serviceMethods.Any())
             {
                 throw new InvalidOperationException(String.Format("Service interface {0} has no OperationContact methods. Is this a proper WCF service interface?", typeof(TServiceInterface).Name));
             }
 
+            var asyncInterfaceType = GenerateAsyncInterface(serviceMethods);
+
+            // build proxy
+
+            var genericActionInvokerType = typeof(TActionInvokerProvider)
+                .GetGenericTypeDefinition()
+                .MakeGenericType(asyncInterfaceType);
+
+            var typeBuilder = moduleBuilder.DefineType(
+                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name,
+                TypeAttributes.Public | TypeAttributes.Class,
+                genericActionInvokerType);
+            
+            typeBuilder.AddInterfaceImplementation(asyncInterfaceType);
+
+            SetDebuggerDisplay(typeBuilder, typeof(TServiceInterface).Name + " (wcf proxy)");
+            
+            interfaceTypeHierarchy = asyncInterfaceType
+                .GetAllInheritedTypes(includeInterfaces: true)
+                .Where(t => t.IsInterface);
+
+            serviceMethods = interfaceTypeHierarchy
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                .Where(t => t.HasAttribute<OperationContractAttribute>())
+                .ToList();
+
             foreach (var serviceMethod in serviceMethods)
             {
-                GenerateServiceProxyMethod(serviceMethod, typeBuilder);
+                GenerateServiceProxyMethod(asyncInterfaceType, serviceMethod, typeBuilder);
             }
 
-            Type generatedType = typeBuilder.CreateType();
-
+            Type proxyType = typeBuilder.CreateType();
+            
 #if OUTPUT_PROXY_DLL 
             DynamicProxyAssembly.AssemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
 #endif
 
-            return generatedType;
+            return new GeneratedTypes
+            {
+                Proxy = proxyType,
+                AsyncInterface = asyncInterfaceType
+            };
+        }
+
+        private static bool NonAsyncOperationContractHasMatchingAsyncOperationContract(
+            MethodInfo nonAsyncServiceMethod, 
+            IList<MethodInfo> serviceMethods)
+        {
+            string nonAsyncActionValue = GetOperationContractAction(nonAsyncServiceMethod);
+            string nonAsyncReplyActionValue = GetOperationContractReplyAction(nonAsyncServiceMethod);
+
+            return (from m in serviceMethods
+                    let actionValue = GetOperationContractAction(m)
+                    let replyActionValue = GetOperationContractReplyAction(m)
+                    where m.Name == nonAsyncServiceMethod.Name + "Async"
+                          && typeof (Task).IsAssignableFrom(m.ReturnType)
+                          && nonAsyncActionValue == actionValue
+                          && nonAsyncReplyActionValue == replyActionValue
+                    select m).Any();
+        }
+
+        private static string GetOperationContractAction(MethodInfo methodInfo)
+        {
+            var operationContractAttr = methodInfo.GetCustomAttribute<OperationContractAttribute>();
+            if (operationContractAttr == null)
+                throw new Exception("No OperationContract attribute when one was expected");
+
+            string action = operationContractAttr.Action;
+            if (action != null)
+                return action;
+
+            var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
+            string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
+            string defaultAction = string.Format("{0}/{1}/{2}", 
+                serviceNamespace, 
+                methodInfo.DeclaringType.Name, 
+                operationContractAttr.Name ?? methodInfo.Name);
+
+            return defaultAction;
+        }
+        
+        private static string GetOperationContractReplyAction(MethodInfo methodInfo)
+        {
+            var operationContractAttr = methodInfo.GetCustomAttribute<OperationContractAttribute>();
+            if (operationContractAttr == null)
+                throw new Exception("No OperationContract attribute when one was expected");
+
+            string replyAction = operationContractAttr.ReplyAction;
+            if (replyAction != null)
+                return replyAction;
+
+            var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
+            string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
+            string defaultAction = string.Format("{0}/{1}/{2}Response", 
+                serviceNamespace, 
+                methodInfo.DeclaringType.Name, 
+                operationContractAttr.Name ?? methodInfo.Name);
+
+            return defaultAction;
+        }
+
+        private static Type GenerateAsyncInterface(IList<MethodInfo> serviceMethods)
+        {
+            var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
+
+            var asyncInterfaceBuilder = moduleBuilder.DefineType(
+                "WcfClientProxyGenerator.DynamicProxy." + typeof(TServiceInterface).Name + "Async",
+                TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract);
+
+            asyncInterfaceBuilder.AddInterfaceImplementation(typeof(TServiceInterface));
+
+            var generatedAsyncInterfaceAttrCtor = typeof(GeneratedAsyncInterfaceAttribute)
+                .GetConstructor(Type.EmptyTypes);
+
+            var generatedAsyncInterfaceAttrBuilder = new CustomAttributeBuilder(generatedAsyncInterfaceAttrCtor, new object[0]);
+            asyncInterfaceBuilder.SetCustomAttribute(generatedAsyncInterfaceAttrBuilder);
+
+            var serviceContractAttrCtor = typeof(ServiceContractAttribute)
+                .GetConstructor(Type.EmptyTypes);
+
+            var serviceContractAttrBuilder = new CustomAttributeBuilder(serviceContractAttrCtor, new object[0]);
+            asyncInterfaceBuilder.SetCustomAttribute(serviceContractAttrBuilder);
+
+            var nonAsyncServiceMethods = serviceMethods
+                .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType)
+                            && !NonAsyncOperationContractHasMatchingAsyncOperationContract(m, serviceMethods));
+
+            foreach (var serviceMethod in nonAsyncServiceMethods)
+                GenerateAsyncTaskMethod(serviceMethod, asyncInterfaceBuilder);
+
+            Type asyncInterface = asyncInterfaceBuilder.CreateType();
+
+            return asyncInterface;
         }
 
         private static void CheckServiceInterfaceValidity(Type type)
@@ -101,23 +227,100 @@ namespace WcfClientProxyGenerator
 
         private static void SetDebuggerDisplay(TypeBuilder typeBuilder, string display)
         {
-            var attributCtor = typeof(DebuggerDisplayAttribute)
+            var attributeCtor = typeof(DebuggerDisplayAttribute)
                 .GetConstructor(new[] { typeof(string) });
            
-            if (attributCtor == null)
+            if (attributeCtor == null)
                 throw new NotImplementedException("No constructor found on type 'DebuggerDisplayAttribute' that takes an argument of 'string'");
 
-            var attributeBuilder = new CustomAttributeBuilder(attributCtor, new object[] { display });
+            var attributeBuilder = new CustomAttributeBuilder(attributeCtor, new object[] { display });
             typeBuilder.SetCustomAttribute(attributeBuilder);
+        }
+
+        private static void GenerateAsyncTaskMethod(
+            MethodInfo methodInfo,
+            TypeBuilder typeBuilder)
+        {
+            var parameterTypes = methodInfo.GetParameters()
+                .Select(m => m.ParameterType)
+                .ToArray();
+
+            // Task based async methods cannot have byref parameters
+            if (parameterTypes.Any(m => m.IsByRef))
+                return;
+
+            Type returnType = methodInfo.ReturnType;
+            if (returnType == typeof(void))
+            {
+                returnType = typeof(Task);
+            }
+            else
+            {
+                returnType = typeof(Task<>).MakeGenericType(returnType);
+            }
+
+            var methodBuilder = typeBuilder.DefineMethod(
+                methodInfo.Name + "Async",
+                MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual | MethodAttributes.Abstract,
+                returnType,
+                parameterTypes);
+
+            for (int i = 1; i <= parameterTypes.Length; i++)
+                methodBuilder.DefineParameter(i, ParameterAttributes.None, "arg" + i);
+
+            var originalOperationContract = methodInfo.GetCustomAttribute<OperationContractAttribute>();
+
+            var attributeCtor = typeof(OperationContractAttribute)
+                .GetConstructor(Type.EmptyTypes);
+
+            var actionProp = typeof(OperationContractAttribute)
+                .GetProperty("Action");
+
+            var replyActionProp = typeof(OperationContractAttribute)
+                .GetProperty("ReplyAction");
+
+            var nameProp = typeof(OperationContractAttribute)
+                .GetProperty("Name");
+
+            string actionValue = GetOperationContractAction(methodInfo);
+            string replyActionValue = GetOperationContractReplyAction(methodInfo);
+
+            var propertyInfos = new List<PropertyInfo>
+            {
+                actionProp, 
+                replyActionProp
+            };
+
+            var propertyValues = new List<object>
+            {
+                actionValue,
+                replyActionValue
+            };
+
+            if (!string.IsNullOrEmpty(originalOperationContract.Name))
+            {
+                propertyInfos.Add(nameProp);
+                propertyValues.Add(originalOperationContract.Name);
+            }
+
+            var attributeBuilder = new CustomAttributeBuilder(
+                attributeCtor, 
+                new object[0], 
+                propertyInfos.ToArray(), 
+                propertyValues.ToArray());
+
+            methodBuilder.SetCustomAttribute(attributeBuilder);
         }
 
         /// <summary>
         /// Generates the methods on the <paramref name="typeBuilder">dynamic type</paramref> 
         /// to satisfy the <see cref="OperationContractAttribute"/> interface contracts.
         /// </summary>
+        /// <param name="asyncInterfaceType"></param>
         /// <param name="methodInfo">MethodInfo from the interface</param>
         /// <param name="typeBuilder">The dynamic type</param>
         private static void GenerateServiceProxyMethod(
+            Type asyncInterfaceType,
             MethodInfo methodInfo, 
             TypeBuilder typeBuilder)
         {
@@ -147,13 +350,13 @@ namespace WcfClientProxyGenerator
             var ilGenerator = methodBuilder.GetILGenerator();
 
             // IActionInvoker<TServiceInterface> local0;
-            ilGenerator.DeclareLocal(typeof(IActionInvoker<TServiceInterface>));
+            ilGenerator.DeclareLocal(typeof(IActionInvoker<>).MakeGenericType(asyncInterfaceType));
 
             // (void methods) Action<TServiceInterface> local1;
             // (methods with return value) Func<TServiceInterface, TReturnType> local1;
             ilGenerator.DeclareLocal(methodInfo.ReturnType == typeof(void)
-                ? typeof(Action<>).MakeGenericType(typeof(TServiceInterface))
-                : typeof(Func<,>).MakeGenericType(typeof(TServiceInterface), methodInfo.ReturnType));
+                ? typeof(Action<>).MakeGenericType(asyncInterfaceType)
+                : typeof(Func<,>).MakeGenericType(asyncInterfaceType, methodInfo.ReturnType));
 
             // MethodType local2;
             ilGenerator.DeclareLocal(serviceCallWrapperType);
@@ -200,7 +403,9 @@ namespace WcfClientProxyGenerator
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ldarg_0);
             
-            var channelProperty = typeof(RetryingWcfActionInvokerProvider<TServiceInterface>)
+            var channelProperty = typeof(RetryingWcfActionInvokerProvider<>)
+                .MakeGenericType(asyncInterfaceType)
+                //.MakeGenericType(typeof(TServiceInterface))
                 .GetMethod(
                     "get_ActionInvoker", 
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty);
@@ -293,6 +498,28 @@ namespace WcfClientProxyGenerator
 
         private static MethodInfo GetIActionInvokerInvokeMethod(MethodInfo methodInfo)
         {
+            if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
+            {
+                if (methodInfo.ReturnType.IsGenericType)
+                {
+                    var funcInvokeAsyncMethod = (typeof(IActionInvoker<TServiceInterface>))
+                        .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                        .First(m => m.Name == "InvokeAsync" && m.ReturnType != typeof(Task));
+
+                    var taskReturnType = methodInfo.ReturnType.GenericTypeArguments[0];
+
+                    return funcInvokeAsyncMethod.MakeGenericMethod(new[] { taskReturnType });                    
+                }
+                else
+                {
+                    var invokeAsyncMethod = typeof(IActionInvoker<TServiceInterface>)
+                        .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                        .First(m => m.Name == "InvokeAsync" && m.ReturnType == typeof(Task));
+
+                    return invokeAsyncMethod;
+                }
+            }
+
             if (methodInfo.ReturnType == typeof(void))
             {
                 Type actionType = typeof(Action<>)
@@ -322,10 +549,14 @@ namespace WcfClientProxyGenerator
                 .Where(t => t.IsByRef)
                 .ToArray();
 
+            string className = string.Format("{0}_{1}", 
+                methodInfo.Name,
+                string.Join("_", parameterTypes.Select(m => m.Name)));
+
             string typeName = string.Format(
                 "WcfClientProxyGenerator.DynamicProxy.{0}Support.{1}",
                 typeof(TServiceInterface).Name,
-                methodInfo.Name);
+                className);
 
             var serviceCallTypeBuilder = DynamicProxyAssembly.ModuleBuilder.DefineType(typeName);
 

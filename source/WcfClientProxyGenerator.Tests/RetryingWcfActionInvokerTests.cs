@@ -74,7 +74,8 @@ namespace WcfClientProxyGenerator.Tests
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
                 () => new TestServiceImpl(mockService),
-                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)));
+                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)),
+                retryCount: 2);
 
             actionInvoker.AddResponseToRetryOn<Response>(r => r.ResponseMessage == failResponse.ResponseMessage);
 
@@ -98,7 +99,8 @@ namespace WcfClientProxyGenerator.Tests
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
                 () => new TestServiceImpl(mockService),
-                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)));
+                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)),
+                retryCount: 2);
 
             actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == failResponse.StatusCode);
 
