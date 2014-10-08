@@ -13,5 +13,8 @@ namespace WcfClientProxyGenerator
 
         public static readonly Func<LinearBackoffDelayPolicy> DefaultDelayPolicyFactory
             = () => new LinearBackoffDelayPolicy(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(10));
+
+        public static readonly RetryFailureExceptionFactoryDelegate DefaultRetryFailureExceptionFactory
+            = (retryCount, lastException, invokInfo) => new WcfRetryFailedException(string.Format("WCF call failed after {0} retries.", retryCount), lastException);
     }
 }

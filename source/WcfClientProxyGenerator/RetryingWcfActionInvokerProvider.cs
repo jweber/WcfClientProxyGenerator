@@ -184,6 +184,11 @@ namespace WcfClientProxyGenerator
             _actionInvoker.AddResponseToRetryOn(where);
         }
 
+        public void RetryFailureExceptionFactory(RetryFailureExceptionFactoryDelegate factory)
+        {
+            _actionInvoker.RetryFailureExceptionFactory = factory;
+        }
+
         #endregion
     }
 }

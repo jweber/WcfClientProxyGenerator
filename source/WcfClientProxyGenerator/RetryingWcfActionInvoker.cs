@@ -47,6 +47,7 @@ namespace WcfClientProxyGenerator
         {
             RetryCount = retryCount;
             DelayPolicyFactory = delayPolicyFactory ?? DefaultProxyConfigurator.DefaultDelayPolicyFactory;
+            RetryFailureExceptionFactory = DefaultProxyConfigurator.DefaultRetryFailureExceptionFactory;
 
             _wcfActionProviderCreator = wcfActionProviderCreator;
             _retryPredicates = new Dictionary<Type, object>
@@ -69,6 +70,8 @@ namespace WcfClientProxyGenerator
         public int RetryCount { get; set; }
 
         public Func<IDelayPolicy> DelayPolicyFactory { get; set; }
+
+        public RetryFailureExceptionFactoryDelegate RetryFailureExceptionFactory { get; set; }
 
         /// <summary>
         /// Event that is fired immediately before the service method will be called. This event
@@ -226,9 +229,8 @@ namespace WcfClientProxyGenerator
                     if (RetryCount == 0)
                         throw mostRecentException;
 
-                    throw new WcfRetryFailedException(
-                        string.Format("WCF call failed after {0} retries.", this.RetryCount),
-                        mostRecentException);
+                    var exception = this.RetryFailureExceptionFactory(this.RetryCount, mostRecentException, invokeInfo);
+                    throw exception;
                 }
             }
             finally
@@ -312,9 +314,8 @@ namespace WcfClientProxyGenerator
                     if (RetryCount == 0)
                         throw mostRecentException;
 
-                    throw new WcfRetryFailedException(
-                        string.Format("WCF call failed after {0} attempts.", RetryCount),
-                        mostRecentException);
+                    var exception = this.RetryFailureExceptionFactory(this.RetryCount, mostRecentException, invokeInfo);
+                    throw exception;
                 }
             }
             finally

@@ -145,6 +145,13 @@ For example, if sensitive information is needed to be stripped out of certain re
 #### MaximumRetries(int retryCount)
 Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception or response. If retryCount is set to 0, then only one request attempt will be made.
 
+#### RetryFailureExceptionFactory(RetryFailureExceptionFactoryDelegate)
+By default, if the value configured in the `MaximumRetries` call is exceeded (i.e. a WCF call could not successfully be made after more than 1 attempt), a `WcfRetryFailedException` exception is thrown. In some cases, it makes sense to throw an exception of a different type. This method can be used to define a factory that generates the `Exception` that is thrown.
+
+The signature of this delegate is:
+
+    public delegate Exception RetryFailureExceptionFactoryDelegate(int retryAttempts, Exception lastException, InvokeInfo invocationInfo);
+
 #### RetryOnException\<TException\>(Predicate\<TException\> where = null)
 Configures the proxy to retry calls when it encounters arbitrary exceptions. The optional `Predicate<Exception>` can be used to refine properties of the Exception that it should retry on.
 
