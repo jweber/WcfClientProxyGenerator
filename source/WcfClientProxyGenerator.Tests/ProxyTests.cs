@@ -68,18 +68,24 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void Proxy_CanCallVoidMethod()
         {
+            var resetEvent = new AutoResetEvent(false);
+
             var mockService = new Mock<ITestService>();
             mockService
                 .Setup(m => m.VoidMethod("good"))
                 .Callback<string>(input =>
                 {
                     Assert.That(input, Is.EqualTo("good"));
+                    resetEvent.Set();
                 });
 
             var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
             var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
             proxy.VoidMethod("good");
+
+            if (!resetEvent.WaitOne(300))
+                Assert.Fail("Timeout occurred when waiting for callback");
         }
 
         [Test]
@@ -215,6 +221,38 @@ namespace WcfClientProxyGenerator.Tests
 
             Assert.That(() => proxy.VoidMethod("test"), Throws.TypeOf<WcfRetryFailedException>());
             mockService.Verify(m => m.VoidMethod("test"), Times.Exactly(2));
+        }
+
+        [Test]
+        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsCustomRetryFailureException()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.VoidMethod("test"))
+                .Throws(new FaultException());
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.MaximumRetries(1);
+                c.RetryOnException<FaultException>();
+                c.RetryFailureExceptionFactory((attempts, exception, info) =>
+                {
+                    string message = string.Format("Failed call to {0} {1} times", info.MethodName, attempts);
+                    return new CustomFailureException(message, exception);
+                });
+            });
+
+            Assert.That(() => proxy.VoidMethod("test"), Throws.TypeOf<CustomFailureException>());
+            mockService.Verify(m => m.VoidMethod("test"), Times.Exactly(2));
+        }
+
+        public class CustomFailureException : Exception
+        {
+            public CustomFailureException(string message, Exception innerException) : base(message, innerException)
+            {}
         }
 
         #region Out Parameter Support
