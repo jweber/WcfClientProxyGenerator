@@ -32,6 +32,40 @@ namespace WcfClientProxyGenerator
             get { return _actionInvoker; }
         }
 
+        /// <summary>
+        /// Allows inspecting and modifying the <typeparamref name="TResponse"/> object
+        /// before returning the response to the calling method.
+        /// </summary>
+        /// <typeparam name="TResponse">Type or parent type/interface of the response</typeparam>
+        /// <param name="where">Predicate to filter responses based on its parameters</param>
+        /// <param name="handler">
+        /// Delegate that takes a <typeparamref name="TResponse"/>
+        /// </param>
+        public void HandleResponse<TResponse>(Predicate<TResponse> @where, Action<TResponse> handler)
+        {
+            _actionInvoker.AddResponseHandler(r =>
+            {
+                handler(r);
+                return r;
+            }, @where);
+        }
+
+        /// <summary>
+        /// Allows inspecting and modifying the <typeparamref name="TResponse"/> object
+        /// before returning the response to the calling method.
+        /// </summary>
+        /// <typeparam name="TResponse">Type or parent type/interface of the response</typeparam>
+        /// <param name="handler">
+        /// Delegate that takes a <typeparamref name="TResponse"/>
+        /// </param>    
+        public void HandleResponse<TResponse>(Action<TResponse> handler)
+        {
+            _actionInvoker.AddResponseHandler<TResponse>(r =>
+            {
+                handler(r);
+                return r;
+            }, null);
+        }
 
         /// <summary>
         /// Allows inspecting and modifying the <typeparamref name="TResponse"/> object

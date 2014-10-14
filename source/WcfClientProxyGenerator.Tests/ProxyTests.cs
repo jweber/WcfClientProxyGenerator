@@ -1268,7 +1268,73 @@ namespace WcfClientProxyGenerator.Tests
 
             Assert.That(response, Is.EqualTo("hello: test"));
         }
-        
+
+        [Test]
+        public void HandleResponse_ActionWithPredicate_CanInspectResponse_WithoutReturning()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(where: r => r.StartsWith("te"), handler: r =>
+                {
+                    Assert.That(r, Is.EqualTo(expectedInput));
+                    resetEvent.Set();
+                });
+            });
+
+            var response = proxy.TestMethod(expectedInput);
+
+            Assert.That(response, Is.EqualTo(expectedInput));
+
+            if (!resetEvent.WaitOne(200))
+                Assert.Fail("Callback not fired");
+        }
+
+        [Test]
+        public void HandleResponse_ActionWithoutPredicate_CanInspectResponse_WithoutReturning()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(handler: r =>
+                {
+                    Assert.That(r, Is.EqualTo(expectedInput));
+                    resetEvent.Set();
+                });
+            });
+
+            var response = proxy.TestMethod(expectedInput);
+
+            Assert.That(response, Is.EqualTo(expectedInput));
+
+            if (!resetEvent.WaitOne(200))
+                Assert.Fail("Callback not fired");
+        }
+
         [Test]
         public void HandleResponse_CanChangeResponse_ForComplexResponseType()
         {
@@ -1493,6 +1559,73 @@ namespace WcfClientProxyGenerator.Tests
                 typeof(Exception), 
                 () => proxy.CallAsync(m => m.TestMethod(expectedInput)),
                 message: "test");
+        }
+
+
+        [Test]
+        public async Task Async_HandleResponse_ActionWithPredicate_CanInspectResponse_WithoutReturning()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(where: r => r.StartsWith("te"), handler: r =>
+                {
+                    Assert.That(r, Is.EqualTo(expectedInput));
+                    resetEvent.Set();
+                });
+            });
+
+            var response = await proxy.CallAsync(m => m.TestMethod(expectedInput));
+
+            Assert.That(response, Is.EqualTo(expectedInput));
+
+            if (!resetEvent.WaitOne(200))
+                Assert.Fail("Callback not fired");
+        }
+
+        [Test]
+        public async Task Async_HandleResponse_ActionWithoutPredicate_CanInspectResponse_WithoutReturning()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+            
+            const string expectedInput = "test";
+
+            mockService
+                .Setup(m => m.TestMethod(expectedInput))
+                .Returns((string req) => req);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleResponse<string>(handler: r =>
+                {
+                    Assert.That(r, Is.EqualTo(expectedInput));
+                    resetEvent.Set();
+                });
+            });
+
+            var response = await proxy.CallAsync(m => m.TestMethod(expectedInput));
+
+            Assert.That(response, Is.EqualTo(expectedInput));
+
+            if (!resetEvent.WaitOne(200))
+                Assert.Fail("Callback not fired");
         }
 
         #endregion

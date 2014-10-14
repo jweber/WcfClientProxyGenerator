@@ -114,7 +114,7 @@ end
 desc 'Builds version environment variables'
 task :versioning do
   ver = SemVer.find
-  revision = (ENV['BUILD_NUMBER'] || ver.patch).to_i
+  #revision = (ENV['BUILD_NUMBER'] || ver.patch).to_i
   #ver = SemVer.new(ver.major, ver.minor, revision, ver.special)
   
   if ver.special != ''
@@ -125,7 +125,7 @@ task :versioning do
     ENV['NUGET_VERSION'] = NUGET_VERSION = ver.format("%M.%m.%p")  
   end
   
-  ENV['FORMAL_VERSION'] = FORMAL_VERSION = "#{ SemVer.new(ver.major, ver.minor, revision).format "%M.%m.%p"}"
+  ENV['FORMAL_VERSION'] = FORMAL_VERSION = "#{ ver.format("%M.%m.%p")}"
   puts "##teamcity[buildNumber '#{BUILD_VERSION}']"  
 end
 
