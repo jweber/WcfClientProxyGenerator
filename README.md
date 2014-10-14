@@ -127,6 +127,8 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
 
 #### HandleResponse\<TResponse\>(Predicate\<TResponse\> where, Action\<TResponse\> handler)
+_overload:_ `HandleResponse<TResponse>(Predicate<TResponse> where, Func<TResponse, TResponse> handler)`
+
 Sets up the proxy to allow inspection and manipulation of responses from the service. 
 
 The `TResponse` value can be a type as specific or general as needed. For instance, `c.HandleResponse<SealedResponseType>(...)` will only handle responses of type `SealedResponseType` whereas `c.HandleResponse<object>(...)` will be fired for all responses.
@@ -144,7 +146,7 @@ For example, if sensitive information is needed to be stripped out of certain re
 
 `HandleResponse` can also be used to throw exceptions on the client side based on the inspection of responses.
 
-Multiple calls to `HandleResponse` can be made with different variations of `TResponse` and the `Predicate\<TResponse\>`. With this in mind, it is possible to have more than one response handler manipulate a `TResponse` object. It is important to note that there is *no guarantee* in the order that the response handlers operate at runtime.
+Multiple calls to `HandleResponse` can be made with different variations of `TResponse` and the `Predicate<TResponse>`. With this in mind, it is possible to have more than one response handler manipulate a `TResponse` object. It is important to note that there is *no guarantee* in the order that the response handlers operate at runtime.
 
 #### MaximumRetries(int retryCount)
 Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception or response. If retryCount is set to 0, then only one request attempt will be made.
