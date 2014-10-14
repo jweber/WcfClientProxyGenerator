@@ -4,6 +4,8 @@ Utility to generate fault tolerant and retry capable dynamic proxies for WCF ser
 
 With normal Service Reference or ChannelFactory instantiated clients, care must be taken to abort and recreate the client in the event that a communication fault occurs. The goal of this project is to provide an easy-to-use method of creating WCF clients that are self healing and tolerant of temporary network communication errors while still being as transparently useable as default WCF clients.
 
+Generated proxies fully support the C# 5 async/await syntax for service contracts that define `Task` based async operations. Automatic extension of non-async ready service contracts with full async support can be created through use of the [`WcfClientProxy.CreateAsyncProxy<T>()`](README.md#async-support) factory method.
+
 Installation
 ------------
 
