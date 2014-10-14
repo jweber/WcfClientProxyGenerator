@@ -77,7 +77,7 @@ namespace WcfClientProxyGenerator.Async
                 throw new NotSupportedException(
                     string.Format("OperationContract method '{0}' has parameters '{1}' marked as out or ref. These are not currently supported in async calls.",
                         methodCall.Method.Name, 
-                        methodParameters.Where(m => m.ParameterType.IsByRef).Select(m => m.Name)));
+                        string.Join(", ", methodParameters.Where(m => m.ParameterType.IsByRef).Select(m => m.Name))));
             }
 
             var cachedDelegate = this.GetCallAsyncDelegate(methodCall, methodParameters);
