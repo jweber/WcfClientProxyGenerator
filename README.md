@@ -4,6 +4,8 @@ Utility to generate fault tolerant and retry capable dynamic proxies for WCF ser
 
 With normal Service Reference or ChannelFactory instantiated clients, care must be taken to abort and recreate the client in the event that a communication fault occurs. The goal of this project is to provide an easy-to-use method of creating WCF clients that are self healing and tolerant of temporary network communication errors while still being as transparently useable as default WCF clients.
 
+Generated proxies fully support the C# 5 async/await syntax for service contracts that define `Task` based async operations. Automatic extension of non-async ready service contracts with full async support can be created through use of the [`WcfClientProxy.CreateAsyncProxy<T>()`](README.md#async-support) factory method.
+
 Installation
 ------------
 
@@ -126,8 +128,12 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 #### SetEndpoint(Binding binding, EndpointAddress endpointAddress)
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
 
-#### HandleResponse\<TResponse\>(Predicate\<TResponse\> where, Func\<TResponse, TResponse\> handler)
-Sets up the proxy to allow inspection and manipulation of responses from the service.
+#### HandleResponse\<TResponse\>(Predicate\<TResponse\> where, Action\<TResponse\> handler)
+_overload:_ `HandleResponse<TResponse>(Predicate<TResponse> where, Func<TResponse, TResponse> handler)`
+
+Sets up the proxy to allow inspection and manipulation of responses from the service. 
+
+The `TResponse` value can be a type as specific or general as needed. For instance, `c.HandleResponse<SealedResponseType>(...)` will only handle responses of type `SealedResponseType` whereas `c.HandleResponse<object>(...)` will be fired for all responses.
 
 For example, if sensitive information is needed to be stripped out of certain response messages, `HandleResponse` can be used to do this.
 
@@ -141,6 +147,8 @@ For example, if sensitive information is needed to be stripped out of certain re
     });
 
 `HandleResponse` can also be used to throw exceptions on the client side based on the inspection of responses.
+
+Multiple calls to `HandleResponse` can be made with different variations of `TResponse` and the `Predicate<TResponse>`. With this in mind, it is possible to have more than one response handler manipulate a `TResponse` object. It is important to note that there is *no guarantee* in the order that the response handlers operate at runtime.
 
 #### MaximumRetries(int retryCount)
 Sets the maximum amount of times the the proxy will additionally attempt to call the service in the event it encounters a known retry-friendly exception or response. If retryCount is set to 0, then only one request attempt will be made.

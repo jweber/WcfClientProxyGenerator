@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
-using System.ServiceModel;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Util;
 
@@ -116,17 +112,11 @@ namespace WcfClientProxyGenerator
             where TServiceInterface : class
         {
             var proxy = Create<TServiceInterface>(configurator);
-
-            var asyncProxyType = typeof(AsyncProxy<>)
-                .MakeGenericType(typeof(TServiceInterface));
-
-            var asyncProxy = FastActivator.CreateInstance(asyncProxyType, new object[] { proxy });
-            return asyncProxy as IAsyncProxy<TServiceInterface>;
+            return new AsyncProxy<TServiceInterface>(proxy);
         }
 
         #endregion
-
-
+        
         private static TServiceInterface CreateProxy<TServiceInterface, TActionInvokerProvider>()
             where TServiceInterface : class
             where TActionInvokerProvider : IActionInvokerProvider<TServiceInterface>

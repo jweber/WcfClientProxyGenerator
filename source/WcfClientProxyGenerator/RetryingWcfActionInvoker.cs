@@ -15,6 +15,12 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
+    class ResponseHandlerHolder
+    {
+        public object Predicate { get; set; }
+        public object ResponseHandler { get; set; }
+    }
+
     internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
         where TServiceInterface : class
     {
@@ -32,8 +38,8 @@ namespace WcfClientProxyGenerator
 
         private readonly Type _originalServiceInterfaceType;
 
-        private readonly IDictionary<Type, object> _retryPredicates;
-        private readonly IDictionary<Type, ResponseHandlerHolder> _responseHandlers;
+        private readonly IDictionary<Type, IList<object>> _retryPredicates;
+        private readonly IDictionary<Type, IList<ResponseHandlerHolder>> _responseHandlers;
         
         /// <summary>
         /// The method that initializes new WCF action providers
@@ -50,14 +56,14 @@ namespace WcfClientProxyGenerator
             RetryFailureExceptionFactory = DefaultProxyConfigurator.DefaultRetryFailureExceptionFactory;
 
             _wcfActionProviderCreator = wcfActionProviderCreator;
-            _retryPredicates = new Dictionary<Type, object>
+            _retryPredicates = new Dictionary<Type, IList<object>>
             {
-                { typeof(ChannelTerminatedException), null },
-                { typeof(EndpointNotFoundException), null },
-                { typeof(ServerTooBusyException), null }
+                { typeof(ChannelTerminatedException), new List<object> { null } },
+                { typeof(EndpointNotFoundException), new List<object> { null } },
+                { typeof(ServerTooBusyException), new List<object> { null } }
             };
 
-            _responseHandlers = new Dictionary<Type, ResponseHandlerHolder>();
+            _responseHandlers = new Dictionary<Type, IList<ResponseHandlerHolder>>();
 
             _originalServiceInterfaceType = GetOriginalServiceInterface();
         }
@@ -107,7 +113,10 @@ namespace WcfClientProxyGenerator
                 where = _ => true;
             }
 
-            _retryPredicates.Add(typeof(TException), where);
+            if (!_retryPredicates.ContainsKey(typeof(TException)))
+                _retryPredicates.Add(typeof(TException), new List<object>());
+
+            _retryPredicates[typeof(TException)].Add(where);
         }
 
         public void AddExceptionToRetryOn(Type exceptionType, Predicate<Exception> where = null)
@@ -117,23 +126,30 @@ namespace WcfClientProxyGenerator
                 where = _ => true;
             }
 
-            _retryPredicates.Add(exceptionType, where);
+            if (!_retryPredicates.ContainsKey(exceptionType))
+                _retryPredicates.Add(exceptionType, new List<object>());
+
+            _retryPredicates[exceptionType].Add(where);
         }
 
         public void AddResponseToRetryOn<TResponse>(Predicate<TResponse> where)
         {
-            _retryPredicates.Add(typeof(TResponse), where);
-        }
+            if (!_retryPredicates.ContainsKey(typeof(TResponse)))
+                _retryPredicates.Add(typeof(TResponse), new List<object>());
 
-        class ResponseHandlerHolder
-        {
-            public object Predicate { get; set; }
-            public object ResponseHandler { get; set; }
+            _retryPredicates[typeof(TResponse)].Add(where);
         }
 
         public void AddResponseHandler<TResponse>(Func<TResponse, TResponse> handler, Predicate<TResponse> @where)
         {
-            _responseHandlers.Add(typeof(TResponse), new ResponseHandlerHolder { Predicate = @where, ResponseHandler = handler });
+            if (!_responseHandlers.ContainsKey(typeof(TResponse)))
+                _responseHandlers.Add(typeof(TResponse), new List<ResponseHandlerHolder>());
+
+            _responseHandlers[typeof(TResponse)].Add(new ResponseHandlerHolder
+            {
+                Predicate = @where, 
+                ResponseHandler = handler
+            });
         }
 
         /// <summary>
@@ -434,7 +450,7 @@ namespace WcfClientProxyGenerator
             if (!this._responseHandlers.ContainsKey(@type))
                 return response;
 
-            var responseHandlerHolder = this._responseHandlers[@type];
+            IList<ResponseHandlerHolder> responseHandlerHolders = this._responseHandlers[@type];
 
             MethodInfo predicateInvokeMethod = ResponseHandlerPredicateCache.GetOrAddSafe(@type, _ =>
             {
@@ -442,10 +458,12 @@ namespace WcfClientProxyGenerator
                 return predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
             });
 
-            bool responseIsHandleable = responseHandlerHolder.Predicate == null
-                                        || (bool) predicateInvokeMethod.Invoke(responseHandlerHolder.Predicate, new object[] { response });
-            
-            if (!responseIsHandleable)
+            var handlers = responseHandlerHolders
+                .Where(m => m.Predicate == null
+                            || ((bool) predicateInvokeMethod.Invoke(m.Predicate, new object[] { response })))
+                .ToList();
+
+            if (!handlers.Any())
                 return response;
 
             MethodInfo handlerMethod = ResponseHandlerCache.GetOrAddSafe(@type, _ =>
@@ -454,14 +472,19 @@ namespace WcfClientProxyGenerator
                 return actionType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
             });
 
-            try
+            foreach (var handler in handlers)
             {
-                return (TResponse) handlerMethod.Invoke(responseHandlerHolder.ResponseHandler, new object[] { response });
+                try
+                {
+                    response = (TResponse) handlerMethod.Invoke(handler.ResponseHandler, new object[] { response });
+                }
+                catch (TargetInvocationException ex)
+                {
+                    throw ex.InnerException;
+                }
             }
-            catch (TargetInvocationException ex)
-            {
-                throw ex.InnerException;
-            }
+
+            return response;
         }
 
         private bool ResponseInRetryable<TResponse>(TResponse response)
@@ -480,10 +503,7 @@ namespace WcfClientProxyGenerator
             if (!_retryPredicates.ContainsKey(key))
                 return false;
 
-            object predicate = _retryPredicates[key];
-
-            if (predicate == null)
-                return true;
+            var predicates = _retryPredicates[key];
 
             MethodInfo invokeMethod = PredicateCache.GetOrAddSafe(key, _ =>
             {
@@ -491,7 +511,17 @@ namespace WcfClientProxyGenerator
                 return predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
             });
 
-            return (bool) invokeMethod.Invoke(predicate, new object[] { instance });
+            // See if any non-null predicate matched the instance
+            bool isSuccess = predicates
+                .Where(p => p != null)
+                .Any(predicate => (bool) invokeMethod.Invoke(predicate, new object[] { instance }));
+
+            // If there's a null predicate (always match), then return true
+            if (!isSuccess && predicates.Any(m => m == null))
+                return true;
+
+            // Return result of running instance through predicates
+            return isSuccess;
         }
 
         /// <summary>
