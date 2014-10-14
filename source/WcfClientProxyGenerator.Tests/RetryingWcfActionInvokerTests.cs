@@ -54,6 +54,26 @@ namespace WcfClientProxyGenerator.Tests
                 () => new TestException("test"));
         }
 
+        [Test]
+        public void AddExceptionToRetryOn_RetriesOnMatchedPredicate_WhenMultiplePredicatesAreRegistered()
+        {
+            this.AssertThatCallRetriesOnException<TestException>(
+                c =>
+                {
+                    c.AddExceptionToRetryOn<TestException>(e => e.TestExceptionMessage == "test");
+                    c.AddExceptionToRetryOn<TestException>(e => e.TestExceptionMessage == "other");
+                },
+                () => new TestException("test"));
+            
+            this.AssertThatCallRetriesOnException<TestException>(
+                c =>
+                {
+                    c.AddExceptionToRetryOn<TestException>(e => e.TestExceptionMessage == "test");
+                    c.AddExceptionToRetryOn<TestException>(e => e.TestExceptionMessage == "other");
+                },
+                () => new TestException("other"));
+        }
+
         #endregion
 
         #region RetryOnResponseCondition
@@ -103,6 +123,33 @@ namespace WcfClientProxyGenerator.Tests
                 retryCount: 2);
 
             actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == failResponse.StatusCode);
+
+            var response = actionInvoker.Invoke(s => s.TestMethodComplex(new Request()));
+            Assert.That(response.StatusCode, Is.EqualTo(successResponse.StatusCode));
+        }
+
+        [Test]
+        public void AddResponseToRetryOn_RetriesOnMatchedPredicate_WhenMultiplePredicatesAreRegistered()
+        {
+            var mockService = new Mock<ITestService>();
+
+            var firstFailResponse = new Response { StatusCode = 100 };
+            var secondFailResponse = new Response { StatusCode = 101 };
+            var successResponse = new Response { StatusCode = 1 };
+
+            mockService
+                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns(firstFailResponse)
+                .Returns(secondFailResponse)
+                .Returns(successResponse);
+
+            var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
+                () => new TestServiceImpl(mockService),
+                () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)),
+                retryCount: 2);
+
+            actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == firstFailResponse.StatusCode);
+            actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == secondFailResponse.StatusCode);
 
             var response = actionInvoker.Invoke(s => s.TestMethodComplex(new Request()));
             Assert.That(response.StatusCode, Is.EqualTo(successResponse.StatusCode));

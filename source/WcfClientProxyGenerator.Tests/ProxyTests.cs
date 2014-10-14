@@ -1434,6 +1434,91 @@ namespace WcfClientProxyGenerator.Tests
                     .With.Message.EqualTo("test"));
         }
 
+        [Test]
+        public void HandleResponse_MultipleHandlersCanBeRunOnResponse()
+        {
+            var countdownEvent = new CountdownEvent(2);
+           
+            var mockService = new Mock<ITestService>();
+
+            var serviceResponse = new Response()
+            {
+                ResponseMessage = "message",
+                StatusCode = 100
+            };
+
+            mockService
+                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns(serviceResponse);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+
+                c.HandleResponse<Response>(r => r.StatusCode == serviceResponse.StatusCode, r =>
+                {
+                    countdownEvent.Signal();
+                });
+
+                c.HandleResponse<Response>(r => r.ResponseMessage == serviceResponse.ResponseMessage, r =>
+                {
+                    countdownEvent.Signal();
+                });
+            });
+
+            var response = proxy.TestMethodComplex(new Request());
+            
+            if (!countdownEvent.Wait(250))
+                Assert.Fail("Expected both callbacks to fire");
+        }
+
+        [Test]
+        public void HandleResponse_MultipleHandlersCanBeRunOnResponse_WhereHandlersAreInheritingTypes()
+        {
+            var countdownEvent = new CountdownEvent(3);
+           
+            var mockService = new Mock<ITestService>();
+
+            var serviceResponse = new Response()
+            {
+                ResponseMessage = "message",
+                StatusCode = 100
+            };
+
+            mockService
+                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns(serviceResponse);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+
+                c.HandleResponse<object>(r =>
+                {
+                    countdownEvent.Signal();
+                });
+
+                c.HandleResponse<IResponseStatus>(r => r.StatusCode == serviceResponse.StatusCode, r =>
+                {
+                    countdownEvent.Signal();
+                });
+
+                c.HandleResponse<Response>(r => r.ResponseMessage == serviceResponse.ResponseMessage, r =>
+                {
+                    countdownEvent.Signal();
+                });
+            });
+
+            var response = proxy.TestMethodComplex(new Request());
+            
+            if (!countdownEvent.Wait(250))
+                Assert.Fail("Expected both callbacks to fire");
+        }
+
         #region AsyncProxy
 
 
