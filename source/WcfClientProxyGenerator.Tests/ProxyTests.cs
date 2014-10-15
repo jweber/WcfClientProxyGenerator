@@ -1717,6 +1717,51 @@ namespace WcfClientProxyGenerator.Tests
 
         #endregion
 
+        #region Dynamic Async Invocation
+
+        [Test]
+        public async Task Async_DynamicConversion_Proxy_ReturnsExpectedValue_WhenCallingGeneratedAsyncMethod()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.TestMethod("good")).Returns("OK");
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            
+            // ITestService does not define TestMethodAsync, it's generated at runtime
+            var result = await ((dynamic) proxy).TestMethodAsync("good");
+            
+            Assert.AreEqual("OK", result);
+        }
+
+        [Test]
+        public async Task Async_DynamicConversion_Proxy_CanCallGeneratedAsyncVoidMethod()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.VoidMethod("good"))
+                .Callback<string>(input =>
+                {
+                    Assert.That(input, Is.EqualTo("good"));
+                    resetEvent.Set();
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            
+            // ITestService does not define VoidMethodAsync, it's generated at runtime
+            await ((dynamic) proxy).VoidMethodAsync("good");
+
+            if (!resetEvent.WaitOne(300))
+                Assert.Fail("Timeout occurred when waiting for callback");
+        }
+
+        #endregion
+
         #region Better error messages tests
 
         [ServiceContract]
