@@ -144,12 +144,54 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 #### SetEndpoint(Binding binding, EndpointAddress endpointAddress)
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
 
+#### HandleRequestArgument\<TArgument\>(Func\<TArgument, string, bool\> where, Action\<TArgument\> handler)
+_overload:_ `HandleRequestArgument\<TArgument\>(Func\<TArgument, string, bool\> where, Func\<TArgument, TArgument\> handler)`
+
+Sets up the proxy to run handlers on argument values that are used for making WCF requests. An example use case would be to inject authentication keys into all requests where an argument value matches expectation.
+
+The `TArgument` value can be a type as specific or general as needed. For example, configuring the proxy to handle the `object` type will result in the handler being run for all operation contract arguments, whereas configuring with a sealed type will result in only those types being handled.
+
+This example sets the `AccessKey` property for all requests inheriting from `IAuthenticatedRequest`:
+
+	var proxy = WcfClientProxy.Create<IService>(c =>
+	{
+		c.HandleRequestArgument<IAuthenticatedRequest>(req =>
+		{
+			req.AccessKey = "...";
+		});
+	});
+
+The `where` condition takes the request object as its first parameter and the actual name of the operation contract parameter secondly. This allows for conditional handling of non-specific types based on naming conventions.
+
+For example, a service contract defined as:
+
+	[ServiceContract]
+	public interface IAuthenticatedService
+	{
+		[OperationContract]
+		void OperationOne(string accessKey, string input);
+		
+		[OperationContract]
+		void OperationTwo(string accessKey, string anotherInput);
+	}
+	
+can have the `accessKey` parameter automatically filled in with the following proxy configuration:
+
+	var proxy = WcfClientProxy.Create<IService>(c =>
+	{
+		c.HandleRequestArgument<string>(
+			where: (req, paramName) => paramName == "accessKey",
+			handler: req => "access key value");
+	});
+	
+the proxy can now be called with with any value in the `accessKey` parameter (e.g. `proxy.OperationOne(null, "input value")` and before the request is actually started, the `accessKey` value will be swapped out with `access key value`.
+
 #### HandleResponse\<TResponse\>(Predicate\<TResponse\> where, Action\<TResponse\> handler)
 _overload:_ `HandleResponse<TResponse>(Predicate<TResponse> where, Func<TResponse, TResponse> handler)`
 
 Sets up the proxy to allow inspection and manipulation of responses from the service. 
 
-The `TResponse` value can be a type as specific or general as needed. For instance, `c.HandleResponse<SealedResponseType>(...)` will only handle responses of type `SealedResponseType` whereas `c.HandleResponse<object>(...)` will be fired for all responses.
+Similar to `HandleRequestArgument`, the `TResponse` value can be a type as specific or general as needed. For instance, `c.HandleResponse<SealedResponseType>(...)` will only handle responses of type `SealedResponseType` whereas `c.HandleResponse<object>(...)` will be fired for all responses.
 
 For example, if sensitive information is needed to be stripped out of certain response messages, `HandleResponse` can be used to do this.
 
