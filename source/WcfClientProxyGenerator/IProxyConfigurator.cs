@@ -62,6 +62,42 @@ namespace WcfClientProxyGenerator
         /// </remarks>
         ChannelFactory ChannelFactory { get; }
 
+        #region HandleRequestArgument
+
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="where">Predicate to filter the request arguments by properties of the request, or the parameter name</param>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/></param>
+        void HandleRequestArgument<TArgument>(Func<TArgument, string, bool> where, Action<TArgument> handler);
+
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/></param>        
+        void HandleRequestArgument<TArgument>(Action<TArgument> handler);
+
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="where">Predicate to filter the request arguments by properties of the request, or the parameter name</param>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/> and returns a <typeparamref name="TArgument"/></param>
+        void HandleRequestArgument<TArgument>(Func<TArgument, string, bool> where, Func<TArgument, TArgument> handler);
+        
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/> and returns a <typeparamref name="TArgument"/></param>
+        void HandleRequestArgument<TArgument>(Func<TArgument, TArgument> handler);
+
+        #endregion
+
+        #region HandleResponse
+
         /// <summary>
         /// Allows inspecting and modifying the <typeparamref name="TResponse"/> object
         /// before returning the response to the calling method.
@@ -103,5 +139,7 @@ namespace WcfClientProxyGenerator
         /// Delegate that takes a <typeparamref name="TResponse"/> and returns a <typeparamref name="TResponse"/>
         /// </param>        
         void HandleResponse<TResponse>(Func<TResponse, TResponse> handler);
+
+        #endregion
     }
 }

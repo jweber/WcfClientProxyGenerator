@@ -241,7 +241,11 @@ namespace WcfClientProxyGenerator
             MethodInfo methodInfo,
             TypeBuilder typeBuilder)
         {
-            var parameterTypes = methodInfo.GetParameters()
+            var parameters = methodInfo
+                .GetParameters()
+                .ToArray();
+
+            var parameterTypes = parameters
                 .Select(m => m.ParameterType)
                 .ToArray();
 
@@ -266,8 +270,8 @@ namespace WcfClientProxyGenerator
                 parameterTypes);
 
             for (int i = 1; i <= parameterTypes.Length; i++)
-                methodBuilder.DefineParameter(i, ParameterAttributes.None, "arg" + i);
-
+                methodBuilder.DefineParameter(i, ParameterAttributes.None, parameters[i-1].Name);
+            
             var originalOperationContract = methodInfo.GetCustomAttribute<OperationContractAttribute>();
 
             var attributeCtor = typeof(OperationContractAttribute)
@@ -324,7 +328,11 @@ namespace WcfClientProxyGenerator
             MethodInfo methodInfo, 
             TypeBuilder typeBuilder)
         {
-            var parameterTypes = methodInfo.GetParameters()
+            var parameters = methodInfo
+                .GetParameters()
+                .ToArray();
+
+            var parameterTypes = parameters
                 .Select(m => m.ParameterType)
                 .ToArray();
 
@@ -335,8 +343,8 @@ namespace WcfClientProxyGenerator
                 methodInfo.ReturnType,
                 parameterTypes);
 
-            for (int i = 1; i <= parameterTypes.Length; i++)
-                methodBuilder.DefineParameter(i, ParameterAttributes.None, "arg" + i);
+            for (int i = 1; i <= parameters.Length; i++)
+                methodBuilder.DefineParameter(i, ParameterAttributes.None, parameters[i-1].Name);
 
             Type serviceCallWrapperType;
             var serviceCallWrapperFields = GenerateServiceCallWrapperType(
@@ -379,6 +387,24 @@ namespace WcfClientProxyGenerator
             var serviceCallWrapperCtor = serviceCallWrapperType.GetConstructor(Type.EmptyTypes);
             if (serviceCallWrapperCtor == null)
                 throw new Exception("Parameterless constructor not found for type: " + serviceCallWrapperType);
+
+            for (int i = 0; i < parameterTypes.Length; i++)
+            {
+                Type parameterType = parameterTypes[i];
+                if (parameterType.IsByRef)
+                    continue;
+                
+                var handleRequestParameterMethod = typeof(RetryingWcfActionInvokerProvider<>)
+                    .MakeGenericType(asyncInterfaceType)
+                    .GetMethod("HandleRequestArgument", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .MakeGenericMethod(parameterType);
+
+                ilGenerator.Emit(OpCodes.Ldarg, 0);
+                ilGenerator.Emit(OpCodes.Ldarg, i + 1);
+                ilGenerator.Emit(OpCodes.Ldstr, parameters[i].Name);
+                ilGenerator.Emit(OpCodes.Call, handleRequestParameterMethod);
+                ilGenerator.Emit(OpCodes.Starg_S, i + 1);
+            }
 
             // local2 = new MethodType();
             ilGenerator.Emit(OpCodes.Newobj, serviceCallWrapperCtor);

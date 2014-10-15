@@ -15,12 +15,6 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
-    class ResponseHandlerHolder
-    {
-        public object Predicate { get; set; }
-        public object ResponseHandler { get; set; }
-    }
-
     internal class RetryingWcfActionInvoker<TServiceInterface> : IActionInvoker<TServiceInterface> 
         where TServiceInterface : class
     {
@@ -39,7 +33,7 @@ namespace WcfClientProxyGenerator
         private readonly Type _originalServiceInterfaceType;
 
         private readonly IDictionary<Type, IList<object>> _retryPredicates;
-        private readonly IDictionary<Type, IList<ResponseHandlerHolder>> _responseHandlers;
+        private readonly IDictionary<Type, IList<PredicateHandlerHolder>> _responseHandlers;
         
         /// <summary>
         /// The method that initializes new WCF action providers
@@ -63,7 +57,7 @@ namespace WcfClientProxyGenerator
                 { typeof(ServerTooBusyException), new List<object> { null } }
             };
 
-            _responseHandlers = new Dictionary<Type, IList<ResponseHandlerHolder>>();
+            _responseHandlers = new Dictionary<Type, IList<PredicateHandlerHolder>>();
 
             _originalServiceInterfaceType = GetOriginalServiceInterface();
         }
@@ -143,12 +137,12 @@ namespace WcfClientProxyGenerator
         public void AddResponseHandler<TResponse>(Func<TResponse, TResponse> handler, Predicate<TResponse> @where)
         {
             if (!_responseHandlers.ContainsKey(typeof(TResponse)))
-                _responseHandlers.Add(typeof(TResponse), new List<ResponseHandlerHolder>());
+                _responseHandlers.Add(typeof(TResponse), new List<PredicateHandlerHolder>());
 
-            _responseHandlers[typeof(TResponse)].Add(new ResponseHandlerHolder
+            _responseHandlers[typeof(TResponse)].Add(new PredicateHandlerHolder
             {
                 Predicate = @where, 
-                ResponseHandler = handler
+                Handler = handler
             });
         }
 
@@ -450,7 +444,7 @@ namespace WcfClientProxyGenerator
             if (!this._responseHandlers.ContainsKey(@type))
                 return response;
 
-            IList<ResponseHandlerHolder> responseHandlerHolders = this._responseHandlers[@type];
+            IList<PredicateHandlerHolder> responseHandlerHolders = this._responseHandlers[@type];
 
             MethodInfo predicateInvokeMethod = ResponseHandlerPredicateCache.GetOrAddSafe(@type, _ =>
             {
@@ -476,7 +470,7 @@ namespace WcfClientProxyGenerator
             {
                 try
                 {
-                    response = (TResponse) handlerMethod.Invoke(handler.ResponseHandler, new object[] { response });
+                    response = (TResponse) handlerMethod.Invoke(handler.Handler, new object[] { response });
                 }
                 catch (TargetInvocationException ex)
                 {

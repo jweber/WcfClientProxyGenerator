@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
@@ -8,29 +11,181 @@ using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
 {
+    class PredicateHandlerHolder
+    {
+        public object Predicate { get; set; }
+        public object Handler { get; set; }
+    }
+
     internal class RetryingWcfActionInvokerProvider<TServiceInterface> : 
         IActionInvokerProvider<TServiceInterface>, 
         IRetryingProxyConfigurator
         where TServiceInterface : class
     {
-        private ChannelFactory<TServiceInterface> _channelFactory;
-        private readonly RetryingWcfActionInvoker<TServiceInterface> _actionInvoker; 
+        private static ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>> TypeHierarchyCache
+            = new ConcurrentDictionary<Type, Lazy<IEnumerable<Type>>>();
+
+        private static ConcurrentDictionary<Type, Lazy<MethodInfo>> RequestParameterHandlerPredicateCache
+            = new ConcurrentDictionary<Type, Lazy<MethodInfo>>();
+
+        private static ConcurrentDictionary<Type, Lazy<MethodInfo>> RequestParameterHandlerCache
+            = new ConcurrentDictionary<Type, Lazy<MethodInfo>>();
+
+        private ChannelFactory<TServiceInterface> channelFactory;
+        private readonly RetryingWcfActionInvoker<TServiceInterface> actionInvoker; 
+
+        private readonly IDictionary<Type, IList<PredicateHandlerHolder>> requestArgumentHandlers 
+            = new Dictionary<Type, IList<PredicateHandlerHolder>>(); 
 
         public RetryingWcfActionInvokerProvider()
         {
-            _actionInvoker = new RetryingWcfActionInvoker<TServiceInterface>(() =>
+            actionInvoker = new RetryingWcfActionInvoker<TServiceInterface>(() =>
             {
-                if (_channelFactory == null)
+                if (channelFactory == null)
                     this.UseDefaultEndpoint();
 
-                return _channelFactory.CreateChannel();
+                return channelFactory.CreateChannel();
             });
         }
 
         public IActionInvoker<TServiceInterface> ActionInvoker
         {
-            get { return _actionInvoker; }
+            get { return actionInvoker; }
         }
+
+        #region HandleRequestArgument
+
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="where">Predicate to filter the request arguments by properties of the request, or the parameter name</param>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/></param>
+        public void HandleRequestArgument<TArgument>(Func<TArgument, string, bool> where, Action<TArgument> handler)
+        {
+            this.HandleRequestArgument(where, r =>
+            {
+                handler(r);
+                return r;
+            });
+        }
+
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/></param>        
+        public void HandleRequestArgument<TArgument>(Action<TArgument> handler)
+        {
+            this.HandleRequestArgument<TArgument>(null, handler);
+        }
+
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="where">Predicate to filter the request arguments by properties of the request, or the parameter name</param>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/> and returns a <typeparamref name="TArgument"/></param>
+        public void HandleRequestArgument<TArgument>(Func<TArgument, string, bool> where, Func<TArgument, TArgument> handler)
+        {
+            if (!this.requestArgumentHandlers.ContainsKey(typeof(TArgument)))
+                this.requestArgumentHandlers.Add(typeof(TArgument), new List<PredicateHandlerHolder>());
+
+            this.requestArgumentHandlers[typeof(TArgument)].Add(new PredicateHandlerHolder
+            {
+                Predicate = where,
+                Handler = handler
+            });
+        }
+
+        /// <summary>
+        /// Allows inspection or modification of request arguments immediately before sending the request.
+        /// </summary>
+        /// <typeparam name="TArgument">Type or parent type/interface of the argument</typeparam>
+        /// <param name="handler">Delegate that takes a <typeparamref name="TArgument"/> and returns a <typeparamref name="TArgument"/></param>
+        public void HandleRequestArgument<TArgument>(Func<TArgument, TArgument> handler)
+        {
+            this.HandleRequestArgument(null, handler);
+        }
+
+        #region Runtime Handler Resolution
+
+        /// <summary>
+        /// Called into by the dynamically generated proxy
+        /// </summary>
+        protected TArgument HandleRequestArgument<TArgument>(TArgument argument, string parameterName)
+        {
+            // Don't attempt handler resolution if there aren't any registered
+            if (!this.requestArgumentHandlers.Any())
+                return argument;
+
+            argument = ExecuteRequestArgumentHandlers(argument, parameterName);
+            return argument;
+        }
+
+        private TArgument ExecuteRequestArgumentHandlers<TArgument>(TArgument requestArgument, string parameterName)
+        {
+            Type @type = typeof(TArgument);
+            var baseTypes = TypeHierarchyCache.GetOrAddSafe(@type, _ =>
+            {
+                return @type.GetAllInheritedTypes();
+            });
+
+            foreach (var baseType in baseTypes)
+                requestArgument = this.ExecuteRequestArgumentHandlers(requestArgument, parameterName, baseType);
+
+            return requestArgument;
+        }
+
+        private TArgument ExecuteRequestArgumentHandlers<TArgument>(TArgument response, string parameterName, Type @type)
+        {
+            if (!this.requestArgumentHandlers.ContainsKey(@type))
+                return response;
+
+            IList<PredicateHandlerHolder> requestParameterHandlerHolders = this.requestArgumentHandlers[@type];
+
+            MethodInfo predicateInvokeMethod = RequestParameterHandlerPredicateCache.GetOrAddSafe(@type, _ =>
+            {
+                Type predicateType = typeof(Func<,,>)
+                    .MakeGenericType(@type, typeof(string), typeof(bool));
+
+                return predicateType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
+            });
+
+            var handlers = requestParameterHandlerHolders
+                .Where(m => m.Predicate == null
+                            || ((bool) predicateInvokeMethod.Invoke(m.Predicate, new object[] { response, parameterName })))
+                .ToList();
+
+            if (!handlers.Any())
+                return response;
+
+            MethodInfo handlerMethod = RequestParameterHandlerCache.GetOrAddSafe(@type, _ =>
+            {
+                Type actionType = typeof(Func<,>).MakeGenericType(@type, @type);
+                return actionType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public);
+            });
+
+            foreach (var handler in handlers)
+            {
+                try
+                {
+                    response = (TArgument) handlerMethod.Invoke(handler.Handler, new object[] { response });
+                }
+                catch (TargetInvocationException ex)
+                {
+                    throw ex.InnerException;
+                }
+            }
+
+            return response;
+        }
+
+        #endregion
+
+        #endregion
+
+        #region HandleResponse
 
         /// <summary>
         /// Allows inspecting and modifying the <typeparamref name="TResponse"/> object
@@ -43,7 +198,7 @@ namespace WcfClientProxyGenerator
         /// </param>
         public void HandleResponse<TResponse>(Predicate<TResponse> @where, Action<TResponse> handler)
         {
-            _actionInvoker.AddResponseHandler(r =>
+            actionInvoker.AddResponseHandler(r =>
             {
                 handler(r);
                 return r;
@@ -60,7 +215,7 @@ namespace WcfClientProxyGenerator
         /// </param>    
         public void HandleResponse<TResponse>(Action<TResponse> handler)
         {
-            _actionInvoker.AddResponseHandler<TResponse>(r =>
+            actionInvoker.AddResponseHandler<TResponse>(r =>
             {
                 handler(r);
                 return r;
@@ -77,7 +232,7 @@ namespace WcfClientProxyGenerator
         /// </param>        
         public void HandleResponse<TResponse>(Func<TResponse, TResponse> handler)
         {
-            _actionInvoker.AddResponseHandler(handler, null);
+            actionInvoker.AddResponseHandler(handler, null);
         }
 
         /// <summary>
@@ -91,8 +246,10 @@ namespace WcfClientProxyGenerator
         /// </param>
         public void HandleResponse<TResponse>(Predicate<TResponse> @where, Func<TResponse, TResponse> handler)
         {
-            _actionInvoker.AddResponseHandler(handler, @where);
+            actionInvoker.AddResponseHandler(handler, @where);
         }
+
+        #endregion
 
         #region IRetryingProxyConfigurator
 
@@ -102,8 +259,8 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public event OnCallBeginHandler OnCallBegin
         {
-            add { _actionInvoker.OnCallBegin += value; }
-            remove { _actionInvoker.OnCallBegin -= value; }
+            add { actionInvoker.OnCallBegin += value; }
+            remove { actionInvoker.OnCallBegin -= value; }
         }
 
         /// <summary>
@@ -111,8 +268,8 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public event OnCallSuccessHandler OnCallSuccess
         {
-            add { _actionInvoker.OnCallSuccess += value; }
-            remove { _actionInvoker.OnCallSuccess -= value; }
+            add { actionInvoker.OnCallSuccess += value; }
+            remove { actionInvoker.OnCallSuccess -= value; }
         }
 
         /// <summary>
@@ -120,8 +277,8 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public event OnInvokeHandler OnBeforeInvoke
         {
-            add { _actionInvoker.OnBeforeInvoke += value; }
-            remove { _actionInvoker.OnBeforeInvoke -= value; }
+            add { actionInvoker.OnBeforeInvoke += value; }
+            remove { actionInvoker.OnBeforeInvoke -= value; }
         }
 
         /// <summary>
@@ -129,8 +286,8 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public event OnInvokeHandler OnAfterInvoke
         {
-            add { _actionInvoker.OnAfterInvoke += value; }
-            remove { _actionInvoker.OnAfterInvoke -= value; }
+            add { actionInvoker.OnAfterInvoke += value; }
+            remove { actionInvoker.OnAfterInvoke -= value; }
         }
 
         /// <summary>
@@ -138,8 +295,8 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public event OnExceptionHandler OnException
         {
-            add { _actionInvoker.OnException += value; }
-            remove { _actionInvoker.OnException -= value; }
+            add { actionInvoker.OnException += value; }
+            remove { actionInvoker.OnException -= value; }
         }
 
         /// <summary>
@@ -150,12 +307,12 @@ namespace WcfClientProxyGenerator
             get
             {
                 // if requested without endpoint set, use default
-                if (_channelFactory == null)
+                if (channelFactory == null)
                 {
                     UseDefaultEndpoint();
                 }
 
-                return _channelFactory;
+                return channelFactory;
             }
         }
 
@@ -166,11 +323,11 @@ namespace WcfClientProxyGenerator
             if (typeof(TServiceInterface).GetCustomAttribute<GeneratedAsyncInterfaceAttribute>() != null)
             {
                 Type originalServiceInterfaceType = typeof(TServiceInterface).GetInterfaces()[0];
-                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(originalServiceInterfaceType);
+                channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(originalServiceInterfaceType);
             }
             else
             {
-                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(typeof(TServiceInterface));    
+                channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(typeof(TServiceInterface));    
             }
         }
 
@@ -179,48 +336,48 @@ namespace WcfClientProxyGenerator
             if (typeof(TServiceInterface).HasAttribute<GeneratedAsyncInterfaceAttribute>())
             {
                 Type originalServiceInterfaceType = typeof(TServiceInterface).GetInterfaces()[0];
-                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName, originalServiceInterfaceType);
+                channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName, originalServiceInterfaceType);
             }
             else
             {
-                _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName);    
+                channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName);    
             }
         }
 
         public void SetEndpoint(Binding binding, EndpointAddress endpointAddress)
         {
-            _channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress);
+            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress);
         }
 
         public void MaximumRetries(int retryCount)
         {
-            _actionInvoker.RetryCount = retryCount;
+            actionInvoker.RetryCount = retryCount;
         }
 
         public void SetDelayPolicy(Func<IDelayPolicy> policyFactory)
         {
-            _actionInvoker.DelayPolicyFactory = policyFactory;
+            actionInvoker.DelayPolicyFactory = policyFactory;
         }
 
         public void RetryOnException<TException>(Predicate<TException> where = null)
             where TException : Exception
         {
-            _actionInvoker.AddExceptionToRetryOn<TException>(where);
+            actionInvoker.AddExceptionToRetryOn<TException>(where);
         }
 
         public void RetryOnException(Type exceptionType, Predicate<Exception> where = null)
         {
-            _actionInvoker.AddExceptionToRetryOn(exceptionType, where);
+            actionInvoker.AddExceptionToRetryOn(exceptionType, where);
         }
 
         public void RetryOnResponse<TResponse>(Predicate<TResponse> where)
         {
-            _actionInvoker.AddResponseToRetryOn(where);
+            actionInvoker.AddResponseToRetryOn(where);
         }
 
         public void RetryFailureExceptionFactory(RetryFailureExceptionFactoryDelegate factory)
         {
-            _actionInvoker.RetryFailureExceptionFactory = factory;
+            actionInvoker.RetryFailureExceptionFactory = factory;
         }
 
         #endregion
