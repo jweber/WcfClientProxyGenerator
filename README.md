@@ -145,7 +145,7 @@ will configure the proxy based on the `<endpoint/>` as setup in the _app.config_
 Configures the proxy to communicate with the endpoint using the given `binding` at the `endpointAddress`
 
 #### HandleRequestArgument\<TArgument\>(Func\<TArgument, string, bool\> where, Action\<TArgument\> handler)
-_overload:_ `HandleRequestArgument\<TArgument\>(Func\<TArgument, string, bool\> where, Func\<TArgument, TArgument\> handler)`
+_overload:_ `HandleRequestArgument<TArgument>(Func<TArgument, string, bool> where, Func<TArgument, TArgument> handler)`
 
 Sets up the proxy to run handlers on argument values that are used for making WCF requests. An example use case would be to inject authentication keys into all requests where an argument value matches expectation.
 
