@@ -1243,6 +1243,112 @@ namespace WcfClientProxyGenerator.Tests
 
         #endregion
 
+        #region HandleRequestArgument
+
+        [Test]
+        public void HandleRequestArgument_ModifiesComplexRequest_BeforeSendingToService()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+                .Returns((Request r) => new Response
+                {
+                    ResponseMessage = r.RequestMessage
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                c.HandleRequestArgument<Request>(
+                    where: (arg, param) => arg == null,
+                    handler: arg =>
+                    {
+                        return new Request
+                        {
+                            RequestMessage = "default message"
+                        };
+                    });
+            });
+
+            proxy.TestMethodComplex(null);
+            mockService
+                .Verify(m => m.TestMethodComplex(It.Is<Request>(r => r.RequestMessage == "default message")), Times.Once());
+            
+            proxy.TestMethodComplex(new Request { RequestMessage = "set" });
+            mockService
+                .Verify(m => m.TestMethodComplex(It.Is<Request>(r => r.RequestMessage == "set")), Times.Once());
+        }
+
+        [Test]
+        public void HandleRequestArgument_MatchesArgumentsOfSameType_BasedOnParameterName()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.TestMethod(It.IsAny<string>() /* input */, It.IsAny<string>() /* two */))
+                .Returns("response");
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                
+                c.HandleRequestArgument<string>(
+                    where: (arg, paramName) => paramName == "input",
+                    handler: arg =>
+                    {
+                        return "always input";
+                    });
+                
+                c.HandleRequestArgument<string>(
+                    where: (arg, paramName) => paramName == "two",
+                    handler: arg =>
+                    {
+                        return "always two";
+                    });
+            });
+
+            proxy.TestMethod("first argument", "second argument");
+
+            mockService
+                .Verify(m => m.TestMethod("always input", "always two"), Times.Once());
+        }
+
+        [Test]
+        public void HandleRequestArgument_MatchesArgumentsByBaseTypes()
+        {
+            int handleRequestArgumentCounter = 0;
+
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.TestMethodMixed(It.IsAny<string>(), It.IsAny<int>()))
+                .Returns(10);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+                
+                c.HandleRequestArgument<object>(
+                    handler: arg =>
+                    {
+                        handleRequestArgumentCounter++;
+                    });
+           });
+
+            proxy.TestMethodMixed("first argument", 100);
+
+            mockService
+                .Verify(m => m.TestMethodMixed("first argument", 100), Times.Once());
+
+            Assert.That(handleRequestArgumentCounter, Is.EqualTo(2));
+        }
+
+        #endregion
+
         #region HandleResponse
 
         [Test]
@@ -1714,6 +1820,51 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         #endregion
+
+        #endregion
+
+        #region Dynamic Async Invocation
+
+        [Test]
+        public async Task Async_DynamicConversion_Proxy_ReturnsExpectedValue_WhenCallingGeneratedAsyncMethod()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService.Setup(m => m.TestMethod("good")).Returns("OK");
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            
+            // ITestService does not define TestMethodAsync, it's generated at runtime
+            var result = await ((dynamic) proxy).TestMethodAsync("good");
+            
+            Assert.AreEqual("OK", result);
+        }
+
+        [Test]
+        public async Task Async_DynamicConversion_Proxy_CanCallGeneratedAsyncVoidMethod()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.VoidMethod("good"))
+                .Callback<string>(input =>
+                {
+                    Assert.That(input, Is.EqualTo("good"));
+                    resetEvent.Set();
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            
+            // ITestService does not define VoidMethodAsync, it's generated at runtime
+            await ((dynamic) proxy).VoidMethodAsync("good");
+
+            if (!resetEvent.WaitOne(300))
+                Assert.Fail("Timeout occurred when waiting for callback");
+        }
 
         #endregion
 

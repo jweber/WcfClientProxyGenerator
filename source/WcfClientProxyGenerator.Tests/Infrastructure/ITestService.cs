@@ -13,6 +13,9 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
         string TestMethod(string input, string two);
 
         [OperationContract]
+        int TestMethodMixed(string input, int input2);
+
+        [OperationContract]
         void VoidMethod(string input);
 
         [OperationContract]
