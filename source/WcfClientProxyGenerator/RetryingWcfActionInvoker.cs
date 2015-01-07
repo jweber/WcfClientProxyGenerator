@@ -358,7 +358,7 @@ namespace WcfClientProxyGenerator
         private void HandleOnAfterInvoke(int retryCounter, object response, InvokeInfo invokeInfo)
         {
             // set return value if non-void
-            if (invokeInfo != null && response.GetType() != typeof(VoidReturnType))
+            if (invokeInfo != null && response != null && response.GetType() != typeof(VoidReturnType))
             {
                 invokeInfo.MethodHasReturnValue = true;
                 invokeInfo.ReturnValue = response;
@@ -374,7 +374,7 @@ namespace WcfClientProxyGenerator
 
         private void HandleOnCallSuccess(TimeSpan callDuration, object response, int requestAttempts, InvokeInfo invokeInfo)
         {
-            if (invokeInfo != null && response.GetType() != typeof (VoidReturnType))
+            if (invokeInfo != null && response != null && response.GetType() != typeof (VoidReturnType))
             {
                 invokeInfo.MethodHasReturnValue = true;
                 invokeInfo.ReturnValue = response;

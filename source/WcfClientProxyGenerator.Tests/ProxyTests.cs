@@ -88,6 +88,40 @@ namespace WcfClientProxyGenerator.Tests
                 Assert.Fail("Timeout occurred when waiting for callback");
         }
 
+        [Test, Description("github issue #12")]
+        public void Proxy_CanCallServiceMethod_ThatReturnsNull()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.TestMethod(It.IsAny<string>()))
+                .Returns(() => null);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            string response = proxy.TestMethod("input");
+
+            Assert.That(response, Is.Null);
+        }
+
+        [Test, Description("github issue #12")]
+        public async Task AsyncProxy_CanCallServiceMethod_ThatReturnsNull()
+        {
+            var mockService = new Mock<ITestService>();
+            mockService
+                .Setup(m => m.TestMethod(It.IsAny<string>()))
+                .Returns(() => null);
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            string response = await proxy.CallAsync(m => m.TestMethod("input"));
+
+            Assert.That(response, Is.Null);
+        }
+
         [Test]
         public void MultipleProxies_ReturnExpectedValues_WhenCallingServices()
         {
