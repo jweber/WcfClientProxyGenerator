@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.Remoting.Messaging;
 using System.ServiceModel;
+using System.ServiceModel.Description;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -49,6 +50,18 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(
                 () => WcfClientProxy.Create<ITestService>("DoesNotExist"),
                 Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void CreatingProxy_WithServiceEndpoint_CreatesProxy()
+        {
+            var mockService = new Mock<ITestService>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            ContractDescription contractDescription = ContractDescription.GetContract(typeof(ITestService));
+            Assert.DoesNotThrow(() => 
+                WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(new ServiceEndpoint(contractDescription, serviceHost.Binding, serviceHost.EndpointAddress)))
+            );
         }
 
         [Test]

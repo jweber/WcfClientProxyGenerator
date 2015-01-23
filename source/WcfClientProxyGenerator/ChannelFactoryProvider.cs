@@ -6,6 +6,7 @@ using System.Linq;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Configuration;
+using System.ServiceModel.Description;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
@@ -50,6 +51,13 @@ namespace WcfClientProxyGenerator
             return GetChannelFactory(cacheKey, () => new ChannelFactory<TServiceInterface>(binding, endpointAddress));
         }
 
+        public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(ServiceEndpoint endpoint)
+            where TServiceInterface : class
+        {
+            string cacheKey = GetCacheKey<TServiceInterface>(endpoint);
+            return GetChannelFactory(cacheKey, () => new ChannelFactory<TServiceInterface>(endpoint));
+        }
+
         private static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(string cacheKey, Func<ChannelFactory<TServiceInterface>> factory)
             where TServiceInterface : class
         {
@@ -78,6 +86,11 @@ namespace WcfClientProxyGenerator
                                  typeof(TServiceInterface).FullName,
                                  binding.Name,
                                  endpointAddress);
+        }
+
+        private static string GetCacheKey<TServiceInterface>(ServiceEndpoint endpoint)
+        {
+            return GetCacheKey<TServiceInterface>(endpoint.Binding, endpoint.Address);
         }
 
         private static Tuple<Binding, EndpointAddress> GetClientEndpointConfiguration(

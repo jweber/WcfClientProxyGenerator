@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Description;
 
 namespace WcfClientProxyGenerator
 {
@@ -23,6 +24,12 @@ namespace WcfClientProxyGenerator
         /// <param name="binding"></param>
         /// <param name="endpointAddress"></param>
         void SetEndpoint(Binding binding, EndpointAddress endpointAddress);
+
+        /// <summary>
+        /// Specifies the endpoint configuration to use.
+        /// </summary>
+        /// <param name="endpoint"></param>
+        void SetEndpoint(ServiceEndpoint endpoint);
 
         /// <summary>
         /// Event that is fired immediately before the service method will be called. This event

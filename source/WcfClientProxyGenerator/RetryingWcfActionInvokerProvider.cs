@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Description;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Util;
@@ -347,6 +348,11 @@ namespace WcfClientProxyGenerator
         public void SetEndpoint(Binding binding, EndpointAddress endpointAddress)
         {
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress);
+        }
+
+        public void SetEndpoint(ServiceEndpoint endpoint)
+        {
+            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint);
         }
 
         public void MaximumRetries(int retryCount)
