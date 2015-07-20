@@ -93,6 +93,7 @@ namespace :nuget do
     nuspec.output_file = "#{PROJECT_NAME}.nuspec"
   end
   
+  desc 'Build nupkg'
   nugetpack :pack => ['build:all', :spec] do |nuget|
     nuget.command = nuget_path
     nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
