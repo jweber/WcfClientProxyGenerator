@@ -27,7 +27,7 @@ assemblyinfo :version => [:versioning] do |asm|
 end
 
 desc 'Compile the project'
-task :compile do
+task :compile => ['nuget:restore'] do
   Rake::Task['build:net45'].invoke()
 end
 
@@ -75,6 +75,13 @@ task :package => 'build:all' do
 end
 
 namespace :nuget do
+  desc 'Restores nuget packages'
+  task :restore do
+	solution_path = "source/#{PROJECT_NAME}.sln"
+	
+	sh "#{nuget_path} restore #{solution_path} -verbosity normal"
+  end
+
   desc 'Creates the nuspec file'
   nuspec :spec => :version do |nuspec|
     mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
@@ -93,6 +100,7 @@ namespace :nuget do
     nuspec.output_file = "#{PROJECT_NAME}.nuspec"
   end
   
+  desc 'Build nupkg'
   nugetpack :pack => ['build:all', :spec] do |nuget|
     nuget.command = nuget_path
     nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
@@ -130,11 +138,11 @@ task :versioning do
 end
 
 def nunit_path()
-  File.join(Dir.glob(File.join('lib', 'nuget_packages', "nunit.runners.*")).sort.last, "tools", "nunit-console.exe")
+  File.join(Dir.glob(File.join('source', 'packages', "nunit.runners.*")).sort.last, "tools", "nunit-console.exe")
 end
 
 def nuget_path()
-  File.join(Dir.glob(File.join('lib', 'nuget_packages', "nuget.commandline.*")).sort.last, "tools", "nuget.exe")
+  File.join('lib', 'NuGet.exe')
 end
 
 def zip_directory(assemble_path, output_path)

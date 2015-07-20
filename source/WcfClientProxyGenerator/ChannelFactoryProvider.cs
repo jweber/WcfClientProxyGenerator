@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Configuration;
@@ -26,7 +27,7 @@ namespace WcfClientProxyGenerator
             return GetChannelFactory(cacheKey, () =>
             {
                 var clientEndpointConfig = GetClientEndpointConfiguration(originalServiceInterfaceType);
-                return new ChannelFactory<TServiceInterface>(clientEndpointConfig.Item1, clientEndpointConfig.Item2);
+                return new ChannelFactory<TServiceInterface>(clientEndpointConfig);
             });
         }
         
@@ -40,7 +41,7 @@ namespace WcfClientProxyGenerator
             return GetChannelFactory(cacheKey, () =>
             {
                 var clientEndpointConfig = GetClientEndpointConfiguration(originalServiceInterfaceType, endpointConfigurationName);
-                return new ChannelFactory<TServiceInterface>(clientEndpointConfig.Item1, clientEndpointConfig.Item2);
+                return new ChannelFactory<TServiceInterface>(clientEndpointConfig);
             });
         }
 
@@ -93,7 +94,7 @@ namespace WcfClientProxyGenerator
             return GetCacheKey<TServiceInterface>(endpoint.Binding, endpoint.Address);
         }
 
-        private static Tuple<Binding, EndpointAddress> GetClientEndpointConfiguration(
+        private static ServiceEndpoint GetClientEndpointConfiguration(
             Type serviceInterfaceType, 
             string endpointConfigurationName = null)
         {
@@ -117,7 +118,16 @@ namespace WcfClientProxyGenerator
             var endpoint = GetDefaultEndpointForServiceType(serviceInterfaceType, endpointConfigurationName, serviceModelSection.Client.Endpoints);
             var binding = GetClientEndpointBinding(serviceInterfaceType, endpoint, serviceModelSection.Bindings.BindingCollections);
 
-            return Tuple.Create(binding, new EndpointAddress(endpoint.Address));
+            var serviceEndpoint = new ServiceEndpoint(ContractDescription.GetContract(serviceInterfaceType))
+            {
+                Binding = binding,
+                Address = new EndpointAddress(endpoint.Address)
+            };
+
+            foreach (var behavior in GetEndpointBehaviors(endpoint, serviceModelSection))
+                serviceEndpoint.Behaviors.Add(behavior);
+
+            return serviceEndpoint;
         }
 
         private static ChannelEndpointElement GetDefaultEndpointForServiceType(
@@ -174,6 +184,24 @@ namespace WcfClientProxyGenerator
 
             var message = string.Format("Could not determine binding from configuration section for contract '{0}'", serviceInterfaceType.FullName);
             throw new InvalidOperationException(message);
+        }
+
+        private static IEnumerable<IEndpointBehavior> GetEndpointBehaviors(
+            ChannelEndpointElement endpoint,
+            ServiceModelSectionGroup serviceModelSectionGroup)
+
+        {
+            if (string.IsNullOrEmpty(endpoint.BehaviorConfiguration) || serviceModelSectionGroup.Behaviors == null || serviceModelSectionGroup.Behaviors.EndpointBehaviors.Count == 0)
+                yield break;
+
+
+            var behaviorCollectionElement = serviceModelSectionGroup.Behaviors.EndpointBehaviors[endpoint.BehaviorConfiguration];
+            foreach (var behaviorExtension in behaviorCollectionElement)
+
+            {
+                object extension = behaviorExtension.GetType().InvokeMember("CreateBehavior", BindingFlags.InvokeMethod | BindingFlags.NonPublic | BindingFlags.Instance, null, behaviorExtension, null);
+                yield return ((IEndpointBehavior)extension);
+            }
         }
     }
 }

@@ -43,3 +43,5 @@ lib/.nuget_packages
 build-artifacts
 build
 source/VersionInfo.cs
+.settings
+source/packages
