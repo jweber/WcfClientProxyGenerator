@@ -35,7 +35,7 @@ namespace :build do
   task :all => [:net45] do
   end
 
-  msbuild :net45 => :version do |msb|
+  msbuild :net45 => ["nuget:restore", "version"] do |msb|
     msb.properties :configuration => $config, :Framework => 'NET45'
     msb.targets [:clean, :build]
     msb.solution = "source/#{PROJECT_NAME}.sln"
