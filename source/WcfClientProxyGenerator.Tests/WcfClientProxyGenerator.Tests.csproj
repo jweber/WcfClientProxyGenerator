@@ -42,10 +42,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Moq">
-      <HintPath>..\..\lib\nuget_packages\Moq.4.0.10827\lib\NET40\Moq.dll</HintPath>
+      <HintPath>..\packages\Moq.4.0.10827\lib\NET40\Moq.dll</HintPath>
     </Reference>
     <Reference Include="nunit.framework">
-      <HintPath>..\..\lib\nuget_packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
+      <HintPath>..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
