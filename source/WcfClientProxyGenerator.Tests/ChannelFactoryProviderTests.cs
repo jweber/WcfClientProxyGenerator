@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ServiceModel;
+using System.ServiceModel.Description;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -8,6 +9,25 @@ namespace WcfClientProxyGenerator.Tests
     [TestFixture]
     public class ChannelFactoryProviderTests
     {
+        [Test]
+        public void ChannelFactory_FromEndpointConfigurationName_WithBehaviorConfiguration_ContainsConfiguredBehaviors()
+        {
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("BehaviorService");
+            var behavior = factory.Endpoint.Behaviors.Find<WebHttpBehavior>();
+            
+            Assert.That(behavior, Is.Not.Null);
+            Assert.That(behavior.HelpEnabled, Is.True);
+        }
+
+        [Test]
+        public void ChannelFactory_FromEndpointConfigurationName_WithoutBehaviorConfiguratio_DoesNotContainEndpointBehaviors()
+        {
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
+            var behavior = factory.Endpoint.Behaviors.Find<WebHttpBehavior>();
+
+            Assert.That(behavior, Is.Null);
+        }
+
         [Test]
         public void ChannelFactories_WithIdenticalConfiguration_AreSameInstance_ForCodeBasedConfiguration()
         {
