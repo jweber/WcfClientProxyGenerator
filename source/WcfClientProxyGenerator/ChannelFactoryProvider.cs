@@ -52,6 +52,13 @@ namespace WcfClientProxyGenerator
             return GetChannelFactory(cacheKey, () => new ChannelFactory<TServiceInterface>(binding, endpointAddress));
         }
 
+        public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(Binding binding, EndpointAddress endpointAddress, object callbackObject)
+            where TServiceInterface : class
+        {
+            string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress);
+            return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(callbackObject, binding, endpointAddress));
+        }
+
         public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(ServiceEndpoint endpoint)
             where TServiceInterface : class
         {
