@@ -78,18 +78,14 @@ namespace WcfClientProxyGenerator
                 throw new InvalidOperationException(String.Format("Service interface {0} has no OperationContact methods. Is this a proper WCF service interface?", interfaceType.Name));
             }
 
-            Type callbackContract = null;
+            ServiceContractAttribute serviceContractAttribute = null;
             object[] customAttributes = interfaceType.GetCustomAttributes(typeof (ServiceContractAttribute), true);
             if (customAttributes.Any())
             {
-                ServiceContractAttribute serviceContractAttribute = customAttributes[0] as ServiceContractAttribute;
-                if (serviceContractAttribute != null)
-                {
-                    callbackContract = serviceContractAttribute.CallbackContract;
-                }
+                serviceContractAttribute = customAttributes[0] as ServiceContractAttribute;
             }
 
-            var asyncInterfaceType = GenerateAsyncInterface(serviceMethods, callbackContract);
+            var asyncInterfaceType = GenerateAsyncInterface(serviceMethods, serviceContractAttribute);
 
             // build proxy
 
@@ -195,7 +191,7 @@ namespace WcfClientProxyGenerator
             return operationContractAttr.ReplyAction;
         }
 
-        private static Type GenerateAsyncInterface(IList<MethodInfo> serviceMethods, Type callbackContractType = null)
+        private static Type GenerateAsyncInterface(IList<MethodInfo> serviceMethods, ServiceContractAttribute serviceContractAttribute)
         {
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
@@ -214,18 +210,19 @@ namespace WcfClientProxyGenerator
             Type serviceContractAttrType = typeof(ServiceContractAttribute);
             var serviceContractAttrCtor = serviceContractAttrType.GetConstructor(Type.EmptyTypes);
 
-            CustomAttributeBuilder serviceContractAttrBuilder;
-            if (callbackContractType != null)
+            var props = new List<PropertyInfo>();
+            var vals = new List<object>();
+
+            props.Add(serviceContractAttrType.GetProperty("CallbackContract"));
+            props.Add(serviceContractAttrType.GetProperty("SessionMode"));
+
+            foreach (PropertyInfo prop in props)
             {
-                var callbackContractProp = serviceContractAttrType.GetProperty("CallbackContract");
-                serviceContractAttrBuilder = new CustomAttributeBuilder(serviceContractAttrCtor, new object[0], new[] {callbackContractProp}, new object[] {callbackContractType});
-            }
-            else
-            {
-                serviceContractAttrBuilder = new CustomAttributeBuilder(serviceContractAttrCtor, new object[0]);
+                vals.Add(prop.GetValue(serviceContractAttribute));
             }
 
-
+            CustomAttributeBuilder serviceContractAttrBuilder = new CustomAttributeBuilder(serviceContractAttrCtor, new object[0], props.ToArray(), vals.ToArray());
+            
             asyncInterfaceBuilder.SetCustomAttribute(serviceContractAttrBuilder);
 
             var nonAsyncServiceMethods = serviceMethods
