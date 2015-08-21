@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.ServiceModel;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ServiceModel;
 using Moq;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
@@ -11,15 +6,16 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
     [ServiceBehavior(IncludeExceptionDetailInFaults = true)]
     public class TestServiceImpl : ITestService
     {
-            private readonly Mock<ITestService> _mock;
+        private readonly Mock<ITestService> _mock;
 
-            public TestServiceImpl()
-            {}
+        public TestServiceImpl()
+        {
+        }
 
-            public TestServiceImpl(Mock<ITestService> mock)
-            {
-                _mock = mock;
-            }
+        public TestServiceImpl(Mock<ITestService> mock)
+        {
+            _mock = mock;
+        }
 
         public string TestMethod(string input)
         {
@@ -76,7 +72,7 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             if (_mock != null)
                 return _mock.Object.TestMethodComplex(request);
 
-            return new Response { ResponseMessage = string.Format("Echo: {0}", request.RequestMessage) };
+            return new Response {ResponseMessage = string.Format("Echo: {0}", request.RequestMessage)};
         }
 
         public Response TestMethodComplexMulti(string input, Request request)
@@ -84,7 +80,7 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             if (_mock != null)
                 return _mock.Object.TestMethodComplexMulti(input, request);
 
-            return new Response { ResponseMessage = string.Format("Echo: {0} {1}", input, request.RequestMessage) };
+            return new Response {ResponseMessage = string.Format("Echo: {0} {1}", input, request.RequestMessage)};
         }
     }
 }
