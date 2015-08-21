@@ -55,7 +55,7 @@ namespace WcfClientProxyGenerator
         public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(Binding binding, EndpointAddress endpointAddress, object callbackObject)
             where TServiceInterface : class
         {
-            string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress);
+            string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress, callbackObject.GetType());
             return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(callbackObject, binding, endpointAddress));
         }
 
@@ -78,22 +78,23 @@ namespace WcfClientProxyGenerator
 
         private static string GetCacheKey<TServiceInterface>()
         {
-            return string.Format("type:{0}", typeof(TServiceInterface).FullName);
+            return $"type:{typeof (TServiceInterface).FullName}";
         }
 
         private static string GetCacheKey<TServiceInterface>(string endpointConfigurationName)
         {
-            return string.Format("type:{0};config:{1}",
-                                 typeof(TServiceInterface).FullName,
-                                 endpointConfigurationName);
+            return $"type:{typeof (TServiceInterface).FullName};config:{endpointConfigurationName}";
         }
 
         private static string GetCacheKey<TServiceInterface>(Binding binding, EndpointAddress endpointAddress)
         {
-            return string.Format("type:{0};binding:{1};uri:{2}",
-                                 typeof(TServiceInterface).FullName,
-                                 binding.Name,
-                                 endpointAddress);
+            return $"type:{typeof (TServiceInterface).FullName};binding:{binding.Name};uri:{endpointAddress}";
+        }
+
+        private static string GetCacheKey<TServiceInterface>(Binding binding, EndpointAddress endpointAddress, Type callbackType)
+        {
+            string nonDuplexKey = GetCacheKey<TServiceInterface>(binding, endpointAddress);
+            return nonDuplexKey + $";callback:{callbackType.FullName}";
         }
 
         private static string GetCacheKey<TServiceInterface>(ServiceEndpoint endpoint)
