@@ -195,7 +195,7 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public async Task CallAsync_MultipleConcurrentCalls()
+        public void CallAsync_MultipleConcurrentCalls()
         {
             int iterations = 20;
 
