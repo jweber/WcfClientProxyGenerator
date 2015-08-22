@@ -10,7 +10,7 @@ using WcfClientProxyGenerator.Util;
 namespace WcfClientProxyGenerator.Async
 {
     /// <summary>
-    /// Wrapper around <typeparamref name="TServiceInterface"/> providing an async friendly
+    /// Wrapper around <c>TServiceInterface</c> providing an async friendly
     /// interface.
     /// </summary>
     /// <typeparam name="TServiceInterface"></typeparam>
@@ -23,15 +23,15 @@ namespace WcfClientProxyGenerator.Async
         TServiceInterface Client { get; }
 
         /// <summary>
-        /// Make a <see cref="Task"/> based async call to a WCF method on <see cref="TServiceInterface"/>
+        /// Make a <see cref="Task"/> based async call to a WCF method on <c>TServiceInterface</c>
         /// </summary>
         /// <typeparam name="TResponse"></typeparam>
         /// <param name="method"></param>
         /// <returns></returns>
         Task<TResponse> CallAsync<TResponse>(Expression<Func<TServiceInterface, TResponse>> method);
-        
+
         /// <summary>
-        /// Make a <see cref="Task"/> based async call to a WCF method on <see cref="TServiceInterface"/>
+        /// Make a <see cref="Task"/> based async call to a WCF method on <c>TServiceInterface</c>
         /// </summary>
         /// <param name="method"></param>
         /// <returns></returns>

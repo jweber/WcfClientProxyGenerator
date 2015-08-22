@@ -519,7 +519,8 @@ namespace WcfClientProxyGenerator
         /// Refreshes the proxy by disposing and recreating it if it's faulted.
         /// </summary>
         /// <param name="provider">The provider.</param>
-        /// <param name="retryCount"></param>
+        /// <param name="retryCount">Number of retries to perform</param>
+        /// <param name="invokeInfo"></param>
         /// <returns></returns>
         private TServiceInterface RefreshProvider(TServiceInterface provider, int retryCount, InvokeInfo invokeInfo)
         {

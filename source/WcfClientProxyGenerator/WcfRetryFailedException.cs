@@ -7,10 +7,10 @@ namespace WcfClientProxyGenerator
     /// </summary>
     public class WcfRetryFailedException : Exception
     {
-        public WcfRetryFailedException(string message) : base(message)
+        internal WcfRetryFailedException(string message) : base(message)
         {}
 
-        public WcfRetryFailedException(string message, Exception innerException) : base(message, innerException)
+        internal WcfRetryFailedException(string message, Exception innerException) : base(message, innerException)
         {}
     }
 }

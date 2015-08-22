@@ -5,6 +5,9 @@ using System.ServiceModel.Description;
 
 namespace WcfClientProxyGenerator
 {
+    /// <summary>
+    /// Configuration options for the generated WCF proxy
+    /// </summary>
     public interface IProxyConfigurator
     {
         /// <summary>

@@ -2,6 +2,9 @@
 
 namespace WcfClientProxyGenerator
 {
+    /// <summary>
+    /// Arguments given to the <see cref="OnCallBeginHandler"/> delegate
+    /// </summary>
     public class OnCallBeginHandlerArguments
     {
         /// <summary>
