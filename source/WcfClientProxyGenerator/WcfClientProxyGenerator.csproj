@@ -31,17 +31,11 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Framework)' == 'NET45'">
+  <PropertyGroup>
     <DefineConstants>NET45</DefineConstants>
     <OutputPath>bin\$(Configuration)</OutputPath>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <DocumentationFile>bin\$(Configuration)\WcfClientProxyGenerator.xml</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Framework)' == 'NET40'">
-    <DefineConstants>NET40</DefineConstants>
-    <OutputPath>bin\$(Configuration)\net-4.0</OutputPath>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <DocumentationFile>bin\$(Configuration)\net-4.0\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

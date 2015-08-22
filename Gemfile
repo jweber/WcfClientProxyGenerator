@@ -1,5 +1,5 @@
 source 'https://rubygems.org'
 gem 'rake'
-gem 'rubyzip', '0.9.9'
 gem 'albacore'
-gem 'semver'
+gem 'semver2'
+gem 'rubyzip'

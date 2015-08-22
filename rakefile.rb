@@ -3,7 +3,7 @@ require 'fileutils'
 require 'semver'
 
 CLR_TOOLS_VERSION = 'v4.0.30319'
-ARTIFACTS_PATH = "build"
+ARTIFACTS_PATH = File.expand_path("./build")
 PROJECT_NAME = "WcfClientProxyGenerator"
 
 $config = ENV['config'] || 'Debug'
@@ -12,18 +12,17 @@ $nuget_api_key = ENV['nuget_api_key']
 task :default => :compile
 
 desc 'Generate the VersionInfo.cs class'
-assemblyinfo :version => [:versioning] do |asm|
+asmver :version => [:versioning] do |a|
   git_data = commit_data()
   revision_hash = git_data[0]
   revision_date = git_data[1]
-    
-  asm.version = FORMAL_VERSION
-  asm.file_version = FORMAL_VERSION
-  asm.product_name = PROJECT_NAME
-  asm.description = "Git commit hash: #{revision_hash} - #{revision_date}"
-  asm.custom_attributes :AssemblyInformationalVersion => "#{BUILD_VERSION}"
-  asm.output_file = "source/VersionInfo.cs"
-  asm.namespaces 'System', 'System.Reflection'  
+  
+  a.file_path = "source/VersionInfo.cs"
+  a.attributes assembly_version: FORMAL_VERSION,
+    assembly_file_version: FORMAL_VERSION,
+    assembly_product: PROJECT_NAME,
+    assembly_description: "Git comit hash: #{revision_hash} - #{revision_date}",
+    assembly_informational_version: BUILD_VERSION
 end
 
 desc 'Compile the project'
@@ -35,23 +34,26 @@ namespace :build do
   task :all => [:net45] do
   end
 
-  msbuild :net45 => ["nuget:restore", "version"] do |msb|
-    msb.properties :configuration => $config, :Framework => 'NET45'
-    msb.targets [:clean, :build]
-    msb.solution = "source/#{PROJECT_NAME}.sln"
+  build :net45 => ["nuget:restore", "version"] do |b|
+    b.prop 'configuration', $config
+    b.prop 'framework', 'NET45'
+    b.target = ['clean', 'rebuild']
+    b.file = "source/#{PROJECT_NAME}.sln"
   end    
 end
 
 desc 'Run tests'
-nunit :test => :compile do |nunit|
+test_runner :test => :compile do |tests|
   include FileUtils
   mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
-  
-  nunit.command = nunit_path
-  nunit.assemblies "source/#{PROJECT_NAME}.Tests/bin/#{$config}/#{PROJECT_NAME}.Tests.dll"
-  #nunit.options '/xml=nunit-console-output.xml'
-  
-  nunit.options = "/framework=#{CLR_TOOLS_VERSION}", '/noshadow', '/nologo', '/labels', "\"/xml=#{File.join(ARTIFACTS_PATH, "nunit-test-results.xml")}\""
+
+  tests.files = FileList["source/#{PROJECT_NAME}.Tests/bin/#{$config}/#{PROJECT_NAME}.Tests.dll"]
+  tests.exe = nunit_path
+  tests.add_parameter "/framework=#{CLR_TOOLS_VERSION}"
+  tests.add_parameter "/noshadow"
+  tests.add_parameter "/nologo"
+  tests.add_parameter "/labels"
+  tests.add_parameter "/xml=#{File.join(ARTIFACTS_PATH, "nunit-test-results.xml")}"
 end
 
 desc 'Builds release package'
@@ -76,50 +78,38 @@ end
 
 namespace :nuget do
   desc 'Restores nuget packages'
-  task :restore do
-	solution_path = "source/#{PROJECT_NAME}.sln"
-	
-	sh "#{nuget_path} restore #{solution_path} -verbosity normal"
+  nugets_restore :restore do |p|
+    p.out = "source/packages"
+    p.exe = nuget_path
   end
-
+  
   desc 'Creates the nuspec file'
-  nuspec :spec => :version do |nuspec|
-    mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
+  nugets_pack :pack => ['build:all'] do |p|
+    p.configuration = 'Release'
+    p.target = 'net45'
+    p.files = FileList['source/WcfClientProxyGenerator/WcfClientProxyGenerator.csproj']
+    p.exe = nuget_path    
+    p.out = 'build'
     
-    nuspec.id = PROJECT_NAME
-    nuspec.version = ENV['NUGET_VERSION']
-    nuspec.authors = "j.weber"
-    nuspec.description = "Utility to generate fault tolerant and highly configurable client proxies for WCF services based on WCF ServiceContracts. Supports making async calls using non async-ready ServiceContracts."
-    nuspec.projectUrl = "https://github.com/jweber/WcfClientProxyGenerator"
-    nuspec.title = PROJECT_NAME
-    nuspec.tags = "wcf service client proxy dynamic async"
-    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.dll", 'lib\net45'
-    nuspec.file "..\\source\\#{PROJECT_NAME}\\bin\\#{$config}\\#{PROJECT_NAME}.xml", 'lib\net45'
+    p.with_metadata do |m|
+      m.id = PROJECT_NAME
+      m.version = ENV['NUGET_VERSION']
+      m.authors = "j.weber"
+      m.description = "Utility to generate fault tolerant and highly configurable client proxies for WCF services based on WCF ServiceContracts. Supports making async calls using non async-ready ServiceContracts."
+      m.project_url = "https://github.com/jweber/WcfClientProxyGenerator"
+      m.title = PROJECT_NAME
+      m.tags = "wcf service client proxy dynamic async"      
+    end
+  end
 
-    nuspec.working_directory = 'build'
-    nuspec.output_file = "#{PROJECT_NAME}.nuspec"
-  end
-  
-  desc 'Build nupkg'
-  nugetpack :pack => ['build:all', :spec] do |nuget|
-    nuget.command = nuget_path
-    nuget.nuspec = "build\\#{PROJECT_NAME}.nuspec"
-    nuget.base_folder = 'build'
-    nuget.output = 'build'
-  end
-  
-  nugetpush :push => [:pack] do |nuget|
+  task :push => [:pack] do
     raise "No NuGet API key was defined" unless $nuget_api_key
-  
-    nuget.command = nuget_path
-    nuget.package = "build\\#{PROJECT_NAME}.#{ENV['NUGET_VERSION']}.nupkg"
-    nuget.create_only = false
-    nuget.apikey = $nuget_api_key
-    nuget.create_only = false
+    
+    nuget_package = "build\\#{PROJECT_NAME}.#{ENV['NUGET_VERSION']}.nupkg"
+	  sh "#{nuget_path} push #{nuget_package} #{$nuget_api_key} -NonInteractive"
   end
 end
 
-desc 'Builds version environment variables'
 task :versioning do
   ver = SemVer.find
   #revision = (ENV['BUILD_NUMBER'] || ver.patch).to_i
@@ -146,11 +136,16 @@ def nuget_path()
 end
 
 def zip_directory(assemble_path, output_path)
-  zip = ZipDirectory.new
-  zip.directories_to_zip assemble_path
-  zip.output_path = File.dirname(output_path)
-  zip.output_file = File.basename(output_path)
-  zip.execute  
+  require 'albacore/tools/zippy'
+  
+  zf = Zippy.new assemble_path, output_path
+  zf.write
+
+#  zip = ZipDirectory.new
+#  zip.directories_to_zip assemble_path
+#  zip.output_path = File.dirname(output_path)
+#  zip.output_file = File.basename(output_path)
+#  zip.execute  
 end
 
 def commit_data
