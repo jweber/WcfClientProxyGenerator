@@ -306,11 +306,8 @@ namespace WcfClientProxyGenerator
                         if (ExceptionIsRetryable(ex))
                         {
                             mostRecentException = ex;
-#if CSHARP60
+
                             provider = await DelayAsync(i, delayPolicy, provider, invokeInfo).ConfigureAwait(false);
-#else
-                            provider = Delay(i, delayPolicy, provider, invokeInfo);
-#endif
                         }
                         else
                         {
