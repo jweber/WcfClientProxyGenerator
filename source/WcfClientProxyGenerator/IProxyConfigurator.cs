@@ -26,6 +26,14 @@ namespace WcfClientProxyGenerator
         void SetEndpoint(Binding binding, EndpointAddress endpointAddress);
 
         /// <summary>
+        /// Specifies the binding, address to use and callbackInstance to use with DuplexChannel
+        /// </summary>
+        /// <param name="binding"></param>
+        /// <param name="endpointAddress"></param>
+        /// <param name="callbackInstance"></param>
+        void SetEndpoint(Binding binding, EndpointAddress endpointAddress, object callbackInstance);
+
+        /// <summary>
         /// Specifies the endpoint configuration to use.
         /// </summary>
         /// <param name="endpoint"></param>
