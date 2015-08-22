@@ -304,24 +304,18 @@ namespace WcfClientProxyGenerator
                 .GetConstructor(Type.EmptyTypes);
 
             var actionProp = attrType.GetProperty("Action");
-
             var replyActionProp = attrType.GetProperty("ReplyAction");
-
             var nameProp = attrType.GetProperty("Name");
-
             var isOneWayProp = attrType.GetProperty("IsOneWay");
-
             var isInitiatingProp = attrType.GetProperty("IsInitiating");
-
             var isTerminatingProp = attrType.GetProperty("IsTerminating");
 
             string actionValue = GetOperationContractAction(methodInfo);
             string replyActionValue = GetOperationContractReplyAction(methodInfo);
-            
+
             var propertyInfos = new List<PropertyInfo>
             {
                 actionProp, 
-                replyActionProp,
                 isOneWayProp,
                 isInitiatingProp,
                 isTerminatingProp
@@ -330,11 +324,16 @@ namespace WcfClientProxyGenerator
             var propertyValues = new List<object>
             {
                 actionValue,
-                replyActionValue,
                 originalOperationContract.IsOneWay,
                 originalOperationContract.IsInitiating,
                 originalOperationContract.IsTerminating
             };
+
+            if (!originalOperationContract.IsOneWay)
+            {
+                propertyInfos.Add(replyActionProp);
+                propertyValues.Add(replyActionValue);
+            }
 
             if (!string.IsNullOrEmpty(originalOperationContract.Name))
             {

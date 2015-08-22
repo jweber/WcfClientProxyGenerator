@@ -165,6 +165,36 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
+        public async Task CallAsync_OneWayOperation()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+
+            mockService
+                .Setup(m => m.OneWay(It.IsAny<string>()))
+                .Callback((string input) =>
+                {
+                    Assert.That(input, Is.EqualTo("test"));
+
+                    Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
+                    resetEvent.Set();
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c => 
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            await proxy.CallAsync(m => m.OneWay("test"));
+
+            Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
+                Assert.Fail("Callback not entered");
+        }
+
+        [Test]
         public async Task CallAsync_MultipleConcurrentCalls()
         {
             int iterations = 20;

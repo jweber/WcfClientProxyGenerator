@@ -82,5 +82,11 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
 
             return new Response {ResponseMessage = string.Format("Echo: {0} {1}", input, request.RequestMessage)};
         }
+
+        public void OneWay(string input)
+        {
+            if (_mock != null)
+                _mock.Object.OneWay(input);
+        }
     }
 }

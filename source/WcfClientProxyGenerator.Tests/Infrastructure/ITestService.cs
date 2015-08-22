@@ -32,6 +32,9 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
 
         [OperationContract]
         Response TestMethodComplexMulti(string input, Request request);
+
+        [OperationContract(IsOneWay = true)]
+        void OneWay(string input);
     }
 
     [DataContract]

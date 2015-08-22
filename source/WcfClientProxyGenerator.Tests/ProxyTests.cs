@@ -370,6 +370,31 @@ namespace WcfClientProxyGenerator.Tests
             Assert.That(out1Value, Is.EqualTo(expectedOut1Value));
         }
 
+        [Test]
+        public void Proxy_CanBeUsedWithOneWayOperations()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var mockService = new Mock<ITestService>();
+
+            mockService
+                .Setup(m => m.OneWay(It.IsAny<string>()))
+                .Callback((string input) =>
+                {
+                    Assert.That(input, Is.EqualTo("test"));
+                    resetEvent.Set();
+                });
+
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            var proxy = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+
+            proxy.OneWay("test");
+            
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
+                Assert.Fail("Callback not entered");
+        }
+
         #endregion
 
         #region OnBeforeInvoke and OnAfterInvoke support

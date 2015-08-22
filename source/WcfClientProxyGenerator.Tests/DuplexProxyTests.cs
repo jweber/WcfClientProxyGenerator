@@ -35,6 +35,32 @@ namespace WcfClientProxyGenerator.Tests
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
                 Assert.Fail("Callback not entered");
         }
+
+        [Test]
+        public void DuplexService_OneWayOperation_TriggersCallback()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
+
+            var callback = new Mock<IDuplexServiceCallback>();
+            callback
+                .Setup(m => m.OneWayCallback(It.IsAny<string>()))
+                .Callback((string input) =>
+                {
+                    resetEvent.Set();
+                });
+
+            var proxy = WcfClientProxy.Create<IDuplexService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, callback.Object);
+            });
+
+            proxy.OneWay("test");
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
+                Assert.Fail("Callback not entered");
+        }
     }
 
     [ServiceContract(CallbackContract = typeof(IDuplexServiceCallback))]
@@ -42,6 +68,9 @@ namespace WcfClientProxyGenerator.Tests
     {
         [OperationContract]
         string Test(string input);
+
+        [OperationContract(IsOneWay = true)]
+        void OneWay(string input);
     }
 
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
@@ -53,6 +82,11 @@ namespace WcfClientProxyGenerator.Tests
             return $"Method Echo: {callBackResponse}";
         }
 
+        public void OneWay(string input)
+        {
+            Callback.OneWayCallback(input);
+        }
+
         IDuplexServiceCallback Callback => OperationContext.Current.GetCallbackChannel<IDuplexServiceCallback>();
     }
 
@@ -60,13 +94,8 @@ namespace WcfClientProxyGenerator.Tests
     {
         [OperationContract]
         string TestCallback(string input);
-    }
 
-    public class DuplexServiceCallback : IDuplexServiceCallback
-    {
-        public string TestCallback(string input)
-        {
-            return $"Callback Echo: {input}";
-        }
+        [OperationContract(IsOneWay = true)]
+        void OneWayCallback(string input);
     }
 }
