@@ -355,9 +355,24 @@ namespace WcfClientProxyGenerator
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress, callbackObject);
         }
 
+        public void SetEndpoint(Binding binding, EndpointAddress endpointAddress, InstanceContext instanceContext)
+        {
+            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress, instanceContext);
+        }
+
         public void SetEndpoint(ServiceEndpoint endpoint)
         {
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint);
+        }
+
+        public void SetEndpoint(ServiceEndpoint endpoint, object callbackObject)
+        {
+            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint, callbackObject);
+        }
+
+        public void SetEndpoint(ServiceEndpoint endpoint, InstanceContext instanceContext)
+        {
+            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint, instanceContext);
         }
 
         public void MaximumRetries(int retryCount)

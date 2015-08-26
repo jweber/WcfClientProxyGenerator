@@ -37,10 +37,25 @@ namespace WcfClientProxyGenerator
         void SetEndpoint(Binding binding, EndpointAddress endpointAddress, object callbackInstance);
 
         /// <summary>
+        /// Specifies the binding, address to use and callbackInstance to use with DuplexChannel
+        /// </summary>
+        /// <param name="binding"></param>
+        /// <param name="endpointAddress"></param>
+        /// <param name="instanceContext"></param>
+        void SetEndpoint(Binding binding, EndpointAddress endpointAddress, InstanceContext instanceContext);
+
+        /// <summary>
         /// Specifies the endpoint configuration to use.
         /// </summary>
         /// <param name="endpoint"></param>
         void SetEndpoint(ServiceEndpoint endpoint);
+
+        /// <summary>
+        /// Specifies the endpoint configuration to use.
+        /// </summary>
+        /// <param name="endpoint"></param>
+        /// <param name="instanceContext"></param>
+        void SetEndpoint(ServiceEndpoint endpoint, InstanceContext instanceContext);
 
         /// <summary>
         /// Event that is fired immediately before the service method will be called. This event
