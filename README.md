@@ -81,7 +81,7 @@ This is a shortcut to using the overload that accepts an `Action<IRetryingProxyC
 #### WcfClientProxy.Create\<TServiceInterface\>(Action\<IRetryingProxyConfigurator\> config)
 Exposes the full configuration available. See the [Configuration](#configuration) section of the documentation.
 #### Duplex Proxy
-To create a duplex proxy, you must use the last factory method `Create\<TServiceInterface\>(Action\<IRetryingProxyConfigurator\> config)` from above. 
+To create a duplex proxy, you must use the last factory method `Create<TServiceInterface>(Action<IRetryingProxyConfigurator> config)` from above. 
 
 Then you can specify the instance context which holds the implementation of your callback receiver.
 	
@@ -107,8 +107,14 @@ Then you can specify the instance context which holds the implementation of your
 	vat ctx = new InstanceContext(receiver);
     var proxy = WcfClientProxy.Create<IServiceWithCallback>(c =>
     {
-        c.SetEndpoint(ctx, binding, endpointAddress);
+        c.SetEndpoint(binding, endpointAddress, ctx);
     });
+	
+	var receiver = new TestReceiver();
+    var proxy = WcfClientProxy.Create<IServiceWithCallback>(c =>
+    {
+        c.SetEndpoint(binding, endpointAddress, receiver);
+    });	
 
 Async Support
 -------------
