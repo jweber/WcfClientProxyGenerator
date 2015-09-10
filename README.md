@@ -104,7 +104,7 @@ Then you can specify the instance context which holds the implementation of your
 	}
 	
 	var receiver = new TestReceiver();
-	vat ctx = new InstanceContext(receiver);
+	vat ctx = new InstanceContext<ICallbackContract>(receiver);
     var proxy = WcfClientProxy.Create<IServiceWithCallback>(c =>
     {
         c.SetEndpoint(binding, endpointAddress, ctx);
