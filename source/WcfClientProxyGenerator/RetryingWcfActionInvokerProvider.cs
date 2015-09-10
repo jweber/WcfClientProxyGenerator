@@ -355,9 +355,9 @@ namespace WcfClientProxyGenerator
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress, callbackObject);
         }
 
-        public void SetEndpoint(Binding binding, EndpointAddress endpointAddress, InstanceContext instanceContext)
+        public void SetEndpoint<TCallback>(Binding binding, EndpointAddress endpointAddress, InstanceContext<TCallback> instanceContext)
         {
-            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress, instanceContext);
+            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface, TCallback>(binding, endpointAddress, instanceContext);
         }
 
         public void SetEndpoint(ServiceEndpoint endpoint)
@@ -370,9 +370,9 @@ namespace WcfClientProxyGenerator
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint, callbackObject);
         }
 
-        public void SetEndpoint(ServiceEndpoint endpoint, InstanceContext instanceContext)
+        public void SetEndpoint<TCallback>(ServiceEndpoint endpoint, InstanceContext<TCallback> instanceContext)
         {
-            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint, instanceContext);
+            channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface, TCallback>(endpoint, instanceContext);
         }
 
         public void MaximumRetries(int retryCount)

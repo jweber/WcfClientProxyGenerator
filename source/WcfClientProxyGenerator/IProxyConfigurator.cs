@@ -42,7 +42,7 @@ namespace WcfClientProxyGenerator
         /// <param name="binding"></param>
         /// <param name="endpointAddress"></param>
         /// <param name="instanceContext"></param>
-        void SetEndpoint(Binding binding, EndpointAddress endpointAddress, InstanceContext instanceContext);
+        void SetEndpoint<TCallback>(Binding binding, EndpointAddress endpointAddress, InstanceContext<TCallback> instanceContext);
 
         /// <summary>
         /// Specifies the endpoint configuration to use.
@@ -55,7 +55,7 @@ namespace WcfClientProxyGenerator
         /// </summary>
         /// <param name="endpoint"></param>
         /// <param name="instanceContext"></param>
-        void SetEndpoint(ServiceEndpoint endpoint, InstanceContext instanceContext);
+        void SetEndpoint<TCallback>(ServiceEndpoint endpoint, InstanceContext<TCallback> instanceContext);
 
         /// <summary>
         /// Event that is fired immediately before the service method will be called. This event

@@ -77,7 +77,7 @@ namespace WcfClientProxyGenerator.Tests
                     resetEvent.Set();
                 });
 
-            InstanceContext ctx = new InstanceContext(callback);
+            InstanceContext<IDuplexServiceCallback> ctx = new InstanceContext<IDuplexServiceCallback>(callback.Object);
             var proxy = WcfClientProxy.Create<IDuplexService>(c =>
             {
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, ctx);

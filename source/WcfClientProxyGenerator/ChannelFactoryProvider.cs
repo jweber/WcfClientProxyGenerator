@@ -59,12 +59,11 @@ namespace WcfClientProxyGenerator
             return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(callbackObject, binding, endpointAddress));
         }
 
-        public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(Binding binding, EndpointAddress endpointAddress, InstanceContext instanceContext)
+        public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface, TCallback>(Binding binding, EndpointAddress endpointAddress, InstanceContext<TCallback> instanceContext)
             where TServiceInterface : class
         {
-            object callbackObject = instanceContext.GetServiceInstance();
-            string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress, callbackObject.GetType());
-            return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(instanceContext, binding, endpointAddress));
+            string cacheKey = GetCacheKey<TServiceInterface>(binding, endpointAddress, typeof(TCallback));
+            return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(instanceContext.Context, binding, endpointAddress));
         }
 
         public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(ServiceEndpoint endpoint)
@@ -81,12 +80,11 @@ namespace WcfClientProxyGenerator
             return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(callbackObject, endpoint));
         }
 
-           public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(ServiceEndpoint endpoint, InstanceContext instanceContext)
+           public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface, TCallback>(ServiceEndpoint endpoint, InstanceContext<TCallback> instanceContext)
             where TServiceInterface : class
         {
-            object callbackObject = instanceContext.GetServiceInstance();
-            string cacheKey = GetCacheKey<TServiceInterface>(endpoint, callbackObject.GetType());
-            return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(callbackObject, endpoint));
+            string cacheKey = GetCacheKey<TServiceInterface>(endpoint, typeof(TCallback));
+            return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(instanceContext.Context, endpoint));
         }
 
         private static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(string cacheKey, Func<ChannelFactory<TServiceInterface>> factory)
