@@ -61,6 +61,33 @@ namespace WcfClientProxyGenerator.Tests
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
                 Assert.Fail("Callback not entered");
         }
+
+        [Test]
+        public void DuplexService_WithInstanceContext_TriggersCallback()
+        {
+            var resetEvent = new AutoResetEvent(false);
+
+            var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
+
+            var callback = new Mock<IDuplexServiceCallback>();
+            callback
+                .Setup(m => m.TestCallback(It.IsAny<string>()))
+                .Callback((string input) =>
+                {
+                    resetEvent.Set();
+                });
+
+            InstanceContext<IDuplexServiceCallback> ctx = new InstanceContext<IDuplexServiceCallback>(callback.Object);
+            var proxy = WcfClientProxy.Create<IDuplexService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, ctx);
+            });
+
+            proxy.Test("test");
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
+                Assert.Fail("Callback not entered");
+        }
     }
 
     [ServiceContract(CallbackContract = typeof(IDuplexServiceCallback))]

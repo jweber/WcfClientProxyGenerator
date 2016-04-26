@@ -80,6 +80,41 @@ This is a shortcut to using the overload that accepts an `Action<IRetryingProxyC
 
 #### WcfClientProxy.Create\<TServiceInterface\>(Action\<IRetryingProxyConfigurator\> config)
 Exposes the full configuration available. See the [Configuration](#configuration) section of the documentation.
+#### Duplex Proxy
+To create a duplex proxy, you must use the last factory method `Create<TServiceInterface>(Action<IRetryingProxyConfigurator> config)` from above. 
+
+Then you can specify the instance context which holds the implementation of your callback receiver.
+	
+	[ServiceContract(CallbackContract = typeof(ITestCallback))]
+	public interface IServiceWithCallback
+	{
+	}
+	
+	public interface ICallbackContract
+    {
+        [OperationContract]
+        void OnCallback(string data);
+    }
+	
+	public class TestReceiver : ICallbackContract
+	{
+		public void OnCallback(string data)
+        {
+        }		
+	}
+	
+	var receiver = new TestReceiver();
+	vat ctx = new InstanceContext<ICallbackContract>(receiver);
+    var proxy = WcfClientProxy.Create<IServiceWithCallback>(c =>
+    {
+        c.SetEndpoint(binding, endpointAddress, ctx);
+    });
+	
+	var receiver = new TestReceiver();
+    var proxy = WcfClientProxy.Create<IServiceWithCallback>(c =>
+    {
+        c.SetEndpoint(binding, endpointAddress, receiver);
+    });	
 
 Async Support
 -------------
