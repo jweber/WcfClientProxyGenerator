@@ -79,7 +79,7 @@ namespace WcfClientProxyGenerator
             }
 
             ServiceContractAttribute serviceContractAttribute = null;
-            object[] customAttributes = interfaceType.GetCustomAttributes(typeof (ServiceContractAttribute), true);
+            object[] customAttributes = interfaceType.GetCustomAttributes(typeof(ServiceContractAttribute), true);
             if (customAttributes.Any())
             {
                 serviceContractAttribute = customAttributes[0] as ServiceContractAttribute;
@@ -158,6 +158,8 @@ namespace WcfClientProxyGenerator
 
             var serviceContract = typeof(TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
             string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
+            serviceNamespace = serviceNamespace.TrimEnd('/');
+
             string defaultAction = string.Format("{0}/{1}/{2}", 
                 serviceNamespace, 
                 methodInfo.DeclaringType.Name, 
@@ -180,6 +182,8 @@ namespace WcfClientProxyGenerator
             {
                 var serviceContract = typeof (TServiceInterface).GetCustomAttribute<ServiceContractAttribute>();
                 string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
+                serviceNamespace = serviceNamespace.TrimEnd('/');
+
                 string defaultAction = string.Format("{0}/{1}/{2}Response",
                     serviceNamespace,
                     methodInfo.DeclaringType.Name,
@@ -213,8 +217,8 @@ namespace WcfClientProxyGenerator
             var props = new List<PropertyInfo>();
             var vals = new List<object>();
 
-            props.Add(serviceContractAttrType.GetProperty("CallbackContract"));
-            props.Add(serviceContractAttrType.GetProperty("SessionMode"));
+            props.Add(serviceContractAttrType.GetProperty(nameof(ServiceContractAttribute.CallbackContract)));
+            props.Add(serviceContractAttrType.GetProperty(nameof(ServiceContractAttribute.SessionMode)));
 
             foreach (PropertyInfo prop in props)
             {
@@ -303,12 +307,12 @@ namespace WcfClientProxyGenerator
             var attributeCtor = attrType
                 .GetConstructor(Type.EmptyTypes);
 
-            var actionProp = attrType.GetProperty("Action");
-            var replyActionProp = attrType.GetProperty("ReplyAction");
-            var nameProp = attrType.GetProperty("Name");
-            var isOneWayProp = attrType.GetProperty("IsOneWay");
-            var isInitiatingProp = attrType.GetProperty("IsInitiating");
-            var isTerminatingProp = attrType.GetProperty("IsTerminating");
+            var actionProp = attrType.GetProperty(nameof(OperationContractAttribute.Action));
+            var replyActionProp = attrType.GetProperty(nameof(OperationContractAttribute.ReplyAction));
+            var nameProp = attrType.GetProperty(nameof(OperationContractAttribute.Name));
+            var isOneWayProp = attrType.GetProperty(nameof(OperationContractAttribute.IsOneWay));
+            var isInitiatingProp = attrType.GetProperty(nameof(OperationContractAttribute.IsInitiating));
+            var isTerminatingProp = attrType.GetProperty(nameof(OperationContractAttribute.IsTerminating));
 
             string actionValue = GetOperationContractAction(methodInfo);
             string replyActionValue = GetOperationContractReplyAction(methodInfo);

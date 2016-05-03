@@ -64,6 +64,21 @@ namespace WcfClientProxyGenerator.Tests
             );
         }
 
+        [Test, Description("Github issue #19.")]
+        public void CreatingProxy_TrailingSlashOnNamespace()
+        {
+            var serviceHost = InProcTestFactory.CreateHost<ITrailingSlashOnNamespaceService>(new TrailingSlashOnNamespaceServiceImpl());
+
+            var proxy = WcfClientProxy.Create<ITrailingSlashOnNamespaceService>(c =>
+            {
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
+            });
+
+            var result = proxy.Echo("hello");
+
+            Assert.That(result, Is.EqualTo("hello"));
+        }
+   
         [Test]
         public void Proxy_ReturnsExpectedValue_WhenCallingService()
         {

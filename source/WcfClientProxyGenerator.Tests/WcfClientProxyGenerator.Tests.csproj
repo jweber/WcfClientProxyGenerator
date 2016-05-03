@@ -70,6 +70,7 @@
     <Compile Include="FastActivatorTests.cs" />
     <Compile Include="Infrastructure\AssertExt.cs" />
     <Compile Include="Infrastructure\ChildServiceImpl.cs" />
+    <Compile Include="Infrastructure\TrailingSlashOnNamespaceService.cs" />
     <Compile Include="Infrastructure\IChildService.cs" />
     <Compile Include="Infrastructure\ITestService2.cs" />
     <Compile Include="Infrastructure\IOutParamTestService.cs" />
