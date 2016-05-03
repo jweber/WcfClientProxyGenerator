@@ -106,7 +106,7 @@ namespace :nuget do
     raise "No NuGet API key was defined" unless $nuget_api_key
     
     nuget_package = "build\\#{PROJECT_NAME}.#{ENV['NUGET_VERSION']}.nupkg"
-	  sh "#{nuget_path} push #{nuget_package} #{$nuget_api_key} -NonInteractive"
+	  sh "#{nuget_path} push #{nuget_package} #{$nuget_api_key} -NonInteractive -Source https://www.nuget.org/api/v2/package"
   end
 end
 
