@@ -34,6 +34,13 @@ namespace :build do
   task :all => [:net45] do
   end
 
+  build :clean do |b|
+    b.prop 'configuration', $config
+    b.prop 'framework', 'NET45'
+    b.target = ['clean']
+    b.file = "source/#{PROJECT_NAME}.sln"
+  end
+
   build :net45 => ["nuget:restore", "version"] do |b|
     b.prop 'configuration', $config
     b.prop 'framework', 'NET45'
@@ -54,6 +61,11 @@ test_runner :test => :compile do |tests|
   tests.add_parameter "/nologo"
   tests.add_parameter "/labels"
   tests.add_parameter "/xml=#{File.join(ARTIFACTS_PATH, "nunit-test-results.xml")}"
+end
+
+desc 'Cleans build artifacts'
+task :clean => 'build:clean' do
+  rm_rf ARTIFACTS_PATH
 end
 
 desc 'Builds release package'
