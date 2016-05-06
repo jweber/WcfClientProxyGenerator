@@ -96,7 +96,9 @@ namespace :nuget do
   end
   
   desc 'Creates the nuspec file'
-  nugets_pack :pack => ['build:all'] do |p|
+  nugets_pack :pack => ['clean', 'build:all'] do |p|
+    mkpath ARTIFACTS_PATH unless Dir.exists? ARTIFACTS_PATH
+  
     p.configuration = 'Release'
     p.target = 'net45'
     p.files = FileList['source/WcfClientProxyGenerator/WcfClientProxyGenerator.csproj']

@@ -30,6 +30,8 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <OutputPath>bin\Release\</OutputPath>
+    <DocumentationFile>bin\Release\WcfClientProxyGenerator.xml</DocumentationFile>    
   </PropertyGroup>
   <PropertyGroup>
     <DefineConstants>NET45</DefineConstants>
