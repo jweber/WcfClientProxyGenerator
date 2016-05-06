@@ -64,6 +64,26 @@ namespace WcfClientProxyGenerator.Tests
             );
         }
 
+        [Test]
+        public async Task CreatingAsyncProxy_WithServiceEndpoint_CanCallAsyncMethod()
+        {
+            var mockService = new Mock<ITestService>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+
+            mockService
+                .Setup(m => m.IntMethod())
+                .Returns(1);
+
+            ContractDescription contractDescription = ContractDescription.GetContract(typeof(ITestService));
+
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+                c.SetEndpoint(new ServiceEndpoint(contractDescription, serviceHost.Binding, serviceHost.EndpointAddress)));
+
+            var response = await proxy.CallAsync(m => m.IntMethod());
+
+            Assert.That(response, Is.EqualTo(1));
+        }
+
         [Test, Description("Github issue #19.")]
         public void CreatingProxy_TrailingSlashOnNamespace()
         {

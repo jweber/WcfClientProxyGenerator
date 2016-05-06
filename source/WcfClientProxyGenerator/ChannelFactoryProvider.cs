@@ -70,14 +70,22 @@ namespace WcfClientProxyGenerator
             where TServiceInterface : class
         {
             string cacheKey = GetCacheKey<TServiceInterface>(endpoint);
-            return GetChannelFactory(cacheKey, () => new ChannelFactory<TServiceInterface>(endpoint));
+            return GetChannelFactory(cacheKey, () =>
+            {
+                endpoint.Contract = ContractDescription.GetContract(typeof(TServiceInterface));
+                return new ChannelFactory<TServiceInterface>(endpoint);
+            });
         }
 
          public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface>(ServiceEndpoint endpoint, object callbackObject)
             where TServiceInterface : class
         {
             string cacheKey = GetCacheKey<TServiceInterface>(endpoint, callbackObject.GetType());
-            return GetChannelFactory(cacheKey, () => new DuplexChannelFactory<TServiceInterface>(callbackObject, endpoint));
+            return GetChannelFactory(cacheKey, () =>
+            {
+                endpoint.Contract = ContractDescription.GetContract(typeof(TServiceInterface));
+                return new DuplexChannelFactory<TServiceInterface>(callbackObject, endpoint);
+            });
         }
 
            public static ChannelFactory<TServiceInterface> GetChannelFactory<TServiceInterface, TCallback>(ServiceEndpoint endpoint, InstanceContext<TCallback> instanceContext)
