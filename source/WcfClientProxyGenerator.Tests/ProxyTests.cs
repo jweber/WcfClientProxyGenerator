@@ -1836,7 +1836,7 @@ namespace WcfClientProxyGenerator.Tests
             AssertExt.ThrowsAsync(
                 typeof(Exception), 
                 () => proxy.CallAsync(m => m.TestMethod(expectedInput)),
-                message: "test");
+                messageAssert: Is.EqualTo("test"));
         }
 
 

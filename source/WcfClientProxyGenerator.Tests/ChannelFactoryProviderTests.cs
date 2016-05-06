@@ -9,6 +9,25 @@ namespace WcfClientProxyGenerator.Tests
     [TestFixture]
     public class ChannelFactoryProviderTests
     {
+        /// <summary>
+        /// Issue #19 exposed a failure where using the endpointConfigurationName
+        /// to generate a proxy would not use the dynamically generated *Async service
+        /// interface to create the channel. This would cause a NotSupportedException
+        /// to be thrown when attempting to make a service call using a generated *Async
+        /// method.
+        /// </summary>
+        [Test, Description("Github issue #19")]
+        public void UsingEndpointConfigurationName_BuildServiceEndpointForChannelFactory_UsingDynamicallyGeneratedAsyncInterface()
+        {
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>("ITestService");
+
+            AssertExt.ThrowsAsync(
+                typeof(EndpointNotFoundException),
+                () => proxy.CallAsync(m => m.IntMethod()),
+                messageAssert: Is.StringStarting("There was no endpoint listening at "),
+                message: "Expected EndpointNotFoundException (since ITestService address is not running)");
+        }
+
         [Test]
         public void ChannelFactory_FromEndpointConfigurationName_WithBehaviorConfiguration_ContainsConfiguredBehaviors()
         {

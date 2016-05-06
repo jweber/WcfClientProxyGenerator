@@ -26,7 +26,7 @@ namespace WcfClientProxyGenerator
             string cacheKey = GetCacheKey<TServiceInterface>();
             return GetChannelFactory(cacheKey, () =>
             {
-                var clientEndpointConfig = GetClientEndpointConfiguration(originalServiceInterfaceType);
+                var clientEndpointConfig = GetClientEndpointConfiguration<TServiceInterface>(originalServiceInterfaceType);
                 return new ChannelFactory<TServiceInterface>(clientEndpointConfig);
             });
         }
@@ -40,7 +40,7 @@ namespace WcfClientProxyGenerator
             string cacheKey = GetCacheKey<TServiceInterface>(endpointConfigurationName);
             return GetChannelFactory(cacheKey, () =>
             {
-                var clientEndpointConfig = GetClientEndpointConfiguration(originalServiceInterfaceType, endpointConfigurationName);
+                var clientEndpointConfig = GetClientEndpointConfiguration<TServiceInterface>(originalServiceInterfaceType, endpointConfigurationName);
                 return new ChannelFactory<TServiceInterface>(clientEndpointConfig);
             });
         }
@@ -129,9 +129,10 @@ namespace WcfClientProxyGenerator
             return nonDuplexKey + $";callback:{callbackType.FullName}";
         }
 
-        private static ServiceEndpoint GetClientEndpointConfiguration(
+        private static ServiceEndpoint GetClientEndpointConfiguration<TServiceInterface>(
             Type serviceInterfaceType, 
             string endpointConfigurationName = null)
+            where TServiceInterface : class
         {
             var configurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile;
             if (string.IsNullOrEmpty(configurationFile))
@@ -153,7 +154,7 @@ namespace WcfClientProxyGenerator
             var endpoint = GetDefaultEndpointForServiceType(serviceInterfaceType, endpointConfigurationName, serviceModelSection.Client.Endpoints);
             var binding = GetClientEndpointBinding(serviceInterfaceType, endpoint, serviceModelSection.Bindings.BindingCollections);
 
-            var serviceEndpoint = new ServiceEndpoint(ContractDescription.GetContract(serviceInterfaceType))
+            var serviceEndpoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(TServiceInterface)))
             {
                 Binding = binding,
                 Address = new EndpointAddress(endpoint.Address)
