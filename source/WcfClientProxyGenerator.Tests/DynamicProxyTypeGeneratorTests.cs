@@ -21,6 +21,45 @@ namespace WcfClientProxyGenerator.Tests
         int Method(string input, string input2);
     }
 
+    [AttributeUsage(AttributeTargets.Interface)]
+    public class CustomServiceAttributeAttribute : Attribute
+    {
+        public const string CtorArg = "hello world";
+        public const int NumberProperty = 100;
+
+        public CustomServiceAttributeAttribute(string name)
+        {
+            Name = name;
+        }
+
+        public string Name { get; }
+        public int Number { get; set; }
+    }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    public class CustomMethodAttributeAttribute : Attribute
+    {
+        public const string CtorArg = "method";
+        public const int NumberProperty = 200;
+
+        public CustomMethodAttributeAttribute(string name)
+        {
+            Name = name;
+        }
+
+        public string Name { get; }
+        public int Number { get; set; }
+    }
+
+    [ServiceContract]
+    [CustomServiceAttribute(CustomServiceAttributeAttribute.CtorArg, Number = CustomServiceAttributeAttribute.NumberProperty)]
+    public interface ICustomAttributeService
+    {
+        [OperationContract]
+        [CustomMethodAttribute(CustomMethodAttributeAttribute.CtorArg, Number = CustomMethodAttributeAttribute.NumberProperty)]
+        string Method(string input);
+    }
+
     [ServiceContract]
     public interface IAsyncTestInterface
     {
@@ -104,8 +143,7 @@ namespace WcfClientProxyGenerator.Tests
     }
 
     #endregion
-
-
+    
     [TestFixture]
     public class DynamicProxyTypeGeneratorTests
     {
@@ -126,6 +164,29 @@ namespace WcfClientProxyGenerator.Tests
         public void ContractsWithOverloadedMethods_DoNotDuplicateSupportMethods()
         {
             Assert.That(() => this.GenerateTypes<IOverloadedService>(), Throws.Nothing);
+        }
+
+        [Test]
+        public void CustomAttributes_AreCopiedTo_GeneratedInterface()
+        {
+            var types = this.GenerateTypes<ICustomAttributeService>();
+            var attr = types.AsyncInterface.GetCustomAttribute<CustomServiceAttributeAttribute>();
+
+            Assert.That(attr.Name, Is.EqualTo(CustomServiceAttributeAttribute.CtorArg));
+            Assert.That(attr.Number, Is.EqualTo(CustomServiceAttributeAttribute.NumberProperty));
+        }
+
+        [Test]
+        public void CustomAttributes_AreCopiedTo_GeneratedMethods()
+        {
+            var types = this.GenerateTypes<ICustomAttributeService>();
+
+            var method = types.AsyncInterface.GetMethods().First();
+
+            var attr = method.GetCustomAttribute<CustomMethodAttributeAttribute>();
+
+            Assert.That(attr.Name, Is.EqualTo(CustomMethodAttributeAttribute.CtorArg));
+            Assert.That(attr.Number, Is.EqualTo(CustomMethodAttributeAttribute.NumberProperty));
         }
 
         [Test]

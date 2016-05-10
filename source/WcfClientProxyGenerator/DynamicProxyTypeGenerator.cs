@@ -75,17 +75,11 @@ namespace WcfClientProxyGenerator
 
             if (!serviceMethods.Any())
             {
-                throw new InvalidOperationException(String.Format("Service interface {0} has no OperationContact methods. Is this a proper WCF service interface?", interfaceType.Name));
+                throw new InvalidOperationException(
+                    $"Service interface {interfaceType.Name} has no OperationContact methods. Is this a proper WCF service interface?");
             }
 
-            ServiceContractAttribute serviceContractAttribute = null;
-            object[] customAttributes = interfaceType.GetCustomAttributes(typeof(ServiceContractAttribute), true);
-            if (customAttributes.Any())
-            {
-                serviceContractAttribute = customAttributes[0] as ServiceContractAttribute;
-            }
-
-            var asyncInterfaceType = GenerateAsyncInterface(serviceMethods, serviceContractAttribute);
+            var asyncInterfaceType = GenerateAsyncInterface(serviceMethods);
 
             // build proxy
 
@@ -160,10 +154,8 @@ namespace WcfClientProxyGenerator
             string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
             serviceNamespace = serviceNamespace.TrimEnd('/');
 
-            string defaultAction = string.Format("{0}/{1}/{2}", 
-                serviceNamespace, 
-                methodInfo.DeclaringType.Name, 
-                operationContractAttr.Name ?? methodInfo.Name);
+            string defaultAction =
+                $"{serviceNamespace}/{methodInfo.DeclaringType.Name}/{operationContractAttr.Name ?? methodInfo.Name}";
 
             return defaultAction;
         }
@@ -184,10 +176,8 @@ namespace WcfClientProxyGenerator
                 string serviceNamespace = serviceContract.Namespace ?? "http://tempuri.org";
                 serviceNamespace = serviceNamespace.TrimEnd('/');
 
-                string defaultAction = string.Format("{0}/{1}/{2}Response",
-                    serviceNamespace,
-                    methodInfo.DeclaringType.Name,
-                    operationContractAttr.Name ?? methodInfo.Name);
+                string defaultAction =
+                    $"{serviceNamespace}/{methodInfo.DeclaringType.Name}/{operationContractAttr.Name ?? methodInfo.Name}Response";
 
                 return defaultAction;
             }
@@ -195,7 +185,36 @@ namespace WcfClientProxyGenerator
             return operationContractAttr.ReplyAction;
         }
 
-        private static Type GenerateAsyncInterface(IList<MethodInfo> serviceMethods, ServiceContractAttribute serviceContractAttribute)
+        private static IEnumerable<CustomAttributeBuilder> CloneCustomAttributes(IEnumerable<CustomAttributeData> attrData)
+        {
+            foreach (var data in attrData)
+            {
+                var ctorArgs = data.ConstructorArguments
+                    .Select(m => m.Value)
+                    .ToArray();
+
+                var properties = data.NamedArguments?
+                    .Where(m => m.MemberInfo is PropertyInfo)
+                    .Select(m => new { pi = m.MemberInfo as PropertyInfo, val = m.TypedValue.Value })
+                    .ToArray();
+
+                var fields = data.NamedArguments?
+                    .Where(m => m.MemberInfo is FieldInfo)
+                    .Select(m => new { fi = m.MemberInfo as FieldInfo, val = m.TypedValue.Value })
+                    .ToArray();
+
+                yield return new CustomAttributeBuilder(
+                    data.Constructor,
+                    ctorArgs,
+                    properties?.Select(m => m.pi).ToArray() ?? new PropertyInfo[0],
+                    properties?.Select(m => m.val).ToArray() ?? new object[0],
+                    fields?.Select(m => m.fi).ToArray() ?? new FieldInfo[0],
+                    fields?.Select(m => m.val).ToArray() ?? new object[0]);
+            }
+                
+        }
+
+        private static Type GenerateAsyncInterface(IList<MethodInfo> serviceMethods)
         {
             var moduleBuilder = DynamicProxyAssembly.ModuleBuilder;
 
@@ -211,23 +230,8 @@ namespace WcfClientProxyGenerator
             var generatedAsyncInterfaceAttrBuilder = new CustomAttributeBuilder(generatedAsyncInterfaceAttrCtor, new object[0]);
             asyncInterfaceBuilder.SetCustomAttribute(generatedAsyncInterfaceAttrBuilder);
 
-            Type serviceContractAttrType = typeof(ServiceContractAttribute);
-            var serviceContractAttrCtor = serviceContractAttrType.GetConstructor(Type.EmptyTypes);
-
-            var props = new List<PropertyInfo>();
-            var vals = new List<object>();
-
-            props.Add(serviceContractAttrType.GetProperty(nameof(ServiceContractAttribute.CallbackContract)));
-            props.Add(serviceContractAttrType.GetProperty(nameof(ServiceContractAttribute.SessionMode)));
-
-            foreach (PropertyInfo prop in props)
-            {
-                vals.Add(prop.GetValue(serviceContractAttribute));
-            }
-
-            CustomAttributeBuilder serviceContractAttrBuilder = new CustomAttributeBuilder(serviceContractAttrCtor, new object[0], props.ToArray(), vals.ToArray());
-            
-            asyncInterfaceBuilder.SetCustomAttribute(serviceContractAttrBuilder);
+            foreach (var builder in CloneCustomAttributes(typeof(TServiceInterface).GetCustomAttributesData()))
+                asyncInterfaceBuilder.SetCustomAttribute(builder);
 
             var nonAsyncServiceMethods = serviceMethods
                 .Where(m => !typeof(Task).IsAssignableFrom(m.ReturnType)
@@ -245,12 +249,14 @@ namespace WcfClientProxyGenerator
         {
             if (!type.IsPublic && !type.IsNestedPublic)
             {
-                throw new InvalidOperationException(String.Format("Service interface {0} is not declared public. WcfClientProxyGenerator cannot work with non-public service interfaces.", type.Name));
+                throw new InvalidOperationException(
+                    $"Service interface {type.Name} is not declared public. WcfClientProxyGenerator cannot work with non-public service interfaces.");
             }
 
             if (!type.HasAttribute<ServiceContractAttribute>())
             {
-                throw new InvalidOperationException(String.Format("Service interface {0} is not marked with ServiceContract attribute. Is this a proper WCF service interface?", type.Name));
+                throw new InvalidOperationException(
+                    $"Service interface {type.Name} is not marked with ServiceContract attribute. Is this a proper WCF service interface?");
             }
         }
 
@@ -300,58 +306,70 @@ namespace WcfClientProxyGenerator
 
             for (int i = 1; i <= parameterTypes.Length; i++)
                 methodBuilder.DefineParameter(i, ParameterAttributes.None, parameters[i-1].Name);
-            
-            var originalOperationContract = methodInfo.GetCustomAttribute<OperationContractAttribute>();
 
-            Type attrType = typeof(OperationContractAttribute);
-            var attributeCtor = attrType
-                .GetConstructor(Type.EmptyTypes);
-
-            var actionProp = attrType.GetProperty(nameof(OperationContractAttribute.Action));
-            var replyActionProp = attrType.GetProperty(nameof(OperationContractAttribute.ReplyAction));
-            var nameProp = attrType.GetProperty(nameof(OperationContractAttribute.Name));
-            var isOneWayProp = attrType.GetProperty(nameof(OperationContractAttribute.IsOneWay));
-            var isInitiatingProp = attrType.GetProperty(nameof(OperationContractAttribute.IsInitiating));
-            var isTerminatingProp = attrType.GetProperty(nameof(OperationContractAttribute.IsTerminating));
-
-            string actionValue = GetOperationContractAction(methodInfo);
-            string replyActionValue = GetOperationContractReplyAction(methodInfo);
-
-            var propertyInfos = new List<PropertyInfo>
+            Func<CustomAttributeBuilder> cloneOperationContractAttribute = () =>
             {
-                actionProp, 
-                isOneWayProp,
-                isInitiatingProp,
-                isTerminatingProp
+                var originalOperationContract = methodInfo.GetCustomAttribute<OperationContractAttribute>();
+
+                Type attrType = typeof(OperationContractAttribute);
+                var attributeCtor = attrType
+                    .GetConstructor(Type.EmptyTypes);
+
+                var actionProp = attrType.GetProperty(nameof(OperationContractAttribute.Action));
+                var replyActionProp = attrType.GetProperty(nameof(OperationContractAttribute.ReplyAction));
+                var nameProp = attrType.GetProperty(nameof(OperationContractAttribute.Name));
+                var isOneWayProp = attrType.GetProperty(nameof(OperationContractAttribute.IsOneWay));
+                var isInitiatingProp = attrType.GetProperty(nameof(OperationContractAttribute.IsInitiating));
+                var isTerminatingProp = attrType.GetProperty(nameof(OperationContractAttribute.IsTerminating));
+
+                string actionValue = GetOperationContractAction(methodInfo);
+                string replyActionValue = GetOperationContractReplyAction(methodInfo);
+
+                var propertyInfos = new List<PropertyInfo>
+                {
+                    actionProp,
+                    isOneWayProp,
+                    isInitiatingProp,
+                    isTerminatingProp
+                };
+
+                var propertyValues = new List<object>
+                {
+                    actionValue,
+                    originalOperationContract.IsOneWay,
+                    originalOperationContract.IsInitiating,
+                    originalOperationContract.IsTerminating
+                };
+
+                if (!originalOperationContract.IsOneWay)
+                {
+                    propertyInfos.Add(replyActionProp);
+                    propertyValues.Add(replyActionValue);
+                }
+
+                if (!string.IsNullOrEmpty(originalOperationContract.Name))
+                {
+                    propertyInfos.Add(nameProp);
+                    propertyValues.Add(originalOperationContract.Name);
+                }
+
+                var attributeBuilder = new CustomAttributeBuilder(
+                    attributeCtor,
+                    new object[0],
+                    propertyInfos.ToArray(),
+                    propertyValues.ToArray());
+
+                return attributeBuilder;
             };
 
-            var propertyValues = new List<object>
-            {
-                actionValue,
-                originalOperationContract.IsOneWay,
-                originalOperationContract.IsInitiating,
-                originalOperationContract.IsTerminating
-            };
+            methodBuilder.SetCustomAttribute(cloneOperationContractAttribute());
 
-            if (!originalOperationContract.IsOneWay)
-            {
-                propertyInfos.Add(replyActionProp);
-                propertyValues.Add(replyActionValue);
-            }
+            var remainingCustomAttributes = methodInfo
+                .GetCustomAttributesData()
+                .Where(m => m.AttributeType != typeof(OperationContractAttribute));
 
-            if (!string.IsNullOrEmpty(originalOperationContract.Name))
-            {
-                propertyInfos.Add(nameProp);
-                propertyValues.Add(originalOperationContract.Name);
-            }
-
-            var attributeBuilder = new CustomAttributeBuilder(
-                attributeCtor, 
-                new object[0], 
-                propertyInfos.ToArray(), 
-                propertyValues.ToArray());
-
-            methodBuilder.SetCustomAttribute(attributeBuilder);
+            foreach (var builder in CloneCustomAttributes(remainingCustomAttributes))
+                methodBuilder.SetCustomAttribute(builder);
         }
 
         /// <summary>
@@ -613,14 +631,10 @@ namespace WcfClientProxyGenerator
                 .Where(t => t.IsByRef)
                 .ToArray();
 
-            string className = string.Format("{0}_{1}", 
-                methodInfo.Name,
-                string.Join("_", parameterTypes.Select(m => m.Name)));
+            string className = $"{methodInfo.Name}_{string.Join("_", parameterTypes.Select(m => m.Name))}";
 
-            string typeName = string.Format(
-                "WcfClientProxyGenerator.DynamicProxy.{0}Support.{1}",
-                typeof(TServiceInterface).Name,
-                className);
+            string typeName =
+                $"WcfClientProxyGenerator.DynamicProxy.{typeof(TServiceInterface).Name}Support.{className}";
 
             var serviceCallTypeBuilder = DynamicProxyAssembly.ModuleBuilder.DefineType(typeName);
 
