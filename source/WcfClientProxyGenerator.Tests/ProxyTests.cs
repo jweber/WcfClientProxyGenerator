@@ -108,7 +108,39 @@ namespace WcfClientProxyGenerator.Tests
 
             Assert.That(result, Is.EqualTo("hello"));
         }
-   
+
+        [Test, Description("Github issue #22")]
+        public async Task AsyncMethod_FromSyncMethodWithFaultContract_CanBeCalled()
+        {
+            var service = Substitute.For<ICustomAttributeService>();
+
+            service
+                .FaultMethod(Arg.Any<string>())
+                .Returns("hello");
+
+            var proxy = service.StartHostAndAsyncProxy();
+
+            var result = await proxy.CallAsync(m => m.FaultMethod(""));
+
+            Assert.That(result, Is.EqualTo("hello"));
+        }
+
+        [Test, Description("Github issue #22")]
+        public async Task AsyncMethod_FromSyncMethodWithKnownTypeAttribute_CanBeCalled()
+        {
+            var service = Substitute.For<ICustomAttributeService>();
+
+            service
+                .KnownTypeMethod(Arg.Any<string>())
+                .Returns("hello");
+
+            var proxy = service.StartHostAndAsyncProxy();
+
+            var result = await proxy.CallAsync(m => m.KnownTypeMethod(""));
+
+            Assert.That(result, Is.EqualTo("hello"));
+        }
+
         [Test]
         public void Proxy_ReturnsExpectedValue_WhenCallingService()
         {

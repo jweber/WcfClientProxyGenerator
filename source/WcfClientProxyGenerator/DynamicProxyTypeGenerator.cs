@@ -364,9 +364,16 @@ namespace WcfClientProxyGenerator
 
             methodBuilder.SetCustomAttribute(cloneOperationContractAttribute());
 
+            var restrictedAttributeTypes = new[]
+            {
+                typeof(OperationContractAttribute),
+                typeof(FaultContractAttribute),
+                typeof(ServiceKnownTypeAttribute)
+            };
+
             var remainingCustomAttributes = methodInfo
                 .GetCustomAttributesData()
-                .Where(m => m.AttributeType != typeof(OperationContractAttribute));
+                .Where(m => !restrictedAttributeTypes.Contains(m.AttributeType));
 
             foreach (var builder in CloneCustomAttributes(remainingCustomAttributes))
                 methodBuilder.SetCustomAttribute(builder);
