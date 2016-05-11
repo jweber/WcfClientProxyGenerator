@@ -1,14 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WcfClientProxyGenerator", "WcfClientProxyGenerator\WcfClientProxyGenerator.csproj", "{56614D90-9EEA-4908-8BEB-7CD6E35BFCB0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WcfClientProxyGenerator.Tests", "WcfClientProxyGenerator.Tests\WcfClientProxyGenerator.Tests.csproj", "{C8B3B23C-F719-4F31-B6B7-8F02B3A817FA}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{EDEEE88F-2834-4EB7-8C45-E66602669B5E}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\packages.config = .nuget\packages.config
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

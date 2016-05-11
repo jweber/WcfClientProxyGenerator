@@ -8,6 +8,7 @@ PROJECT_NAME = "WcfClientProxyGenerator"
 
 $config = ENV['config'] || 'Debug'
 $nuget_api_key = ENV['nuget_api_key']
+$teamcity = (not ENV['TEAMCITY_VERSION'].nil?)
 
 task :default => :compile
 
@@ -56,11 +57,12 @@ test_runner :test => :compile do |tests|
 
   tests.files = FileList["source/#{PROJECT_NAME}.Tests/bin/#{$config}/#{PROJECT_NAME}.Tests.dll"]
   tests.exe = nunit_path
-  tests.add_parameter "/framework=#{CLR_TOOLS_VERSION}"
-  tests.add_parameter "/noshadow"
-  tests.add_parameter "/nologo"
-  tests.add_parameter "/labels"
-  tests.add_parameter "/xml=#{File.join(ARTIFACTS_PATH, "nunit-test-results.xml")}"
+  tests.add_parameter "--labels=ALL"
+  tests.add_parameter "--noresult"
+  
+  if $teamcity
+    tests.add_parameter "--teamcity"
+  end  
 end
 
 desc 'Cleans build artifacts'
@@ -142,7 +144,7 @@ task :versioning do
 end
 
 def nunit_path()
-  File.join(Dir.glob(File.join('source', 'packages', "nunit.runners.*")).sort.last, "tools", "nunit-console.exe")
+  File.join(Dir.glob(File.join('source', 'packages', "nunit.consolerunner.*")).sort.last, "tools", "nunit3-console.exe")
 end
 
 def nuget_path()
