@@ -1,7 +1,7 @@
 using System;
 using System.ServiceModel;
 using System.Threading;
-using Moq;
+using NSubstitute;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -17,17 +17,16 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
 
-            var callback = new Mock<IDuplexServiceCallback>();
-            callback
-                .Setup(m => m.TestCallback(It.IsAny<string>()))
-                .Callback((string input) =>
-                {
-                    resetEvent.Set();
-                });
+            var callback = Substitute.For<IDuplexServiceCallback>();
 
+            callback
+                .TestCallback(Arg.Any<string>())
+                .Returns(m => m.Arg<string>())
+                .AndDoes(_ => resetEvent.Set());
+            
             var proxy = WcfClientProxy.Create<IDuplexService>(c =>
             {
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, callback.Object);
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, callback);
             });
 
             proxy.Test("test");
@@ -43,17 +42,15 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
 
-            var callback = new Mock<IDuplexServiceCallback>();
+            var callback = Substitute.For<IDuplexServiceCallback>();
+
             callback
-                .Setup(m => m.OneWayCallback(It.IsAny<string>()))
-                .Callback((string input) =>
-                {
-                    resetEvent.Set();
-                });
+                .When(m => m.OneWayCallback(Arg.Any<string>()))
+                .Do(_ => resetEvent.Set());
 
             var proxy = WcfClientProxy.Create<IDuplexService>(c =>
             {
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, callback.Object);
+                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, callback);
             });
 
             proxy.OneWay("test");
@@ -69,15 +66,14 @@ namespace WcfClientProxyGenerator.Tests
 
             var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
 
-            var callback = new Mock<IDuplexServiceCallback>();
-            callback
-                .Setup(m => m.TestCallback(It.IsAny<string>()))
-                .Callback((string input) =>
-                {
-                    resetEvent.Set();
-                });
+            var callback = Substitute.For<IDuplexServiceCallback>();
 
-            InstanceContext<IDuplexServiceCallback> ctx = new InstanceContext<IDuplexServiceCallback>(callback.Object);
+            callback
+                .TestCallback(Arg.Any<string>())
+                .Returns(m => m.Arg<string>())
+                .AndDoes(_ => resetEvent.Set());
+
+            InstanceContext<IDuplexServiceCallback> ctx = new InstanceContext<IDuplexServiceCallback>(callback);
             var proxy = WcfClientProxy.Create<IDuplexService>(c =>
             {
                 c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, ctx);

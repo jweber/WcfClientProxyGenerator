@@ -1,11 +1,57 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using WcfClientProxyGenerator.Async;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {
+    public static class HostingExtensions
+    {
+        public static HostInformation StartHost<TServiceInterface>(this TServiceInterface serviceInstance)
+        {
+            var serviceInterface = GetServiceInterfaceType(serviceInstance);
+            return InProcTestFactory.CreateHost(serviceInterface, serviceInstance);
+        }
+
+        public static TServiceInterface StartHostAndProxy<TServiceInterface>(this TServiceInterface serviceInstance, Action<IRetryingProxyConfigurator> configurator = null)
+            where TServiceInterface : class
+        {
+            var host = serviceInstance.StartHost();
+            return WcfClientProxy.Create<TServiceInterface>(c =>
+            {
+                c.SetEndpoint(host.Binding, host.EndpointAddress);
+                configurator?.Invoke(c);
+            });
+        }
+
+        public static IAsyncProxy<TServiceInterface> StartHostAndAsyncProxy<TServiceInterface>(this TServiceInterface serviceInstance, Action<IRetryingProxyConfigurator> configurator = null)
+            where TServiceInterface : class
+        {
+            var host = serviceInstance.StartHost();
+            return WcfClientProxy.CreateAsyncProxy<TServiceInterface>(c =>
+            {
+                c.SetEndpoint(host.Binding, host.EndpointAddress);
+                configurator?.Invoke(c);
+            });
+        }
+
+        private static Type GetServiceInterfaceType(object serviceInstance)
+        {
+            var serviceInterfaceType = serviceInstance.GetType()
+                .GetInterfaces()
+                .FirstOrDefault(m => m.GetCustomAttribute<ServiceContractAttribute>() != null);
+
+            if (serviceInterfaceType == null)
+                throw new Exception("Unable to find interface marked with ServiceContractAttribute");
+
+            return serviceInterfaceType;
+        }
+    }
+
     public class HostInformation
     {
         public HostInformation(Binding binding, EndpointAddress endpointAddress)
@@ -34,26 +80,21 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             Binding = binding;
         }
 
-        public static TServiceInterface CreateHostWithClientProxy<TServiceInterface>(object serviceInstance)
-            where TServiceInterface : class
-        {
-            var hostInformation = CreateHost<TServiceInterface>(serviceInstance);
-            return ChannelFactory<TServiceInterface>.CreateChannel(hostInformation.Binding, hostInformation.EndpointAddress);
-        }
-
         public static HostInformation CreateHost<TServiceInterface>(object serviceInstance)
             where TServiceInterface : class
+            => CreateHost(typeof(TServiceInterface), serviceInstance);
+
+        public static HostInformation CreateHost(Type serviceInterfaceType, object serviceInstance)
         {
-            var address = OpenHost<TServiceInterface>(serviceInstance);
+            var address = OpenHost(serviceInterfaceType, serviceInstance);
             return new HostInformation(Binding, address);
         }
 
-        private static EndpointAddress OpenHost<TServiceInterface>(object serviceInstance)
-            where TServiceInterface : class
+        private static EndpointAddress OpenHost(Type serviceInterfaceType, object serviceInstance)
         {
             var host = new ServiceHost(serviceInstance);
             string address = BaseAddress + Guid.NewGuid();
-            host.AddServiceEndpoint(typeof(TServiceInterface), Binding, address);
+            host.AddServiceEndpoint(serviceInterfaceType, Binding, address);
 
             host.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode = InstanceContextMode.Single;
 
@@ -77,7 +118,7 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
 
             return endpointAddress;
         }
-
+        
         public static void CloseHost(EndpointAddress endpointAddress)
         {
             if (!Hosts.ContainsKey(endpointAddress))

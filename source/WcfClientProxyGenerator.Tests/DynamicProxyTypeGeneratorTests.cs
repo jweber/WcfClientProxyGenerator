@@ -3,7 +3,6 @@ using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
 using System.Threading.Tasks;
-using Moq;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -58,6 +57,14 @@ namespace WcfClientProxyGenerator.Tests
         [OperationContract]
         [CustomMethodAttribute(CustomMethodAttributeAttribute.CtorArg, Number = CustomMethodAttributeAttribute.NumberProperty)]
         string Method(string input);
+
+        [OperationContract]
+        [FaultContract(typeof(Exception))]
+        string FaultMethod(string input);
+
+        [OperationContract]
+        [ServiceKnownType(typeof(string))]
+        string KnownTypeMethod(string input);
     }
 
     [ServiceContract]
@@ -74,36 +81,6 @@ namespace WcfClientProxyGenerator.Tests
 
         [OperationContract]
         Task VoidMethodDefinedAsync(string input);
-    }
-
-    public class AsyncTestInterfaceImpl : IAsyncTestInterface
-    {
-        private readonly Mock<IAsyncTestInterface> _mock;
-
-        public AsyncTestInterfaceImpl(Mock<IAsyncTestInterface> mock)
-        {
-            this._mock = mock;
-        }
-
-        public string ReturnMethod(string input)
-        {
-            return _mock.Object.ReturnMethod(input);
-        }
-
-        public void VoidMethod(string input)
-        {
-            _mock.Object.VoidMethod(input);
-        }
-
-        public Task<string> ReturnMethodDefinedAsync(string input)
-        {
-            return _mock.Object.ReturnMethodDefinedAsync(input);
-        }
-
-        public Task VoidMethodDefinedAsync(string input)
-        {
-            return _mock.Object.VoidMethodDefinedAsync(input);
-        }
     }
 
     [ServiceContract]
@@ -181,12 +158,28 @@ namespace WcfClientProxyGenerator.Tests
         {
             var types = this.GenerateTypes<ICustomAttributeService>();
 
-            var method = types.AsyncInterface.GetMethods().First();
+            var method = types.AsyncInterface
+                .GetMethods()
+                .First(m => m.Name.StartsWith(nameof(ICustomAttributeService.Method), StringComparison.Ordinal));
 
             var attr = method.GetCustomAttribute<CustomMethodAttributeAttribute>();
 
             Assert.That(attr.Name, Is.EqualTo(CustomMethodAttributeAttribute.CtorArg));
             Assert.That(attr.Number, Is.EqualTo(CustomMethodAttributeAttribute.NumberProperty));
+        }
+
+        [Test]
+        public void FaultContractAttributes_AreNotCopiedTo_GeneratedAsyncMethods()
+        {
+            var types = this.GenerateTypes<ICustomAttributeService>();
+
+            var method = types.AsyncInterface
+                .GetMethods()
+                .First(m => m.Name.StartsWith(nameof(ICustomAttributeService.FaultMethod), StringComparison.Ordinal));
+
+            var attr = method.GetCustomAttribute<FaultContractAttribute>();
+
+            Assert.That(attr, Is.Null);
         }
 
         [Test]

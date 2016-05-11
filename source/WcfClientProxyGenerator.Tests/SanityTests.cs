@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
 using System.ServiceModel;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Moq;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -17,12 +12,15 @@ namespace WcfClientProxyGenerator.Tests
         [Test, Description("Asserts that we can mock a WCF service in memory")]
         public void MockedService_WorksAsExpected()
         {
-            var mockService = new Mock<ITestService>();
-            mockService
-                .Setup(m => m.TestMethod("known"))
+            var service = Substitute.For<ITestService>();
+
+            service
+                .TestMethod("known")
                 .Returns("test");
 
-            var proxy = InProcTestFactory.CreateHostWithClientProxy<ITestService>(new TestServiceImpl(mockService));
+            var host = service.StartHost();
+
+            var proxy = ChannelFactory<ITestService>.CreateChannel(host.Binding, host.EndpointAddress);
 
             Assert.That(() => proxy.TestMethod("known"), Is.EqualTo("test"));
         }
@@ -30,13 +28,19 @@ namespace WcfClientProxyGenerator.Tests
         [Test, Description("Asserts that we can fault a default Client Channel")]
         public void FaultHappens_WithDefaultChannelProxy()
         {
-            var mockService = new Mock<ITestService>();
-            mockService.Setup(m => m.TestMethod("good")).Returns("OK");
-            mockService.Setup(m => m.TestMethod("bad")).Throws<Exception>();
+            var service = Substitute.For<ITestService>();
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+            service
+                .TestMethod("good")
+                .Returns("OK");
 
-            var proxy = new ChannelFactory<ITestService>(serviceHost.Binding, serviceHost.EndpointAddress).CreateChannel();
+            service
+                .TestMethod("bad")
+                .Throws<Exception>();
+
+            var host = service.StartHost<ITestService>();
+
+            var proxy = new ChannelFactory<ITestService>(host.Binding, host.EndpointAddress).CreateChannel();
 
             // Will fault the channel
             Assert.That(() => proxy.TestMethod("bad"), Throws.Exception);

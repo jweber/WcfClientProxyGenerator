@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq;
-using Moq;
+using NSubstitute;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -9,17 +9,17 @@ namespace WcfClientProxyGenerator.Tests
     [TestFixture]
     public class BenchmarkTests
     {
-        [Test, Ignore]
+        [Test, Explicit]
         public void Benchmark_RetryingWcfActionInvoker_Invoke()
         {
-            var mockService = new Mock<ITestService>();
+            var service = Substitute.For<ITestService>();
 
-            mockService
-                .Setup(m => m.TestMethodComplex(It.IsAny<Request>()))
+            service
+                .TestMethodComplex(Arg.Any<Request>())
                 .Returns(new Response { StatusCode = 1 });
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
-                () => new TestServiceImpl(mockService));
+                () => service);
             
             actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == 100);
 
@@ -27,7 +27,7 @@ namespace WcfClientProxyGenerator.Tests
             foreach (var i in Enumerable.Range(0, 300000))
             {
                 var response = actionInvoker.Invoke(s => s.TestMethodComplex(new Request()));
-                Assert.That(response.StatusCode, Is.EqualTo(1));                
+                Assert.That(response.StatusCode, Is.EqualTo(1));
             }
             sw.Stop();
             

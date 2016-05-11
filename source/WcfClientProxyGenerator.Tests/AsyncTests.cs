@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
-using Moq;
+using NSubstitute;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -17,20 +17,19 @@ namespace WcfClientProxyGenerator.Tests
         {
             var resetEvent = new AutoResetEvent(false);
 
-            var mockService = new Mock<IAsyncTestInterface>();
-            mockService
-                .Setup(m => m.ReturnMethodDefinedAsync("test"))
+            var service = Substitute.For<IAsyncTestInterface>();
+
+            service
+                .ReturnMethodDefinedAsync("test")
                 .Returns(Task.FromResult("response"))
-                .Callback(() =>
+                .AndDoes(m =>
                 {
                     Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
-                    resetEvent.Set();                    
+                    resetEvent.Set();
                 });
 
-            var serviceHost = InProcTestFactory.CreateHost<IAsyncTestInterface>(new AsyncTestInterfaceImpl(mockService));
 
-            var proxy = WcfClientProxy.Create<IAsyncTestInterface>(c =>
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = service.StartHostAndProxy();
 
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
@@ -49,20 +48,18 @@ namespace WcfClientProxyGenerator.Tests
         {
             var resetEvent = new AutoResetEvent(false);
 
-            var mockService = new Mock<IAsyncTestInterface>();
-            mockService
-                .Setup(m => m.VoidMethodDefinedAsync("test"))
+            var service = Substitute.For<IAsyncTestInterface>();
+
+            service
+                .VoidMethodDefinedAsync("test")
                 .Returns(Task.FromResult(true))
-                .Callback(() =>
+                .AndDoes(m =>
                 {
                     Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
-                    resetEvent.Set();            
+                    resetEvent.Set();
                 });
 
-            var serviceHost = InProcTestFactory.CreateHost<IAsyncTestInterface>(new AsyncTestInterfaceImpl(mockService));
-
-            var proxy = WcfClientProxy.Create<IAsyncTestInterface>(c =>
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = service.StartHostAndProxy();
 
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
@@ -77,20 +74,19 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public async Task CallAsync_MethodWithReturnValue()
         {
-            var mockService = new Mock<ITestService>();
-            mockService
-                .SetupSequence(m => m.TestMethod("good"))
-                .Returns("BAD")
-                .Returns("OK");
+            var service = Substitute.For<ITestService>();
 
-            mockService.Setup(m => m.TestMethod("second", "two")).Returns("2");
+            service
+                .TestMethod("good")
+                .Returns("BAD", "OK");
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
+            service
+                .TestMethod("second", "two")
+                .Returns("2");
 
-            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            var proxy = service.StartHostAndAsyncProxy(c =>
             {
                 c.MaximumRetries(1);
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
                 c.RetryOnResponse<string>(s => s == "BAD");
             });
 
@@ -110,18 +106,16 @@ namespace WcfClientProxyGenerator.Tests
         {
             var request = new Request() { RequestMessage = "test" };
 
-            var mockService = new Mock<ITestService>();
-            mockService
-                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
-                .Returns(new Response { ResponseMessage = "test", StatusCode = 1 })
-                .Returns(new Response { ResponseMessage  = "test", StatusCode = 0 });
+            var service = Substitute.For<ITestService>();
+            service
+                .TestMethodComplex(Arg.Any<Request>())
+                .Returns(
+                    new Response {ResponseMessage = "test", StatusCode = 1},
+                    new Response {ResponseMessage = "test", StatusCode = 0});
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
-
-            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
+            var proxy = service.StartHostAndAsyncProxy(c =>
             {
                 c.MaximumRetries(1);
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress);
                 c.RetryOnResponse<Response>(s => s.StatusCode == 1);
             });
 
@@ -140,19 +134,17 @@ namespace WcfClientProxyGenerator.Tests
         {
             var resetEvent = new AutoResetEvent(false);
 
-            var mockService = new Mock<ITestService>();
-            mockService
-                .Setup(m => m.VoidMethod("good"))
-                .Callback(() =>
+            var service = Substitute.For<ITestService>();
+
+            service
+                .When(m => m.VoidMethod("good"))
+                .Do(m =>
                 {
                     Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
                     resetEvent.Set();
                 });
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
-
-            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c => 
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = service.StartHostAndAsyncProxy();
 
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
@@ -169,22 +161,20 @@ namespace WcfClientProxyGenerator.Tests
         {
             var resetEvent = new AutoResetEvent(false);
 
-            var mockService = new Mock<ITestService>();
+            var service = Substitute.For<ITestService>();
 
-            mockService
-                .Setup(m => m.OneWay(It.IsAny<string>()))
-                .Callback((string input) =>
+            service
+                .When(m => m.OneWay(Arg.Any<string>()))
+                .Do(m =>
                 {
-                    Assert.That(input, Is.EqualTo("test"));
+                    Assert.That(m.Arg<string>(), Is.EqualTo("test"));
 
                     Console.WriteLine("Callback thread: " + Thread.CurrentThread.ManagedThreadId);
                     resetEvent.Set();
                 });
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
 
-            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c => 
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = service.StartHostAndAsyncProxy();
 
             await proxy.CallAsync(m => m.OneWay("test"));
 
@@ -199,16 +189,14 @@ namespace WcfClientProxyGenerator.Tests
         {
             int iterations = 20;
 
-            var mockService = new Mock<ITestService2>();
-            mockService
-                .Setup(m => m.TestMethod(It.IsAny<string>()))
-                .Returns((string s) => "Echo: " + s)
-                .Callback((string s) => Console.WriteLine("Callback: " + s));
+            var service = Substitute.For<ITestService2>();
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService2>(new TestService2Impl(mockService));
+            service
+                .TestMethod(Arg.Any<string>())
+                .Returns(m => $"Echo: {m.Arg<string>()}")
+                .AndDoes(m => Console.WriteLine($"Callback: {m.Arg<string>()}"));
 
-            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService2>(c =>
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = service.StartHostAndAsyncProxy();
 
             var tasks = new List<Task>();
             for (int i = 0; i < iterations; i++)
@@ -232,15 +220,13 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void CallAsync_CanCallIntoSyncProxy()
         {
-            var mockService = new Mock<ITestService>();
-            mockService
-                .Setup(m => m.TestMethod("good"))
+            var service = Substitute.For<ITestService>();
+
+            service
+                .TestMethod("good")
                 .Returns("OK");
 
-            var serviceHost = InProcTestFactory.CreateHost<ITestService>(new TestServiceImpl(mockService));
-
-            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = service.StartHostAndAsyncProxy();
 
             string result = proxy.Client.TestMethod("good");
             Assert.That(result, Is.EqualTo("OK"));
@@ -249,17 +235,15 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void CallAsync_CallingMethodWithByRefParams_ThrowsNotSupportedException()
         {
-            var mockService = new Mock<IOutParamTestService>();
+            var service = Substitute.For<IOutParamTestService>();
 
             byte[] expectedOutParam = { 0x01 };
-            mockService
-                .Setup(m => m.SingleOutParam(out expectedOutParam))
+
+            service
+                .SingleOutParam(out expectedOutParam)
                 .Returns(100);
 
-            var serviceHost = InProcTestFactory.CreateHost<IOutParamTestService>(new OutParamTestServiceImpl(mockService));
-
-            var proxy = WcfClientProxy.CreateAsyncProxy<IOutParamTestService>(c =>
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress));
+            var proxy = service.StartHostAndAsyncProxy();
 
             byte[] resultingOutParam;
 

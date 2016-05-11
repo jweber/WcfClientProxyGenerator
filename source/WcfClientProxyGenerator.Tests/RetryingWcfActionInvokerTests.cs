@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Linq;
 using System.ServiceModel;
-using Moq;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Policy;
 using WcfClientProxyGenerator.Tests.Infrastructure;
@@ -81,19 +80,17 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void AddResponseToRetryOn_RetriesOnConfiguredResponse_ForResponseType()
         {
-            var mockService = new Mock<ITestService>();
-
+            var service = Substitute.For<ITestService>();
+            
             var failResponse = new Response { ResponseMessage = "fail" };
             var successResponse = new Response { ResponseMessage = "success" };
 
-            mockService
-                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
-                .Returns(failResponse)
-                .Returns(failResponse)
-                .Returns(successResponse);
+            service
+                .TestMethodComplex(Arg.Any<Request>())
+                .Returns(failResponse, failResponse, successResponse);
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
-                () => new TestServiceImpl(mockService),
+                () => service,
                 () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)),
                 retryCount: 2);
 
@@ -106,19 +103,17 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void AddResponseToRetryOn_RetriesOnConfiguredResponse_ForResponseBaseType()
         {
-            var mockService = new Mock<ITestService>();
+            var service = Substitute.For<ITestService>();
 
             var failResponse = new Response { StatusCode = 100 };
             var successResponse = new Response { StatusCode = 1 };
 
-            mockService
-                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
-                .Returns(failResponse)
-                .Returns(failResponse)
-                .Returns(successResponse);
+            service
+                .TestMethodComplex(Arg.Any<Request>())
+                .Returns(failResponse, failResponse, successResponse);
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
-                () => new TestServiceImpl(mockService),
+                () => service,
                 () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)),
                 retryCount: 2);
 
@@ -131,20 +126,18 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void AddResponseToRetryOn_RetriesOnMatchedPredicate_WhenMultiplePredicatesAreRegistered()
         {
-            var mockService = new Mock<ITestService>();
+            var service = Substitute.For<ITestService>();
 
             var firstFailResponse = new Response { StatusCode = 100 };
             var secondFailResponse = new Response { StatusCode = 101 };
             var successResponse = new Response { StatusCode = 1 };
 
-            mockService
-                .SetupSequence(m => m.TestMethodComplex(It.IsAny<Request>()))
-                .Returns(firstFailResponse)
-                .Returns(secondFailResponse)
-                .Returns(successResponse);
+            service
+                .TestMethodComplex(Arg.Any<Request>())
+                .Returns(firstFailResponse, secondFailResponse, successResponse);
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
-                () => new TestServiceImpl(mockService),
+                () => service,
                 () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)),
                 retryCount: 2);
 
@@ -173,11 +166,14 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void AddExceptionToRetryOn_PassesThroughException_OnConfiguredException_WhenPredicateDoesNotMatch()
         {
-            var mockService = new Mock<ITestService>();
-            mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws<TimeoutException>();
+            var service = Substitute.For<ITestService>();
+
+            service
+                .TestMethod(Arg.Any<string>())
+                .Throws<TimeoutException>();
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
-                () => new TestServiceImpl(mockService),
+                () => service,
                 () => new ConstantDelayPolicy(TimeSpan.FromMilliseconds(50)));
 
             actionInvoker.AddExceptionToRetryOn<TimeoutException>(where: e => e.Message == "not the message");
@@ -190,36 +186,37 @@ namespace WcfClientProxyGenerator.Tests
             Func<TException> exceptionFactory = null)
             where TException : Exception, new()
         {
-            var mockService = new Mock<ITestService>();
+            var service = Substitute.For<ITestService>();
 
             if (exceptionFactory != null)
             {
-                mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws(exceptionFactory());
+                service
+                    .TestMethod(Arg.Any<string>())
+                    .Throws(exceptionFactory());
             }
-            else 
+            else
             {
-                mockService.Setup(m => m.TestMethod(It.IsAny<string>())).Throws<TException>();
+                service
+                    .TestMethod(Arg.Any<string>())
+                    .Throws<TException>();
             }
 
-            var mockDelayPolicy = new Mock<IDelayPolicy>();
+            var delayPolicy = Substitute.For<IDelayPolicy>();
 
             var actionInvoker = new RetryingWcfActionInvoker<ITestService>(
-                () => new TestServiceImpl(mockService),
-                () => mockDelayPolicy.Object,
+                () => service,
+                () => delayPolicy,
                 retryCount: 5);
 
-            if (configurator != null)
-            {
-                configurator(actionInvoker);
-            }
+            configurator?.Invoke(actionInvoker);
 
             Assert.That(
                 () => actionInvoker.Invoke(s => s.TestMethod("test")), 
                 Throws.TypeOf<WcfRetryFailedException>());
 
-            mockDelayPolicy.Verify(
-                m => m.GetDelay(It.IsInRange(0, 4, Range.Inclusive)), 
-                Times.Exactly(5));
+            delayPolicy
+                .Received(5)
+                .GetDelay(Arg.Is<int>(i => i >= 0 && i <= 4));
         }
     }
 }

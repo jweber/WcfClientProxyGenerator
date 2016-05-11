@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Moq;
+﻿using NSubstitute;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 
@@ -15,13 +10,13 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void SetEndpoint_IsCalledWith_FullNamespaceOfServiceInterface()
         {
-            var mockProxy = new Mock<IRetryingProxyConfigurator>();
+            var config = Substitute.For<IRetryingProxyConfigurator>();
 
-            DefaultProxyConfigurator.Configure<ITestService>(mockProxy.Object);
+            DefaultProxyConfigurator.Configure<ITestService>(config);
 
-            mockProxy.Verify(
-                m => m.UseDefaultEndpoint(), 
-                Times.Once());
+            config
+                .Received(1)
+                .UseDefaultEndpoint();
         }
     }
 }

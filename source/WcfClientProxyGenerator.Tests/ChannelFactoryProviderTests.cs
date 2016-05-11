@@ -21,11 +21,11 @@ namespace WcfClientProxyGenerator.Tests
         {
             var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>("ITestService");
 
-            AssertExt.ThrowsAsync(
-                typeof(EndpointNotFoundException),
+            var exception = Assert.ThrowsAsync<EndpointNotFoundException>(
                 () => proxy.CallAsync(m => m.IntMethod()),
-                messageAssert: Is.StringStarting("There was no endpoint listening at "),
                 message: "Expected EndpointNotFoundException (since ITestService address is not running)");
+
+            Assert.That(exception.Message, Does.StartWith("There was no endpoint listening at "));
         }
 
         [Test]
