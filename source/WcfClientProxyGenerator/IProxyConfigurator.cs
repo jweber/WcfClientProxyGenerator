@@ -8,7 +8,7 @@ namespace WcfClientProxyGenerator
     /// <summary>
     /// Configuration options for the generated WCF proxy
     /// </summary>
-    public interface IProxyConfigurator
+    public interface IProxyConfigurator : IDisposable
     {
         /// <summary>
         /// Uses the default endpoint configuration from the web.config or app.config

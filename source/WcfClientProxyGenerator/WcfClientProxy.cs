@@ -48,9 +48,7 @@ namespace WcfClientProxyGenerator
         public static TServiceInterface Create<TServiceInterface>(Action<IRetryingProxyConfigurator> configurator)
             where TServiceInterface : class
         {
-            var proxy = CreateProxy<
-                TServiceInterface,
-                RetryingWcfActionInvokerProvider<TServiceInterface>>();
+            var proxy = CreateProxy<TServiceInterface, RetryingWcfActionInvokerProvider<TServiceInterface>>();
 
             if (configurator != null)
             {
