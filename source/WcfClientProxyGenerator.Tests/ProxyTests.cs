@@ -73,6 +73,22 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
+        public void CreatingProxy_WithServiceEndpoint_CreatesProxy_Dispose()
+        {
+            var service = Substitute.For<ITestService>();
+            var serviceHost = InProcTestFactory.CreateHost<ITestService>(service);
+            ContractDescription contractDescription = ContractDescription.GetContract(typeof(ITestService));
+            ITestService cl = WcfClientProxy.Create<ITestService>(c => c.SetEndpoint(new ServiceEndpoint(
+                contractDescription,
+                serviceHost.Binding, serviceHost.EndpointAddress)));
+            Assert.DoesNotThrow(() =>
+            {
+                using ((IDisposable)cl)
+                {
+                }
+            });
+        }
+        [Test]
         public async Task CreatingAsyncProxy_WithServiceEndpoint_CanCallAsyncMethod()
         {
             var service = Substitute.For<ITestService>();

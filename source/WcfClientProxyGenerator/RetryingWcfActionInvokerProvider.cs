@@ -407,5 +407,9 @@ namespace WcfClientProxyGenerator
         }
 
         #endregion
+        public void Dispose()
+        {
+            ((IDisposable) channelFactory)?.Dispose();
+        }
     }
 }
