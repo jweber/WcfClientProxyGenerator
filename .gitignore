@@ -1,3 +1,6 @@
+.idea/
+.vs/
+
 *.obj
 *.pdb
 *.user

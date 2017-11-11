@@ -31,7 +31,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <OutputPath>bin\Release\</OutputPath>
-    <DocumentationFile>bin\Release\WcfClientProxyGenerator.xml</DocumentationFile>    
+    <DocumentationFile>bin\Release\WcfClientProxyGenerator.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <DefineConstants>NET45</DefineConstants>
@@ -51,9 +51,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\VersionInfo.cs">
-      <Link>Properties\VersionInfo.cs</Link>
-    </Compile>
     <Compile Include="Async\AsyncProxy.cs" />
     <Compile Include="Async\GeneratedAsyncInterfaceAttribute.cs" />
     <Compile Include="ChannelFactoryProvider.cs" />
