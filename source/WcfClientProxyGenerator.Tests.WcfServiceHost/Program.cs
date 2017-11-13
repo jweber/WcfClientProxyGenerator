@@ -33,6 +33,8 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost
             var baseAddress = $"{binding.protocol}://localhost:{args[0]}";
 
             Boot<ITestService, TestService>(baseAddress, "/test", binding.binding);
+            Boot<IAsyncService, AsyncService>(baseAddress, "/async", binding.binding);
+            Boot<IOutParamTestService, OutParamsTestService>(baseAddress, "/out", binding.binding);
 
             Console.WriteLine("Press <Enter> to stop the service.");
             Console.ReadLine();
@@ -42,6 +44,7 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost
         }
 
         private static void Boot<TService, TServiceImpl>(string baseAddress, string path, Binding binding)
+            where TServiceImpl : TService
         {
             var address = new Uri(baseAddress + path);
             var host = new ServiceHost(typeof(TServiceImpl));

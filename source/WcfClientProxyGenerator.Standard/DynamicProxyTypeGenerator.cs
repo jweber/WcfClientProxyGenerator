@@ -299,7 +299,7 @@ namespace WcfClientProxyGenerator.Standard
 
             var methodBuilder = typeBuilder.DefineMethod(
                 methodInfo.Name + "Async",
-                MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual | MethodAttributes.Abstract,
+                MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Abstract,
                 returnType,
                 parameterTypes);
 
@@ -401,7 +401,7 @@ namespace WcfClientProxyGenerator.Standard
             // TReturn Method(TParamType1 arg1, TParamType2 arg2, ...) {
             var methodBuilder = typeBuilder.DefineMethod(
                 methodInfo.Name,
-                MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual,
+                MethodAttributes.Public | MethodAttributes.Virtual,
                 methodInfo.ReturnType,
                 parameterTypes);
 
