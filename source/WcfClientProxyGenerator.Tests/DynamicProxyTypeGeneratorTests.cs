@@ -3,8 +3,10 @@ using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
 using System.Threading.Tasks;
-using NUnit.Framework;
+
+using Shouldly;
 using WcfClientProxyGenerator.Tests.Services;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
@@ -74,11 +76,9 @@ namespace WcfClientProxyGenerator.Tests
 
     #endregion
     
-    [TestFixture]
     public class DynamicProxyTypeGeneratorTests
     {
-        [SetUp]
-        public void Setup()
+        public DynamicProxyTypeGeneratorTests()
         {
             DynamicProxyAssembly.Initialize();
         }
@@ -90,23 +90,23 @@ namespace WcfClientProxyGenerator.Tests
                 .GenerateTypes<RetryingWcfActionInvokerProvider<TServiceInterface>>();
         }
 
-        [Test]
+        [Fact]
         public void ContractsWithOverloadedMethods_DoNotDuplicateSupportMethods()
         {
-            Assert.That((TestDelegate) (() => this.GenerateTypes<IOverloadedService>()), Throws.Nothing);
+            Should.NotThrow(() => this.GenerateTypes<IOverloadedService>());
         }
 
-        [Test]
+        [Fact]
         public void CustomAttributes_AreCopiedTo_GeneratedInterface()
         {
             var types = this.GenerateTypes<ICustomAttributeService>();
             var attr = types.AsyncInterface.GetCustomAttribute<CustomServiceAttributeAttribute>();
 
-            Assert.That(attr.Name, Is.EqualTo(CustomServiceAttributeAttribute.CtorArg));
-            Assert.That(attr.Number, Is.EqualTo(CustomServiceAttributeAttribute.NumberProperty));
+            attr.Name.ShouldBe(CustomServiceAttributeAttribute.CtorArg);
+            attr.Number.ShouldBe(CustomServiceAttributeAttribute.NumberProperty);
         }
 
-        [Test]
+        [Fact]
         public void CustomAttributes_AreCopiedTo_GeneratedMethods()
         {
             var types = this.GenerateTypes<ICustomAttributeService>();
@@ -117,11 +117,11 @@ namespace WcfClientProxyGenerator.Tests
 
             var attr = method.GetCustomAttribute<CustomMethodAttributeAttribute>();
 
-            Assert.That(attr.Name, Is.EqualTo(CustomMethodAttributeAttribute.CtorArg));
-            Assert.That(attr.Number, Is.EqualTo(CustomMethodAttributeAttribute.NumberProperty));
+            attr.Name.ShouldBe(CustomMethodAttributeAttribute.CtorArg);
+            attr.Number.ShouldBe(CustomMethodAttributeAttribute.NumberProperty);
         }
 
-        [Test]
+        [Fact]
         public void FaultContractAttributes_AreNotCopiedTo_GeneratedAsyncMethods()
         {
             var types = this.GenerateTypes<ICustomAttributeService>();
@@ -132,30 +132,30 @@ namespace WcfClientProxyGenerator.Tests
 
             var attr = method.GetCustomAttribute<FaultContractAttribute>();
 
-            Assert.That(attr, Is.Null);
+            attr.ShouldBeNull();
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_AsyncMethodSignature_IsCreatedForSyncMethodWithReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
 
             var asyncMethod = types.AsyncInterface.GetMethod("ReturnMethodAsync");
-            Assert.That(asyncMethod, Is.Not.Null);
-            Assert.That(asyncMethod.ReturnType, Is.EqualTo(typeof(Task<string>)));
+            asyncMethod.ShouldNotBeNull();
+            asyncMethod.ReturnType.ShouldBe(typeof(Task<string>));
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_AsyncMethodSignature_IsCreatedForSyncMethodWithoutReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
 
             var asyncMethod = types.AsyncInterface.GetMethod("VoidMethodAsync");
-            Assert.That(asyncMethod, Is.Not.Null);
-            Assert.That(asyncMethod.ReturnType, Is.EqualTo(typeof(Task)));
+            asyncMethod.ShouldNotBeNull();
+            asyncMethod.ReturnType.ShouldBe(typeof(Task));
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_AsyncMethodSignature_IsNotCreated_ForAlreadyAsyncMethodWithReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
@@ -163,10 +163,10 @@ namespace WcfClientProxyGenerator.Tests
             var asyncMethod = types.AsyncInterface.GetMethods()
                 .Where(m => m.Name.StartsWith("ReturnMethodDefinedAsync"));
 
-            Assert.That(asyncMethod, Is.Null.Or.Empty);
+            asyncMethod.ShouldBeEmpty();
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_AsyncMethodSignature_IsNotCreated_ForAlreadyAsyncMethodWithNoReturnValue()
         {
             var types = this.GenerateTypes<IAsyncTestInterface>();
@@ -174,10 +174,10 @@ namespace WcfClientProxyGenerator.Tests
             var asyncMethod = types.AsyncInterface.GetMethods()
                 .Where(m => m.Name.StartsWith("VoidMethodDefinedAsync"));
 
-            Assert.That(asyncMethod, Is.Null.Or.Empty);
+            asyncMethod.ShouldBeEmpty();
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_Default_ActionAndReplyAction_AttributeValuesAreGenerated()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
@@ -186,11 +186,11 @@ namespace WcfClientProxyGenerator.Tests
 
             var attr = asyncMethod.GetCustomAttribute<OperationContractAttribute>();
 
-            Assert.That(attr.Action, Is.EqualTo("http://tempuri.org/IOperationContractInterface/DefaultActionAndReplyAction"));
-            Assert.That(attr.ReplyAction, Is.EqualTo("http://tempuri.org/IOperationContractInterface/DefaultActionAndReplyActionResponse"));
+            attr.Action.ShouldBe("http://tempuri.org/IOperationContractInterface/DefaultActionAndReplyAction");
+            attr.ReplyAction.ShouldBe("http://tempuri.org/IOperationContractInterface/DefaultActionAndReplyActionResponse");
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_DefaultAction_NamespaceIsDerivedFromDeclaringType()
         {
             var types = this.GenerateTypes<IChildService>();
@@ -201,11 +201,11 @@ namespace WcfClientProxyGenerator.Tests
             var baseMethod = types.AsyncInterface.GetMethod("VoidMethodAsync");
             var baseMethodAttr = baseMethod.GetCustomAttribute<OperationContractAttribute>();
 
-            Assert.That(childMethodAttr.Action, Is.EqualTo("http://tempuri.org/IChildService/ChildMethod"));
-            Assert.That(baseMethodAttr.Action, Is.EqualTo("http://tempuri.org/ITestService/VoidMethod"));
+            childMethodAttr.Action.ShouldBe("http://tempuri.org/IChildService/ChildMethod");
+            baseMethodAttr.Action.ShouldBe("http://tempuri.org/ITestService/VoidMethod");
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_DefaultReplyAction_NamespaceIsDerivedFromDeclaringType()
         {
             var types = this.GenerateTypes<IChildService>();
@@ -216,11 +216,11 @@ namespace WcfClientProxyGenerator.Tests
             var baseMethod = types.AsyncInterface.GetMethod("VoidMethodAsync");
             var baseMethodAttr = baseMethod.GetCustomAttribute<OperationContractAttribute>();
 
-            Assert.That(childMethodAttr.ReplyAction, Is.EqualTo("http://tempuri.org/IChildService/ChildMethodResponse"));
-            Assert.That(baseMethodAttr.ReplyAction, Is.EqualTo("http://tempuri.org/ITestService/VoidMethodResponse"));
+            childMethodAttr.ReplyAction.ShouldBe("http://tempuri.org/IChildService/ChildMethodResponse");
+            baseMethodAttr.ReplyAction.ShouldBe("http://tempuri.org/ITestService/VoidMethodResponse");
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_CustomAction_IsUsedOnAsyncMethod()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
@@ -229,10 +229,10 @@ namespace WcfClientProxyGenerator.Tests
 
             var attr = asyncMethod.GetCustomAttribute<OperationContractAttribute>();
 
-            Assert.That(attr.Action, Is.EqualTo("NewAction"));
+            attr.Action.ShouldBe("NewAction");
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_CustomReplyAction_IsUsedOnAsyncMethod()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
@@ -241,10 +241,10 @@ namespace WcfClientProxyGenerator.Tests
 
             var attr = asyncMethod.GetCustomAttribute<OperationContractAttribute>();
 
-            Assert.That(attr.ReplyAction, Is.EqualTo("NewReplyAction"));
+            attr.ReplyAction.ShouldBe("NewReplyAction");
         }
 
-        [Test]
+        [Fact]
         public void AsyncInterface_CustomName_IsUsedOnAsyncMethod()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
@@ -253,10 +253,10 @@ namespace WcfClientProxyGenerator.Tests
 
             var attr = asyncMethod.GetCustomAttribute<OperationContractAttribute>();
 
-            Assert.That(attr.Name, Is.EqualTo("NewName"));
+            attr.Name.ShouldBe("NewName");
         }
         
-        [Test]
+        [Fact]
         public void AsyncInterface_CustomName_IsUsedToBuildDefaultActionAndReplyAction()
         {
             var types = this.GenerateTypes<IOperationContractInterface>();
@@ -265,26 +265,26 @@ namespace WcfClientProxyGenerator.Tests
 
             var attr = asyncMethod.GetCustomAttribute<OperationContractAttribute>();
 
-            Assert.That(attr.Action, Is.EqualTo("http://tempuri.org/IOperationContractInterface/NewName"));
-            Assert.That(attr.ReplyAction, Is.EqualTo("http://tempuri.org/IOperationContractInterface/NewNameResponse"));
+            attr.Action.ShouldBe("http://tempuri.org/IOperationContractInterface/NewName");
+            attr.ReplyAction.ShouldBe("http://tempuri.org/IOperationContractInterface/NewNameResponse");
         }
 
-        [Test]
+        [Fact]
         public void AsyncMethodDefinition_NotGeneratedForNonAsyncMethod_WithExistingAsyncDefinition()
         {
             var types = this.GenerateTypes<IAsyncTestInterface2>();
 
             var generatedAsyncMethod = types.AsyncInterface.GetMethod("MethodAsync");
-            Assert.That(generatedAsyncMethod, Is.Null);
+            generatedAsyncMethod.ShouldBeNull();
         }
 
-        [Test]
+        [Fact]
         public void AsyncMethodDefinition_NotGeneratedForNonAsyncMethod_WithExistingAsyncDefinition_NotUsingCustomActionAndReplyAction()
         {
             var types = this.GenerateTypes<IAsyncTestInterface3>();
 
             var generatedAsyncMethod = types.AsyncInterface.GetMethod("MethodAsync");
-            Assert.That(generatedAsyncMethod, Is.Null);
+            generatedAsyncMethod.ShouldBeNull();
         }
     }
 }

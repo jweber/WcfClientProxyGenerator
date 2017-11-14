@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using NUnit.Framework;
+
+using Shouldly;
 using WcfClientProxyGenerator.Util;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class DictionaryExtensionsTests
     {
-        [Test]
+        [Fact]
         public void Safe_ConcurrentDictionary_GetOrAdd_CallsValueFactoryOnlyOnce()
         {
             var dictionary = new ConcurrentDictionary<string, Lazy<string>>();
@@ -39,7 +40,7 @@ namespace WcfClientProxyGenerator.Tests
             bool thread1AndNotThread2 = thread1Message == "thread 1" && thread2Message == null;
             bool thread2AndNotThread1 = thread2Message == "thread 2" && thread1Message == null;
 
-            Assert.IsTrue(thread1AndNotThread2 || thread2AndNotThread1);
+            (thread1AndNotThread2 || thread2AndNotThread1).ShouldBeTrue();
         }
     }
 }

@@ -1,15 +1,15 @@
 ﻿using NSubstitute;
-using NUnit.Framework;
+
 using WcfClientProxyGenerator.Tests.Services;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class DefaultProxyConfiguratorTests
     {
         #if NET45
         
-        [Test]
+        [Fact]
         public void SetEndpoint_IsCalledWith_FullNamespaceOfServiceInterface()
         {
             var config = Substitute.For<IRetryingProxyConfigurator>();

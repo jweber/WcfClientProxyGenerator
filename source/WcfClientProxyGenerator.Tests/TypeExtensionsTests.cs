@@ -1,68 +1,69 @@
 ﻿using System;
 using System.Linq;
-using NUnit.Framework;
+
+using Shouldly;
 using WcfClientProxyGenerator.Util;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class TypeExtensionsTests
     {
-        [Test]
+        [Fact]
         public void GetAllInheritedTypes_ForObjectType_ReturnsObjectType()
         {
             var types = typeof(object).GetAllInheritedTypes();
 
-            Assert.That(types.Count(), Is.EqualTo(1));
-            Assert.That(types, Contains.Item(typeof(object)));
+            types.Count().ShouldBe(1);
+            types.ShouldContain(typeof(object));
         }
 
-        [Test]
+        [Fact]
         public void GetAllInheritedTypes_ForValueType()
         {
             var types = typeof(int).GetAllInheritedTypes();
 
-            Assert.That(types, Contains.Item(typeof(int)));
-            Assert.That(types, Contains.Item(typeof(ValueType)));
-            Assert.That(types, Contains.Item(typeof(object)));
+            types.ShouldContain(typeof(int));
+            types.ShouldContain(typeof(ValueType));
+            types.ShouldContain(typeof(object));
         }
 
-        [Test]
+        [Fact]
         public void GetAllInheritedTypes_ForCustomType_ReturnsExpectedTypes()
         {
             var types = typeof(TestClass).GetAllInheritedTypes();
 
-            Assert.That(types.Count(), Is.EqualTo(4));
+            types.Count().ShouldBe(4);
 
-            Assert.That(types, Contains.Item(typeof(TestClass)));
-            Assert.That(types, Contains.Item(typeof(ITestInterface)));
-            Assert.That(types, Contains.Item(typeof(IDisposable)));
-            Assert.That(types, Contains.Item(typeof(object)));
+            types.ShouldContain(typeof(TestClass));
+            types.ShouldContain(typeof(ITestInterface));
+            types.ShouldContain(typeof(IDisposable));
+            types.ShouldContain(typeof(object));
         }
         
-        [Test]
+        [Fact]
         public void GetAllInheritedTypes_ForCustomType_WithoutInterfaces_ReturnsExpectedTypes()
         {
             var types = typeof(TestClass).GetAllInheritedTypes(includeInterfaces: false);
 
-            Assert.That(types.Count(), Is.EqualTo(2));
+            types.Count().ShouldBe(2);
 
-            Assert.That(types, Contains.Item(typeof(TestClass)));
-            Assert.That(types, Contains.Item(typeof(object)));
+            types.ShouldContain(typeof(TestClass));
+            types.ShouldContain(typeof(object));
         }
 
-        [Test]
+        [Fact]
         public void GetAllInheritedTypes_ForChildCustomType_ReturnsExpectedTypes()
         {
             var types = typeof(ChildTestClass).GetAllInheritedTypes();
 
-            Assert.That(types.Count(), Is.EqualTo(5));
+            types.Count().ShouldBe(5);
 
-            Assert.That(types, Contains.Item(typeof(ChildTestClass)));
-            Assert.That(types, Contains.Item(typeof(TestClass)));
-            Assert.That(types, Contains.Item(typeof(ITestInterface)));
-            Assert.That(types, Contains.Item(typeof(IDisposable)));
-            Assert.That(types, Contains.Item(typeof(object)));
+            types.ShouldContain(typeof(ChildTestClass));
+            types.ShouldContain(typeof(TestClass));
+            types.ShouldContain(typeof(ITestInterface));
+            types.ShouldContain(typeof(IDisposable));
+            types.ShouldContain(typeof(object));
         }
 
         interface ITestInterface : IDisposable

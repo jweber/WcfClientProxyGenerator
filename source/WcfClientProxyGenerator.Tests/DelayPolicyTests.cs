@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Linq;
-using NUnit.Framework;
+using Shouldly;
 using WcfClientProxyGenerator.Policy;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class DelayPolicyTests
     {
         #region ConstantDelayPolicy
 
-        [Test]
+        [Fact]
         public void ConstantDelayPolicy_ReturnsSameDelay_ForRangeOfInput()
         {
             TimeSpan expectedDelay = TimeSpan.FromMilliseconds(100);
@@ -18,11 +18,11 @@ namespace WcfClientProxyGenerator.Tests
 
             foreach (int i in Enumerable.Range(0, 100))
             {
-                Assert.AreEqual(expectedDelay, policy.GetDelay(i));
+                policy.GetDelay(i).ShouldBe(expectedDelay);
             }
         }
 
-        [Test]
+        [Fact]
         public void ConstantDelayPolicy_ReturnsSameDelay_ForRandomInput()
         {
             TimeSpan expectedDelay = TimeSpan.FromSeconds(10);
@@ -31,7 +31,7 @@ namespace WcfClientProxyGenerator.Tests
             var random = new Random();
             foreach (int i in Enumerable.Range(0, 100))
             {
-                Assert.AreEqual(expectedDelay, policy.GetDelay(random.Next()));
+                policy.GetDelay(random.Next()).ShouldBe(expectedDelay);
             }
         }
 
@@ -39,68 +39,68 @@ namespace WcfClientProxyGenerator.Tests
 
         #region LinearBackoffDelayPolicy
 
-        [Test]
+        [Fact]
         public void LinearBackoffDelayPolicy_BacksOffLinearly()
         {
             TimeSpan minimumDelay = TimeSpan.FromSeconds(2);
             var policy = new LinearBackoffDelayPolicy(minimumDelay);
 
-            Assert.AreEqual(TimeSpan.FromSeconds(2), policy.GetDelay(0));
-            Assert.AreEqual(TimeSpan.FromSeconds(4), policy.GetDelay(1));
-            Assert.AreEqual(TimeSpan.FromSeconds(6), policy.GetDelay(2));
-            Assert.AreEqual(TimeSpan.FromSeconds(8), policy.GetDelay(3));
-            Assert.AreEqual(TimeSpan.FromSeconds(10), policy.GetDelay(4));
-            Assert.AreEqual(TimeSpan.FromSeconds(12), policy.GetDelay(5));
+            policy.GetDelay(0).ShouldBe(TimeSpan.FromSeconds(2));
+            policy.GetDelay(1).ShouldBe(TimeSpan.FromSeconds(4));
+            policy.GetDelay(2).ShouldBe(TimeSpan.FromSeconds(6));
+            policy.GetDelay(3).ShouldBe(TimeSpan.FromSeconds(8));
+            policy.GetDelay(4).ShouldBe(TimeSpan.FromSeconds(10));
+            policy.GetDelay(5).ShouldBe(TimeSpan.FromSeconds(12));
         }
 
-        [Test]
+        [Fact]
         public void LinearBackoffDelayPolicy_BacksOffLinearly_UntilReachingMaximumDelay()
         {
             TimeSpan minimumDelay = TimeSpan.FromSeconds(2);
             TimeSpan maximumDelay = TimeSpan.FromSeconds(7);
             var policy = new LinearBackoffDelayPolicy(minimumDelay, maximumDelay);
 
-            Assert.AreEqual(TimeSpan.FromSeconds(2), policy.GetDelay(0));
-            Assert.AreEqual(TimeSpan.FromSeconds(4), policy.GetDelay(1));
-            Assert.AreEqual(TimeSpan.FromSeconds(6), policy.GetDelay(2));
-            Assert.AreEqual(TimeSpan.FromSeconds(7), policy.GetDelay(3));
-            Assert.AreEqual(TimeSpan.FromSeconds(7), policy.GetDelay(4));
-            Assert.AreEqual(TimeSpan.FromSeconds(7), policy.GetDelay(5));
+            policy.GetDelay(0).ShouldBe(TimeSpan.FromSeconds(2));
+            policy.GetDelay(1).ShouldBe(TimeSpan.FromSeconds(4));
+            policy.GetDelay(2).ShouldBe(TimeSpan.FromSeconds(6));
+            policy.GetDelay(3).ShouldBe(TimeSpan.FromSeconds(7));
+            policy.GetDelay(4).ShouldBe(TimeSpan.FromSeconds(7));
+            policy.GetDelay(5).ShouldBe(TimeSpan.FromSeconds(7));
         }
 
         #endregion
 
         #region ExponentialBackoffDelayPolicy
 
-        [Test]
+        [Fact]
         public void ExponentialBackoffDelayPolicy_BacksOffExponentially()
         {
             TimeSpan minimumDelay = TimeSpan.FromSeconds(2);
             var policy = new ExponentialBackoffDelayPolicy(minimumDelay);
 
-            Assert.AreEqual(TimeSpan.FromSeconds(2), policy.GetDelay(0));
-            Assert.AreEqual(TimeSpan.FromSeconds(4), policy.GetDelay(1));
-            Assert.AreEqual(TimeSpan.FromSeconds(8), policy.GetDelay(2));
-            Assert.AreEqual(TimeSpan.FromSeconds(16), policy.GetDelay(3));
-            Assert.AreEqual(TimeSpan.FromSeconds(32), policy.GetDelay(4));
-            Assert.AreEqual(TimeSpan.FromSeconds(64), policy.GetDelay(5));
-            Assert.AreEqual(TimeSpan.FromSeconds(128), policy.GetDelay(6));
+            policy.GetDelay(0).ShouldBe(TimeSpan.FromSeconds(2));
+            policy.GetDelay(1).ShouldBe(TimeSpan.FromSeconds(4));
+            policy.GetDelay(2).ShouldBe(TimeSpan.FromSeconds(8));
+            policy.GetDelay(3).ShouldBe(TimeSpan.FromSeconds(16));
+            policy.GetDelay(4).ShouldBe(TimeSpan.FromSeconds(32));
+            policy.GetDelay(5).ShouldBe(TimeSpan.FromSeconds(64));
+            policy.GetDelay(6).ShouldBe(TimeSpan.FromSeconds(128));
         }
 
-        [Test]
+        [Fact]
         public void ExponentialBackoffDelayPolicy_BacksOffExponentially_UntilReachingMaximumDelay()
         {
             TimeSpan minimumDelay = TimeSpan.FromSeconds(2);
             TimeSpan maximumDelay = TimeSpan.FromSeconds(20);
             var policy = new ExponentialBackoffDelayPolicy(minimumDelay, maximumDelay);
 
-            Assert.AreEqual(TimeSpan.FromSeconds(2), policy.GetDelay(0));
-            Assert.AreEqual(TimeSpan.FromSeconds(4), policy.GetDelay(1));
-            Assert.AreEqual(TimeSpan.FromSeconds(8), policy.GetDelay(2));
-            Assert.AreEqual(TimeSpan.FromSeconds(16), policy.GetDelay(3));
-            Assert.AreEqual(TimeSpan.FromSeconds(20), policy.GetDelay(4));
-            Assert.AreEqual(TimeSpan.FromSeconds(20), policy.GetDelay(5));
-            Assert.AreEqual(TimeSpan.FromSeconds(20), policy.GetDelay(6));
+            policy.GetDelay(0).ShouldBe(TimeSpan.FromSeconds(2));
+            policy.GetDelay(1).ShouldBe(TimeSpan.FromSeconds(4));
+            policy.GetDelay(2).ShouldBe(TimeSpan.FromSeconds(8));
+            policy.GetDelay(3).ShouldBe(TimeSpan.FromSeconds(16));
+            policy.GetDelay(4).ShouldBe(TimeSpan.FromSeconds(20));
+            policy.GetDelay(5).ShouldBe(TimeSpan.FromSeconds(20));
+            policy.GetDelay(6).ShouldBe(TimeSpan.FromSeconds(20));
         }
 
         #endregion

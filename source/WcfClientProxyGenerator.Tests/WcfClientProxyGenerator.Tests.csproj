@@ -1,16 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;net45</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0;net46</TargetFrameworks>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
     <PackageReference Include="NSubstitute" Version="3.1.0" />
-    <PackageReference Include="NUnit" Version="3.9.0" />
-    <PackageReference Include="NUnit.Console" Version="3.7.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="3.9.0" />
     <PackageReference Include="System.ServiceModel.NetTcp" Version="4.4.0" />
     <PackageReference Include="System.ValueTuple" Version="4.4.0" />
+    <PackageReference Include="xunit" Version="2.3.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
+    <PackageReference Include="Shouldly" Version="2.8.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\WcfClientProxyGenerator\WcfClientProxyGenerator.csproj" />
@@ -26,6 +29,14 @@
   </ItemGroup>
   <ItemGroup>
     <WcfServiceHostFiles Include="..\WcfClientProxyGenerator.Tests.WcfServiceHost\bin\$(Configuration)\**\*.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="bin\$(Configuration)\WcfServiceHost\*.*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="xunit.runner.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Target Name="BeforeBuild" BeforeTargets="Build">
     <Message Text="Building WcfClientProxyGenerator.Tests.WcfServiceHost" />

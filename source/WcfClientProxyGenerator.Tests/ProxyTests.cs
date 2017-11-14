@@ -1,74 +1,69 @@
 ﻿using System;
+using System.ComponentModel;
 using System.ServiceModel.Description;
 using System.Threading.Tasks;
-using NUnit.Framework;
+
+using Shouldly;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class ProxyTests : TestBase
     {
-        [SetUp]
-        public void ProxyTestsSetup()
+        public ProxyTests()
         {
             DynamicProxyAssembly.Initialize();
         }
 
 #if NET45
 
-        [Test] 
+        [Fact] 
         [Description("Asserts that when no conguration is given in the Create proxy call, the endpoint config that matches the contract will be used")]
         public void CreatingProxy_WithNoConfigurator_AndSingleEndpointConfig_GetsDefaultClientConfiguration()
         {
             WcfClientProxy.Create<ITestServiceSingleEndpointConfig>();
         }
 
-        [Test] 
+        [Fact] 
         [Description("Asserts that when no conguration is given in the Create proxy call, and multiple endpoint configs for the contract exist, an exception is thrown")]
         public void CreatingProxy_WithNoConfigurator_AndMultipleEndpointConfigs_ThrowsException()
         {
-            Assert.That(
-                () => WcfClientProxy.Create<ITestService>(),
-                Throws.TypeOf<InvalidOperationException>());
+            Should.Throw<InvalidOperationException>(() => WcfClientProxy.Create<ITestService>());
         }
 
-        [Test]
+        [Fact]
         public void CreatingProxy_WithNoConfigurator_AndNoDefaultConfiguration_ThrowsException()
         {
-            Assert.That(
-                () => WcfClientProxy.Create<IChildService>(), 
-                Throws.TypeOf<InvalidOperationException>());
+            Should.Throw<InvalidOperationException>(() => WcfClientProxy.Create<IChildService>());
         }
 
-        [Test]
+        [Fact]
         public void CreatingProxy_WithEndpointConfigurationName_ThatExists_CreatesProxy()
         {
-            WcfClientProxy.Create<ITestService>("ITestService2");
+            Should.NotThrow(() =>WcfClientProxy.Create<ITestService>("ITestService2"));
         }
 
-        [Test]
+        [Fact]
         public void CreatingProxy_WithEndpointConfigurationName_ThatDoesNotExist_ThrowsException()
         {
-            Assert.That(
-                () => WcfClientProxy.Create<ITestService>("DoesNotExist"),
-                Throws.TypeOf<InvalidOperationException>());
+            Should.Throw<InvalidOperationException>(() => WcfClientProxy.Create<ITestService>("DoesNotExist"));
         }
     
 #endif
 
-        [Test]
+        [Fact]
         public void CreatingProxy_WithServiceEndpoint_CreatesProxy()
         {
             ContractDescription contractDescription = ContractDescription.GetContract(typeof(ITestService));
-            Assert.DoesNotThrow(() => 
+            
+            Should.NotThrow(() => 
                 WcfClientProxy.Create<ITestService>(c => 
-                    c.SetEndpoint(new ServiceEndpoint(contractDescription, this.TestServer.Binding, GetAddress<ITestService>())))
-            );
+                    c.SetEndpoint(new ServiceEndpoint(contractDescription, this.TestServer.Binding, GetAddress<ITestService>()))));
         }
 
-        [Test]
+        [Fact]
         public async Task CreatingAsyncProxy_WithServiceEndpoint_CanCallAsyncMethod()
         {
             ContractDescription contractDescription = ContractDescription.GetContract(typeof(ITestService));
@@ -78,49 +73,49 @@ namespace WcfClientProxyGenerator.Tests
 
             var response = await proxy.CallAsync(m => m.Echo("test"));
 
-            Assert.That(response, Is.EqualTo("test"));
+            response.ShouldBe("test");
         }
 
-        [Test, Description("Github issue #19.")]
+        [Fact, Description("Github issue #19.")]
         public void CreatingProxy_TrailingSlashOnNamespace()
         {
             var proxy = GenerateProxy<ITrailingSlashOnNamespaceService>();
             
             var result = proxy.Echo("hello");
 
-            Assert.That(result, Is.EqualTo("hello"));
+            result.ShouldBe("hello");
         }
 
-        [Test, Description("Github issue #22")]
+        [Fact, Description("Github issue #22")]
         public async Task AsyncMethod_FromSyncMethodWithFaultContract_CanBeCalled()
         {
             var proxy = GenerateAsyncProxy<ICustomAttributeService>();
             
             var result = await proxy.CallAsync(m => m.FaultMethod("hello"));
 
-            Assert.That(result, Is.EqualTo("hello"));
+            result.ShouldBe("hello");
         }
 
-        [Test, Description("Github issue #22")]
+        [Fact, Description("Github issue #22")]
         public async Task AsyncMethod_FromSyncMethodWithKnownTypeAttribute_CanBeCalled()
         {
             var proxy = GenerateAsyncProxy<ICustomAttributeService>();
 
             var result = await proxy.CallAsync(m => m.KnownTypeMethod("hello"));
 
-            Assert.That(result, Is.EqualTo("hello"));
+            result.ShouldBe("hello");
         }
 
-        [Test]
+        [Fact]
         public void Proxy_ReturnsExpectedValue_WhenCallingService()
         {
             var proxy = GenerateProxy<ITestService>();
             
             var result = proxy.Echo("hello");
-            Assert.AreEqual("hello", result);
+            result.ShouldBe("hello");
         }
 
-        [Test]
+        [Fact]
         public void Proxy_CanCallVoidMethod()
         {
             var proxy = GenerateProxy<ITestService>();
@@ -128,47 +123,49 @@ namespace WcfClientProxyGenerator.Tests
             proxy.VoidMethod("good");
         }
 
-        [Test, Description("github issue #12")]
+        [Fact, Description("github issue #12")]
         public void Proxy_CanCallServiceMethod_ThatReturnsNull()
         {
             var proxy = GenerateProxy<ITestService>();
 
             string response = proxy.Echo(null);
 
-            Assert.That(response, Is.Null);
+            response.ShouldBeNull();
         }
 
-        [Test, Description("github issue #12")]
+        [Fact, Description("github issue #12")]
         public async Task AsyncProxy_CanCallServiceMethod_ThatReturnsNull()
         {
             var proxy = GenerateAsyncProxy<ITestService>();
 
             string response = await proxy.CallAsync(m => m.Echo(null));
 
-            Assert.That(response, Is.Null);
+            response.ShouldBeNull();
         }
 
-        [Test]
+        [Fact]
         public void MultipleProxies_ReturnExpectedValues_WhenCallingServices()
         {
             var proxy1 = GenerateProxy<ITestService>();
             var proxy2 = GenerateProxy<ITrailingSlashOnNamespaceService>();
             
-            Assert.AreEqual("service 1", proxy1.Echo("service 1"));
-            Assert.AreEqual("service 2", proxy2.Echo("service 2"));
+            proxy1.Echo("service 1").ShouldBe("service 1");
+            proxy2.Echo("service 2").ShouldBe("service 2");
         }
 
-        [Test]
+        [Fact]
         public void Proxy_RecoversFromFaultedState_WhenCallingSimpleMethod()
         {
             var proxy = GenerateProxy<ITestService>();
 
             // Will fault the channel
-            Assert.That(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"), Throws.Exception);
-            Assert.That(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"), Is.EqualTo("hello world"));
+            Should.Throw<Exception>(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"));
+            proxy.UnhandledExceptionOnFirstCallThenEcho("hello world").ShouldBe("hello world");
         }
+        
+        // TODO: Finish these tests
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_RecoversFromFaultedState_WhenCallingComplexTypeMethod()
 //        {
 //            var badRequest = new Request() { RequestMessage = "bad" };
@@ -185,7 +182,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(() => proxy.TestMethodComplex(goodRequest).ResponseMessage, Is.EqualTo("OK"));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_RecoversFromFaultedState_WhenCallingMultipleParameterComplexTypeMethod()
 //        {
 //            var badRequest = new Request() { RequestMessage = "bad" };
@@ -202,7 +199,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(() => proxy.TestMethodComplexMulti("good", goodRequest).ResponseMessage, Is.EqualTo("OK"));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_CanBeGeneratedForInheritingServiceInterface()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -217,7 +214,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(() => proxy.ChildMethod("test"), Is.EqualTo("OK"));
 //        }
 //
-//        [Test, Description("A call made with no retries should not throw the WcfRetryFailedException")]
+//        [Fact, Description("A call made with no retries should not throw the WcfRetryFailedException")]
 //        public void Proxy_ConfiguredWithNoRetries_CallsServiceOnce_AndThrowsActualException()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -239,7 +236,7 @@ namespace WcfClientProxyGenerator.Tests
 //                .VoidMethod("test");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsWcfRetryFailedException()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -262,7 +259,7 @@ namespace WcfClientProxyGenerator.Tests
 //                .VoidMethod("test");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsCustomRetryFailureException()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -297,7 +294,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region Out Parameter Support
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_CanBeGeneratedForOperationWithSingleOutParameter()
 //        {
 //            var service = Substitute.For<IOutParamTestService>();
@@ -322,7 +319,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(outParam, Is.EqualTo(expectedOutParam));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_CanBeGeneratedForOperationWithMultipleOutParameters()
 //        {
 //            var service = Substitute.For<IOutParamTestService>();           
@@ -352,7 +349,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(out2Value, Is.EqualTo(expectedOut2Value));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_CanBeGeneratedForOperationWithMixedInputAndOutputParams()
 //        {
 //            var service = Substitute.For<IOutParamTestService>();           
@@ -376,7 +373,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(out1Value, Is.EqualTo(expectedOut1Value));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_CanBeUsedWithOneWayOperations()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -403,7 +400,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region OnBeforeInvoke and OnAfterInvoke support
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -418,7 +415,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(fired);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_Multiple_AreFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -438,7 +435,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(fired2);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_IfHandlerRemoved_NotFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -456,7 +453,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsFalse(fired);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_ArgumentsSetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -482,7 +479,7 @@ namespace WcfClientProxyGenerator.Tests
 //                Assert.Fail("OnBeforeInvoke not called");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_IfRetry_FiredManyTimes()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -530,7 +527,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.AreEqual(3, fireCount, "Not called three times!");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_InvokeInfo_IsSet()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -552,7 +549,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnBeforeInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_InvokeInfo_SetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -582,7 +579,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnBeforeInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_InvokeInfo_SetCorrectly_NoParameters()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -605,7 +602,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnBeforeInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_InvokeInfo_SetCorrectly_IntParameter()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -630,7 +627,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnBeforeInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnBeforeInvoke_ReturnValue_Throws()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -654,7 +651,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnBeforeInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -670,7 +667,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(fired);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_Multiple_AreFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -689,7 +686,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(fired2);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_IfHandlerRemoved_IsNotFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -707,7 +704,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsFalse(fired);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_ArgumentsSetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -732,7 +729,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnBeforeInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_IfException_IsNotFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -756,7 +753,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsFalse(fired, "OnAfterInvoke was called when it should not have been!");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_IfExceptionAndIfRetryCountUsedUp_IsNotFired()
 //        {
 //            var serviceSub = Substitute.For<IExceptionDetailService>();
@@ -788,7 +785,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsFalse(fired, "OnAfterInvoke was called when it should not have been!");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_InvokeInfo_SetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -817,7 +814,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnAfterInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_ReturnValue_IsSetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -844,7 +841,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnAfterInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_ReturnValue_ForValueTypeMethods_IsSetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -872,7 +869,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnAfterInvoke not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnAfterInvoke_ReturnValue_ThrowsForVoidMethods()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -898,7 +895,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region AsyncProxy
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnBeforeInvoke_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -914,7 +911,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(fired);
 //        }
 //        
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnBeforeInvoke_ArgumentsSetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -940,7 +937,7 @@ namespace WcfClientProxyGenerator.Tests
 //        }
 //
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnBeforeInvoke_IfRetry_FiredManyTimes()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -987,7 +984,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.AreEqual(3, fireCount, "Not called three times!");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnBeforeInvoke_InvokeInfo_IsSet()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -1010,7 +1007,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnBeforeInvoke not called");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnAfterInvoke_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();           
@@ -1026,7 +1023,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(fired);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnAfterInvoke_ArgumentsSetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1050,7 +1047,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnAfterInvoke hasn't been called");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnAfterInvoke_InvokeInfo_IsSet()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1077,7 +1074,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region OnCallBegin and OnCallSuccess support
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnCallBegin_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1102,7 +1099,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnCallBegin was not triggered");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnCallSuccess_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1132,7 +1129,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region AsyncProxy
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnCallBegin_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1157,7 +1154,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnCallBegin was not triggered");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public async Task AsyncProxy_OnCallSuccess_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1191,7 +1188,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region OnException support
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnException_NoException_NotFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1207,7 +1204,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsFalse(hasFired);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnException_NoHandler_Compatibility()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1220,7 +1217,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.Catch<FaultException>(() => proxy.VoidMethod("test"));
 //        }
 //        
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnException_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1239,7 +1236,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(hasFired);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnException_FiresOnEveryRetry()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1261,7 +1258,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.AreEqual(6, fireCount);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnException_MultipleHandlersAreFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1288,7 +1285,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.IsTrue(hasFired3);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_OnException_InformationSetCorrectly()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1317,7 +1314,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region AsyncProxy
 //
-//        [Test]
+//        [Fact]
 //        public void AsyncProxy_OnException_NoHandler_Compatibility()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1333,7 +1330,7 @@ namespace WcfClientProxyGenerator.Tests
 //                () => proxy.CallAsync(m => m.VoidMethod("test")));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void AsyncProxy_OnException_IsFired()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1367,7 +1364,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region ChannelFactory support
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_ChannelFactory_IfNotConfigured_UsesDefaultEndpoint()
 //        {
 //            WcfClientProxy.Create<ITestServiceSingleEndpointConfig>(c =>
@@ -1377,7 +1374,7 @@ namespace WcfClientProxyGenerator.Tests
 //            });
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_ChannelFactory_UsesConfiguredEndpoint()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1394,7 +1391,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region HandleRequestArgument
 //
-//        [Test]
+//        [Fact]
 //        public void HandleRequestArgument_ModifiesComplexRequest_BeforeSendingToService()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1432,7 +1429,7 @@ namespace WcfClientProxyGenerator.Tests
 //                .TestMethodComplex(Arg.Is<Request>(r => r.RequestMessage == "set"));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleRequestArgument_MatchesArgumentsOfSameType_BasedOnParameterName()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1465,7 +1462,7 @@ namespace WcfClientProxyGenerator.Tests
 //                .TestMethod("always input", "always two");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleRequestArgument_MatchesArgumentsByBaseTypes()
 //        {
 //            int handleRequestArgumentCounter = 0;
@@ -1498,7 +1495,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region HandleResponse
 //
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_CanChangeResponse_ForSimpleResponseType()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1519,7 +1516,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(response, Is.EqualTo("hello: test"));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_ActionWithPredicate_CanInspectResponse_WithoutReturning()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1547,7 +1544,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("Callback not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_ActionWithoutPredicate_CanInspectResponse_WithoutReturning()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -1576,7 +1573,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("Callback not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_CanChangeResponse_ForComplexResponseType()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1603,7 +1600,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(response.ResponseMessage, Is.EqualTo("hello: test"));
 //        }    
 //    
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_CanChangeResponse_ForComplexResponse_InterfaceType()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1641,7 +1638,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(response.StatusCode, Is.EqualTo(1));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_CanThrowException()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1665,7 +1662,7 @@ namespace WcfClientProxyGenerator.Tests
 //                    .With.Message.EqualTo("test"));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_MultipleHandlersCanBeRunOnResponse()
 //        {
 //            var countdownEvent = new CountdownEvent(2);
@@ -1701,7 +1698,7 @@ namespace WcfClientProxyGenerator.Tests
 //                Assert.Fail("Expected both callbacks to fire");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void HandleResponse_MultipleHandlersCanBeRunOnResponse_WhereHandlersAreInheritingTypes()
 //        {
 //            var countdownEvent = new CountdownEvent(3);
@@ -1745,7 +1742,7 @@ namespace WcfClientProxyGenerator.Tests
 //        #region AsyncProxy
 //
 //
-//        [Test]
+//        [Fact]
 //        public async Task Async_HandleResponse_CanChangeResponse_ForSimpleResponseType()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1766,7 +1763,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(response, Is.EqualTo("hello: test"));
 //        }
 //        
-//        [Test]
+//        [Fact]
 //        public async Task Async_HandleResponse_CanChangeResponse_ForComplexResponseType()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1793,7 +1790,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(response.ResponseMessage, Is.EqualTo("hello: test"));
 //        }    
 //    
-//        [Test]
+//        [Fact]
 //        public async Task Async_HandleResponse_CanChangeResponse_ForComplexResponse_InterfaceType()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1831,7 +1828,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.That(response.StatusCode, Is.EqualTo(1));
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Async_HandleResponse_CanThrowException()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1857,7 +1854,7 @@ namespace WcfClientProxyGenerator.Tests
 //        }
 //
 //
-//        [Test]
+//        [Fact]
 //        public async Task Async_HandleResponse_ActionWithPredicate_CanInspectResponse_WithoutReturning()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -1886,7 +1883,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("Callback not fired");
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public async Task Async_HandleResponse_ActionWithoutPredicate_CanInspectResponse_WithoutReturning()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -1921,7 +1918,7 @@ namespace WcfClientProxyGenerator.Tests
 //
 //        #region Dynamic Async Invocation
 //
-//        [Test]
+//        [Fact]
 //        public async Task Async_DynamicConversion_Proxy_ReturnsExpectedValue_WhenCallingGeneratedAsyncMethod()
 //        {
 //            var service = Substitute.For<ITestService>();
@@ -1938,7 +1935,7 @@ namespace WcfClientProxyGenerator.Tests
 //            Assert.AreEqual("OK", result);
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public async Task Async_DynamicConversion_Proxy_CanCallGeneratedAsyncVoidMethod()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
@@ -1985,21 +1982,21 @@ namespace WcfClientProxyGenerator.Tests
 //            void NonOperationTestMethod();
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_GivesProperException_IfInterfaceNotPublic()
 //        {
 //            Assert.Throws<InvalidOperationException>(delegate { WcfClientProxy.Create<IPrivateTestService>(); });
 //            // error message not checked here, but it should be quite readable
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_GivesProperException_IfNotServiceContract()
 //        {
 //            Assert.Throws<InvalidOperationException>(delegate { WcfClientProxy.Create<INonServiceInterface>(); });
 //            // error message not checked here, but it should be quite readable
 //        }
 //
-//        [Test]
+//        [Fact]
 //        public void Proxy_GivesProperException_IfZeroOperationContracts()
 //        {
 //            Assert.Throws<InvalidOperationException>(delegate { WcfClientProxy.Create<INoOperationsInterface>(); });

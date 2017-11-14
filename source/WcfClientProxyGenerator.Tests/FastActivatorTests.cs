@@ -1,131 +1,130 @@
 ﻿using System;
 using System.Diagnostics;
-using NUnit.Framework;
+using Shouldly;
 using WcfClientProxyGenerator.Util;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class FastActivatorTests
     {
-        [SetUp]
-        public void Setup()
+        public FastActivatorTests()
         {
             FastActivator.ClearActivatorCache();
         }
 
-        [Test]
+        [Fact]
         public void GenericType_CanBeActivated_UsingParameterlessConstructor()
         {
             var inst = FastActivator.CreateInstance<TestClass>();
-            Assert.That(inst, Is.Not.Null);
-            Assert.That(inst.Arg1, Is.EqualTo(default(string)));
-            Assert.That(inst.Arg2, Is.EqualTo(default(bool)));
-            Assert.That(inst.Arg3, Is.EqualTo(default(DateTime)));
+            inst.ShouldNotBeNull();
+            inst.Arg1.ShouldBe(default(string));
+            inst.Arg2.ShouldBe(default(bool));
+            inst.Arg3.ShouldBe(default(DateTime));
         }
 
-        [Test]
+        [Fact]
         public void GenericType_CanBeActivated_UsingParameterizedConstructor()
         {
             var dateTime = DateTime.Now;
             var instance = FastActivator.CreateInstance<TestClass>(new object[] { "test2", true, dateTime });
             
-            Assert.That(instance, Is.Not.Null);
-            Assert.That(instance.Arg1, Is.EqualTo("test2"));
-            Assert.That(instance.Arg2, Is.EqualTo(true));
-            Assert.That(instance.Arg3, Is.EqualTo(dateTime));
+            instance.ShouldNotBeNull();
+            instance.Arg1.ShouldBe("test2");
+            instance.Arg2.ShouldBe(true);
+            instance.Arg3.ShouldBe(dateTime);
         }
 
-        [Test]
+        [Fact]
         public void Type_CanBeActivated_UsingParameterlessConstructor()
         {
             var inst = FastActivator.CreateInstance(typeof(TestClass)) as TestClass;
 
-            Assert.That(inst, Is.Not.Null);
-            Assert.That(inst.Arg1, Is.EqualTo(default(string)));
-            Assert.That(inst.Arg2, Is.EqualTo(default(bool)));
-            Assert.That(inst.Arg3, Is.EqualTo(default(DateTime)));
+            inst.ShouldNotBeNull();
+            inst.Arg1.ShouldBe(default(string));
+            inst.Arg2.ShouldBe(default(bool));
+            inst.Arg3.ShouldBe(default(DateTime));
         }
 
-        [Test]
+        [Fact]
         public void Type_CanBeActivated_UsingParameterizedConstructor()
         {
             var dateTime = DateTime.Now;
             var instance = FastActivator.CreateInstance(typeof(TestClass), new object[] { "test2", true, dateTime }) as TestClass;
             
-            Assert.That(instance, Is.Not.Null);
-            Assert.That(instance.Arg1, Is.EqualTo("test2"));
-            Assert.That(instance.Arg2, Is.EqualTo(true));
-            Assert.That(instance.Arg3, Is.EqualTo(dateTime));
+            instance.ShouldNotBeNull();
+            instance.Arg1.ShouldBe("test2");
+            instance.Arg2.ShouldBe(true);
+            instance.Arg3.ShouldBe(dateTime);
         }
 
-        [Test]
+        [Fact]
         public void MultipleGenericTypes_CanBeActivated_UsingParameterlessConstructor()
         {
             var instance1 = FastActivator.CreateInstance<TestClass>();
             var instance2 = FastActivator.CreateInstance<TestClass2>();
 
-            Assert.That(instance1, Is.Not.Null);
-            Assert.That(instance1.GetType(), Is.EqualTo(typeof(TestClass)));
+            instance1.ShouldNotBeNull();
+            instance1.GetType().ShouldBe(typeof(TestClass));
             
-            Assert.That(instance2, Is.Not.Null);
-            Assert.That(instance2.GetType(), Is.EqualTo(typeof(TestClass2)));
+            instance2.ShouldNotBeNull();
+            instance2.GetType().ShouldBe(typeof(TestClass2));
         }
 
-        [Test]
+        [Fact]
         public void MultipleGenericTypes_CanBeActivated_UsingParameterizedConstructor()
         {
             var instance1 = FastActivator.CreateInstance<TestClass>(new object[] { "instance1" });
             var instance2 = FastActivator.CreateInstance<TestClass2>(new object[] { "instance2" });
 
-            Assert.That(instance1, Is.Not.Null);
-            Assert.That(instance1.Arg1, Is.EqualTo("instance1"));
-            Assert.That(instance1.GetType(), Is.EqualTo(typeof(TestClass)));
+            instance1.ShouldNotBeNull();
+            instance1.Arg1.ShouldBe("instance1");
+            instance1.GetType().ShouldBe(typeof(TestClass));
             
-            Assert.That(instance2, Is.Not.Null);
-            Assert.That(instance2.Arg1, Is.EqualTo("instance2"));
-            Assert.That(instance2.GetType(), Is.EqualTo(typeof(TestClass2)));
+            instance2.ShouldNotBeNull();
+            instance2.Arg1.ShouldBe("instance2");
+            instance2.GetType().ShouldBe(typeof(TestClass2));
         }
 
-        [Test]
+        [Fact]
         public void MultipleTypes_CanBeActivated_UsingParameterlessConstructor()
         {
             var instance1 = FastActivator.CreateInstance(typeof(TestClass));
             var instance2 = FastActivator.CreateInstance(typeof(TestClass2));
 
-            Assert.That(instance1, Is.Not.Null);
-            Assert.That(instance1.GetType(), Is.EqualTo(typeof(TestClass)));
+            instance1.ShouldNotBeNull();
+            instance1.GetType().ShouldBe(typeof(TestClass));
             
-            Assert.That(instance2, Is.Not.Null);
-            Assert.That(instance2.GetType(), Is.EqualTo(typeof(TestClass2)));
+            instance2.ShouldNotBeNull();
+            instance2.GetType().ShouldBe(typeof(TestClass2));
         }
 
-        [Test]
+        [Fact]
         public void MultipleTypes_CanBeActivated_UsingParameterizedConstructor()
         {
             var instance1 = FastActivator.CreateInstance(typeof(TestClass), new object[] { "instance1" }) as TestClass;
             var instance2 = FastActivator.CreateInstance(typeof(TestClass2), new object[] { "instance2" }) as TestClass2;
 
-            Assert.That(instance1, Is.Not.Null);
-            Assert.That(instance1.Arg1, Is.EqualTo("instance1"));
+            instance1.ShouldNotBeNull();
+            instance1.Arg1.ShouldBe("instance1");
             
-            Assert.That(instance2, Is.Not.Null);
-            Assert.That(instance2.Arg1, Is.EqualTo("instance2"));
+            instance2.ShouldNotBeNull();
+            instance2.Arg1.ShouldBe("instance2");
         }
 
-        [Test]
+        [Fact]
         public void Benchmark()
         {
-            var activatorDuration = Benchmark("Activator", () => (TestClass) Activator.CreateInstance(typeof(TestClass), "test", true, DateTime.Now));
-            var fastActivatorDuration = Benchmark("FastActivator", () => FastActivator.CreateInstance<TestClass>(new object[] { "test", true, DateTime.Now }));
+            var activatorDuration = RunBenchmark("Activator", () => (TestClass) Activator.CreateInstance(typeof(TestClass), "test", true, DateTime.Now));
+            var fastActivatorDuration = RunBenchmark("FastActivator", () => FastActivator.CreateInstance<TestClass>(new object[] { "test", true, DateTime.Now }));
 
-            Assert.That(fastActivatorDuration, Is.LessThan(activatorDuration));
+            fastActivatorDuration.ShouldBeLessThan(activatorDuration);
 
-            Benchmark("Activator (parameterless)", () => (TestClass) Activator.CreateInstance(typeof(TestClass)));
-            Benchmark("FastActivator (parameterless)", FastActivator.CreateInstance<TestClass>);
+            RunBenchmark("Activator (parameterless)", () => (TestClass) Activator.CreateInstance(typeof(TestClass)));
+            RunBenchmark("FastActivator (parameterless)", FastActivator.CreateInstance<TestClass>);
         }
 
-        private TimeSpan Benchmark(string method, Func<TestClass> func)
+        private TimeSpan RunBenchmark(string method, Func<TestClass> func)
         {
             const int iterations = 1000000;
 

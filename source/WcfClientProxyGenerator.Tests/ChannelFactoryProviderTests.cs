@@ -1,8 +1,11 @@
 ﻿using System;
+using System.ComponentModel;
 using System.ServiceModel;
 using System.ServiceModel.Description;
-using NUnit.Framework;
+using System.Threading.Tasks;
+using Shouldly;
 using WcfClientProxyGenerator.Tests.Services;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
@@ -13,10 +16,9 @@ namespace WcfClientProxyGenerator.Tests
         string Echo(string input);
     }
     
-    [TestFixture]
     public class ChannelFactoryProviderTests
     {
-        [Test]
+        [Fact]
         public void ChannelFactories_WithIdenticalConfiguration_AreSameInstance_ForCodeBasedConfiguration()
         {
             var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
@@ -27,10 +29,10 @@ namespace WcfClientProxyGenerator.Tests
                 new NetTcpBinding(), 
                 new EndpointAddress("http://localhost:23456/TestService"));
 
-            Assert.AreSame(factory1, factory2);
+            factory1.ShouldBeSameAs(factory2);
         }
         
-        [Test]
+        [Fact]
         public void ChannelFactories_WithNonIdenticalConfiguration_AreNotSameInstance_ForCodeBasedConfiguration()
         {
             var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
@@ -41,7 +43,7 @@ namespace WcfClientProxyGenerator.Tests
                 new NetTcpBinding(), 
                 new EndpointAddress("http://localhost:23456/TestService2"));
 
-            Assert.AreNotSame(factory1, factory2);
+            factory1.ShouldNotBeSameAs(factory2);
         }
         
 #if NET45
@@ -53,86 +55,86 @@ namespace WcfClientProxyGenerator.Tests
         /// to be thrown when attempting to make a service call using a generated *Async
         /// method.
         /// </summary>
-        [Test, Description("Github issue #19")]
-        public void UsingEndpointConfigurationName_BuildServiceEndpointForChannelFactory_UsingDynamicallyGeneratedAsyncInterface()
+        [Fact, Description("Github issue #19")]
+        public async Task UsingEndpointConfigurationName_BuildServiceEndpointForChannelFactory_UsingDynamicallyGeneratedAsyncInterface()
         {
             var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>("ITestService");
 
-            var exception = Assert.ThrowsAsync<EndpointNotFoundException>(
-                () => proxy.CallAsync(m => m.Echo("test")),
-                message: "Expected EndpointNotFoundException (since ITestService address is not running)");
+            var exception = await Assert.ThrowsAsync<EndpointNotFoundException>(
+                () => proxy.CallAsync(m => m.Echo("test")));
 
-            Assert.That(exception.Message, Does.StartWith("There was no endpoint listening at "));
+            exception.Message.ShouldStartWith("There was no endpoint listening at ");
         }
 
-        [Test]
+        [Fact]
         public void ChannelFactory_FromEndpointConfigurationName_WithBehaviorConfiguration_ContainsConfiguredBehaviors()
         {
             var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("BehaviorService");
             var behavior = factory.Endpoint.Behaviors.Find<WebHttpBehavior>();
-            
-            Assert.That(behavior, Is.Not.Null);
-            Assert.That(behavior.HelpEnabled, Is.True);
+
+            behavior.ShouldNotBeNull();
+            behavior.HelpEnabled.ShouldBeTrue();
         }
 
-        [Test]
+        [Fact]
         public void ChannelFactory_FromEndpointConfigurationName_WithoutBehaviorConfiguratio_DoesNotContainEndpointBehaviors()
         {
             var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
             var behavior = factory.Endpoint.Behaviors.Find<WebHttpBehavior>();
 
-            Assert.That(behavior, Is.Null);
+            behavior.ShouldBeNull();
         }
 
-        [Test]
+        [Fact]
         public void ChannelFactory_WithSingleConfigurationForContract_UsesDefaultConfiguration()
         {
             var factory = ChannelFactoryProvider.GetChannelFactory<ITestServiceSingleEndpointConfig>();
             
-            Assert.That(factory.Endpoint.Address.ToString(), Is.EqualTo("http://localhost:23456/TestService2"));
-            Assert.That(factory.Endpoint.Binding.Name, Is.EqualTo("WSHttpBinding"));
+            factory.Endpoint.Address.ToString().ShouldBe("http://localhost:23456/TestService2");
+            factory.Endpoint.Binding.Name.ShouldBe("WSHttpBinding");
         }
     
-        [Test]
+        [Fact]
         public void ChannelFactory_ClientEndpoint_WithCustomBindingConfiguration()
         {
             var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
 
-            Assert.That(factory.Endpoint.Address.ToString(), Is.EqualTo("http://localhost:23456/TestService"));
+            
+            factory.Endpoint.Address.ToString().ShouldBe("http://localhost:23456/TestService");
             
             var binding = (WSHttpBinding) factory.Endpoint.Binding;
-            Assert.That(binding.Name, Is.EqualTo("wsHttpBinding_ITestService"));
-            Assert.That(binding.MaxReceivedMessageSize, Is.EqualTo(12345));
+            binding.Name.ShouldBe("wsHttpBinding_ITestService");
+            binding.MaxReceivedMessageSize.ShouldBe(123456);
         }
 
-        [Test]
+        [Fact]
         public void NoConfigurationForServiceType_ThrowsInvalidOperationException()
         {
-            Assert.That(() => ChannelFactoryProvider.GetChannelFactory<INoConfigService>(), Throws.TypeOf<InvalidOperationException>());
+            Should.Throw<InvalidOperationException>(() => ChannelFactoryProvider.GetChannelFactory<INoConfigService>());
         }
 
-        [Test]
+        [Fact]
         public void ChannelFactories_WithIdenticalConfiguration_AreSameInstance_ForEndpointConfigurationName()
         {
             var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
             var factory2 = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
 
-            Assert.AreSame(factory1, factory2);
+            factory1.ShouldBeSameAs(factory2);
         }
 
-        [Test]
+        [Fact]
         public void ChannelFactories_WithNonIdenticalConfiguration_AreNotSameInstance__ForEndpointConfigurationName()
         {
             var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
             var factory2 = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService2");
 
-            Assert.AreNotSame(factory1, factory2);
+            factory1.ShouldNotBeSameAs(factory2);
         }
 
-        [Test]
+        [Fact]
         public void ServiceInterface_WithMultipleClientEndpoints_ThrowsInvalidOperationException_WhenUsingDefaultCtor()
         {
-            Assert.That(() => ChannelFactoryProvider.GetChannelFactory<ITestService>(), Throws.TypeOf<InvalidOperationException>());
+            Should.Throw<InvalidOperationException>(() => ChannelFactoryProvider.GetChannelFactory<ITestService>());
         }
     
 #endif

@@ -2,16 +2,16 @@ using System;
 using System.ServiceModel;
 using System.Threading;
 using NSubstitute;
-using NUnit.Framework;
+
 using WcfClientProxyGenerator.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class DuplexProxyTests : TestBase
     {
-        [Test]
+        [Fact]
         public void DuplexService_TriggersCallback()
         {
             var resetEvent = new AutoResetEvent(false);
@@ -33,10 +33,10 @@ namespace WcfClientProxyGenerator.Tests
             proxy.Test("test");
 
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
-                Assert.Fail("Callback not entered");
+                Assert.True(false, "Callback not entered");
         }
 
-        [Test]
+        [Fact]
         public void DuplexService_OneWayOperation_TriggersCallback()
         {
             var resetEvent = new AutoResetEvent(false);
@@ -58,10 +58,10 @@ namespace WcfClientProxyGenerator.Tests
             proxy.OneWay("test");
 
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
-                Assert.Fail("Callback not entered");
+                Assert.True(false, "Callback not entered");
         }
 
-        [Test]
+        [Fact]
         public void DuplexService_WithInstanceContext_TriggersCallback()
         {
             var resetEvent = new AutoResetEvent(false);
@@ -86,7 +86,7 @@ namespace WcfClientProxyGenerator.Tests
             proxy.Test("test");
 
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
-                Assert.Fail("Callback not entered");
+                Assert.True(false, "Callback not entered");
         }
     }
 

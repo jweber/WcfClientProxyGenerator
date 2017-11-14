@@ -2,18 +2,18 @@
 using System.ServiceModel;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using NUnit.Framework;
+using Shouldly;
 using WcfClientProxyGenerator.Tests.Services;
 using WcfClientProxyGenerator.Policy;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class RetryingWcfActionInvokerTests
     {
 #if NET45
         
-        [Test]
+        [Fact]
         public void Retries_OnChannelTerminatedException()
         {
             this.AssertThatCallRetriesOnException(() => new ChannelTerminatedException());
@@ -21,13 +21,13 @@ namespace WcfClientProxyGenerator.Tests
 
 #endif
     
-        [Test]
+        [Fact]
         public void Retries_OnEndpointNotFoundException()
         {
             this.AssertThatCallRetriesOnException(() => new EndpointNotFoundException(""));
         }
 
-        [Test]
+        [Fact]
         public void Retries_OnServerTooBusyException()
         {
             this.AssertThatCallRetriesOnException(() => new ServerTooBusyException(""));
@@ -35,7 +35,7 @@ namespace WcfClientProxyGenerator.Tests
 
         #region RetriesOnException
 
-        [Test]
+        [Fact]
         public void AddExceptionToRetryOn_RetriesOnConfiguredException()
         {
             this.AssertThatCallRetriesOnException(
@@ -43,7 +43,7 @@ namespace WcfClientProxyGenerator.Tests
                 c => c.AddExceptionToRetryOn<TimeoutException>());
         }
 
-        [Test]
+        [Fact]
         public void AddExceptionToRetryOn_RetriesOnConfiguredException_WhenPredicateMatches()
         {
             this.AssertThatCallRetriesOnException(
@@ -51,7 +51,7 @@ namespace WcfClientProxyGenerator.Tests
                 c => c.AddExceptionToRetryOn<TimeoutException>(e => e.Message == "The operation has timed out."));
         }
 
-        [Test]
+        [Fact]
         public void AddExceptionToRetryOn_RetriesOnConfiguredException_WhenPredicateMatches_UsingActualExceptionType()
         {
             this.AssertThatCallRetriesOnException<TestException>(
@@ -59,7 +59,7 @@ namespace WcfClientProxyGenerator.Tests
                 c => c.AddExceptionToRetryOn<TestException>(e => e.TestExceptionMessage == "test"));
         }
 
-        [Test]
+        [Fact]
         public void AddExceptionToRetryOn_RetriesOnMatchedPredicate_WhenMultiplePredicatesAreRegistered()
         {
             this.AssertThatCallRetriesOnException<TestException>(
@@ -83,7 +83,7 @@ namespace WcfClientProxyGenerator.Tests
 
         #region RetryOnResponseCondition
 
-        [Test]
+        [Fact]
         public void AddResponseToRetryOn_RetriesOnConfiguredResponse_ForResponseType()
         {
             var service = Substitute.For<ITestService>();
@@ -103,10 +103,10 @@ namespace WcfClientProxyGenerator.Tests
             actionInvoker.AddResponseToRetryOn<Response>(r => r.ResponseMessage == failResponse.ResponseMessage);
 
             var response = actionInvoker.Invoke(s => s.Complex(new Request()));
-            Assert.That(response.ResponseMessage, Is.EqualTo(successResponse.ResponseMessage));
+            response.ResponseMessage.ShouldBe(successResponse.ResponseMessage);
         }
 
-        [Test]
+        [Fact]
         public void AddResponseToRetryOn_RetriesOnConfiguredResponse_ForResponseBaseType()
         {
             var service = Substitute.For<ITestService>();
@@ -126,10 +126,10 @@ namespace WcfClientProxyGenerator.Tests
             actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == failResponse.StatusCode);
 
             var response = actionInvoker.Invoke(s => s.Complex(new Request()));
-            Assert.That(response.StatusCode, Is.EqualTo(successResponse.StatusCode));
+            response.StatusCode.ShouldBe(successResponse.StatusCode);
         }
 
-        [Test]
+        [Fact]
         public void AddResponseToRetryOn_RetriesOnMatchedPredicate_WhenMultiplePredicatesAreRegistered()
         {
             var service = Substitute.For<ITestService>();
@@ -151,7 +151,7 @@ namespace WcfClientProxyGenerator.Tests
             actionInvoker.AddResponseToRetryOn<IResponseStatus>(r => r.StatusCode == secondFailResponse.StatusCode);
 
             var response = actionInvoker.Invoke(s => s.Complex(new Request()));
-            Assert.That(response.StatusCode, Is.EqualTo(successResponse.StatusCode));
+            response.StatusCode.ShouldBe(successResponse.StatusCode);
         }
 
         #endregion
@@ -169,7 +169,7 @@ namespace WcfClientProxyGenerator.Tests
             public string TestExceptionMessage { get; set; }
         }
 
-        [Test]
+        [Fact]
         public void AddExceptionToRetryOn_PassesThroughException_OnConfiguredException_WhenPredicateDoesNotMatch()
         {
             var service = Substitute.For<ITestService>();
@@ -184,7 +184,7 @@ namespace WcfClientProxyGenerator.Tests
 
             actionInvoker.AddExceptionToRetryOn<TimeoutException>(where: e => e.Message == "not the message");
 
-            Assert.That(() => actionInvoker.Invoke(s => s.Echo("test")), Throws.TypeOf<TimeoutException>());
+            Should.Throw<TimeoutException>(() => actionInvoker.Invoke(s => s.Echo("test")));
         }
 
         private void AssertThatCallRetriesOnException<TException>(
@@ -207,9 +207,7 @@ namespace WcfClientProxyGenerator.Tests
 
             configurator?.Invoke(actionInvoker);
 
-            Assert.That(
-                () => actionInvoker.Invoke(s => s.Echo("test")), 
-                Throws.TypeOf<WcfRetryFailedException>());
+            Should.Throw<WcfRetryFailedException>(() => actionInvoker.Invoke(s => s.Echo("test")));
 
             delayPolicy
                 .Received(5)

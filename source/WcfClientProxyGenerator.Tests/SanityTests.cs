@@ -1,14 +1,17 @@
-﻿using System.ServiceModel;
-using NUnit.Framework;
+﻿using System;
+using System.ComponentModel;
+using System.ServiceModel;
+
+using Shouldly;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class SanityTests : TestBase
     {
-        [Test]
+        [Fact]
         public void Channel_WorksAsExpected()
         {
             var proxy = new ChannelFactory<ITestService>(this.TestServer.Binding, GetAddress<ITestService>())
@@ -16,20 +19,20 @@ namespace WcfClientProxyGenerator.Tests
 
             var response = proxy.Echo("hello world");
         
-            Assert.That(response, Is.EqualTo("hello world"));
+            response.ShouldBe("hello world");
         }
 
-        [Test, Description("Asserts that we can fault a default Client Channel")]
+        [Fact, Description("Asserts that we can fault a default Client Channel")]
         public void FaultHappens_WithDefaultChannelProxy()
         {
             var proxy = new ChannelFactory<ITestService>(this.TestServer.Binding, GetAddress<ITestService>())
                 .CreateChannel();
 
-            Assert.That(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"), Throws.Exception);
-            Assert.That(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"), Throws.Exception.TypeOf<CommunicationObjectFaultedException>());
+            Should.Throw<Exception>(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"));
+            Should.Throw<CommunicationObjectFaultedException>(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"));
             
             var communicationObject = (ICommunicationObject) proxy;
-            Assert.That(communicationObject.State, Is.EqualTo(CommunicationState.Faulted));
+            communicationObject.State.ShouldBe(CommunicationState.Faulted);
         }
     }
 }

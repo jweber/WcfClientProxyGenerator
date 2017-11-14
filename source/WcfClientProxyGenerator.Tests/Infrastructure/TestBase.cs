@@ -1,16 +1,25 @@
 ﻿using System;
 using System.Reflection;
 using System.ServiceModel;
-using NUnit.Framework;
+
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Tests.Services.Infrastructure;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {
-    [SetUpFixture]
-    public abstract class TestBase
+    public abstract class TestBase : IDisposable
     {
         protected TestServer TestServer { get; private set; }
+
+        public TestBase()
+        {
+            this.TestServer = TestServer.Start("netTcp");
+        }
+
+        public void Dispose()
+        {
+            TestServer?.Dispose();
+        }
 
         protected EndpointAddress GetAddress<TServiceInterface>()
             where TServiceInterface : class
@@ -42,18 +51,6 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
                 c.SetEndpoint(this.TestServer.Binding, GetAddress<TServiceInterface>());
                 config?.Invoke(c);
             });
-        }
-        
-        [SetUp]
-        public void Setup()
-        {
-            this.TestServer = TestServer.Start("netTcp");
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            this.TestServer.Dispose();
         }
     }
 }

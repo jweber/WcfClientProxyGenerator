@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NUnit.Framework;
+using Shouldly;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests
 {
-    [TestFixture]
     public class AsyncTests : TestBase
     {
-        [Test]
+        [Fact]
         public async Task ServiceContractDefinedAsyncMethod_WithReturnValue()
         {
             var proxy = GenerateProxy<IAsyncService>();
@@ -22,10 +22,10 @@ namespace WcfClientProxyGenerator.Tests
 
             Console.WriteLine("Contination thread: " + Thread.CurrentThread.ManagedThreadId);
 
-            Assert.That(result, Is.EqualTo("test"));
+            result.ShouldBe("test");
         }
         
-        [Test]
+        [Fact]
         public async Task ServiceContractDefinedAsyncMethod_WithNoReturnValue()
         {
             var proxy = GenerateProxy<IAsyncService>();
@@ -37,7 +37,7 @@ namespace WcfClientProxyGenerator.Tests
             Console.WriteLine("Contination thread: " + Thread.CurrentThread.ManagedThreadId);
         }
 
-        [Test]
+        [Fact]
         public async Task CallAsync_MethodWithReturnValue()
         {
             var proxy = GenerateAsyncProxy<ITestService>(c =>
@@ -53,11 +53,11 @@ namespace WcfClientProxyGenerator.Tests
             
             Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
 
-            Assert.That(result, Is.EqualTo("good"));
-            Assert.That(result2, Is.EqualTo("hello world"));
+            result.ShouldBe("good");
+            result2.ShouldBe("hello world");
         }
 
-        [Test]
+        [Fact]
         public async Task CallAsync_MethodWithReturnValue2()
         {
             var request = new Request() { RequestMessage = "test" };
@@ -76,11 +76,11 @@ namespace WcfClientProxyGenerator.Tests
 
             Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
 
-            Assert.That(result.StatusCode, Is.EqualTo(0));
-            Assert.That(result.ResponseMessage, Is.EqualTo("test"));
+            result.StatusCode.ShouldBe(0);
+            result.ResponseMessage.ShouldBe("test");
         }
         
-        [Test]
+        [Fact]
         public async Task CallAsync_VoidMethod()
         {
             var proxy = GenerateAsyncProxy<IAsyncService>();
@@ -92,7 +92,7 @@ namespace WcfClientProxyGenerator.Tests
             Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
         }
 
-        [Test]
+        [Fact]
         public async Task CallAsync_OneWayOperation()
         {
             var proxy = GenerateAsyncProxy<ITestService>();
@@ -102,7 +102,7 @@ namespace WcfClientProxyGenerator.Tests
             Console.WriteLine("Continuation thread: " + Thread.CurrentThread.ManagedThreadId);
         }
 
-        [Test]
+        [Fact]
         public void CallAsync_MultipleConcurrentCalls()
         {
             int iterations = 20;
@@ -124,20 +124,22 @@ namespace WcfClientProxyGenerator.Tests
             for (int i = 0; i < iterations; i++)
             {
                 string result = ((Task<string>) tasks[i]).Result;
-                Assert.That(result, Is.EqualTo(i.ToString()));
+
+                result.ShouldBe(i.ToString());
             }
         }
 
-        [Test]
+        [Fact]
         public void CallAsync_CanCallIntoSyncProxy()
         {
             var proxy = GenerateAsyncProxy<ITestService>();
             
             string result = proxy.Client.Echo("good");
-            Assert.That(result, Is.EqualTo("good"));
+            
+            result.ShouldBe("good");
         }
 
-        [Test]
+        [Fact]
         public void CallAsync_CallingMethodWithByRefParams_ThrowsNotSupportedException()
         {
             byte[] expectedOutParam = { 0x01 };
@@ -146,7 +148,7 @@ namespace WcfClientProxyGenerator.Tests
             
             byte[] resultingOutParam;
 
-            Assert.That(() => proxy.CallAsync(m => m.SingleOutParam(out resultingOutParam)), Throws.TypeOf<NotSupportedException>());
+            Should.Throw<NotSupportedException>(() => proxy.CallAsync(m => m.SingleOutParam(out resultingOutParam)));
         }
     }
 }
