@@ -27,13 +27,12 @@ namespace WcfClientProxyGenerator
         internal static void Initialize()
         {
             var assemblyName = new AssemblyName("WcfClientProxyGenerator.DynamicProxy");
-            var appDomain = System.Threading.Thread.GetDomain();
 
 #if OUTPUT_PROXY_DLL
             AssemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
             ModuleBuilder = AssemblyBuilder.DefineDynamicModule(assemblyName.Name, "WcfClientProxyGenerator.DynamicProxy.dll");
 #else
-            AssemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+            AssemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
             ModuleBuilder = AssemblyBuilder.DefineDynamicModule(assemblyName.Name);
 #endif            
         }
@@ -110,7 +109,7 @@ namespace WcfClientProxyGenerator
                 GenerateServiceProxyMethod(asyncInterfaceType, serviceMethod, typeBuilder);
             }
 
-            Type proxyType = typeBuilder.CreateType();
+            Type proxyType = typeBuilder.CreateTypeInfo();
             
 #if OUTPUT_PROXY_DLL 
             DynamicProxyAssembly.AssemblyBuilder.Save("WcfClientProxyGenerator.DynamicProxy.dll");
@@ -240,7 +239,7 @@ namespace WcfClientProxyGenerator
             foreach (var serviceMethod in nonAsyncServiceMethods)
                 GenerateAsyncTaskMethod(serviceMethod, asyncInterfaceBuilder);
 
-            Type asyncInterface = asyncInterfaceBuilder.CreateType();
+            Type asyncInterface = asyncInterfaceBuilder.CreateTypeInfo();
 
             return asyncInterface;
         }
@@ -300,7 +299,7 @@ namespace WcfClientProxyGenerator
 
             var methodBuilder = typeBuilder.DefineMethod(
                 methodInfo.Name + "Async",
-                MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual | MethodAttributes.Abstract,
+                MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Abstract,
                 returnType,
                 parameterTypes);
 
@@ -402,7 +401,7 @@ namespace WcfClientProxyGenerator
             // TReturn Method(TParamType1 arg1, TParamType2 arg2, ...) {
             var methodBuilder = typeBuilder.DefineMethod(
                 methodInfo.Name,
-                MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.Virtual,
+                MethodAttributes.Public | MethodAttributes.Virtual,
                 methodInfo.ReturnType,
                 parameterTypes);
 
@@ -702,7 +701,7 @@ namespace WcfClientProxyGenerator
 
             ilGenerator.Emit(OpCodes.Ret);
 
-            generatedType = serviceCallTypeBuilder.CreateType();
+            generatedType = serviceCallTypeBuilder.CreateTypeInfo();
             return fields;
         }
     }

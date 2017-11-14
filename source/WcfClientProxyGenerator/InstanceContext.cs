@@ -25,6 +25,8 @@ namespace WcfClientProxyGenerator
         /// </summary>
         public InstanceContext Context => _context;
 
+#if NETFULL
+        
         /// <summary>
         /// Gets the service instance.
         /// </summary>
@@ -37,5 +39,7 @@ namespace WcfClientProxyGenerator
         {
             _context.ReleaseServiceInstance();
         }
+        
+#endif
     }
 }

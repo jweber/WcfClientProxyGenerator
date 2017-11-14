@@ -25,6 +25,7 @@ namespace WcfClientProxyGenerator
             return Create<TServiceInterface>((Action<IRetryingProxyConfigurator>)null);
         }
 
+#if NETFULL
         /// <summary>
         /// Creates a proxy instance of <typeparamref name="TServiceInterface"/> that
         /// is used to initiate calls to a WCF service.
@@ -37,6 +38,7 @@ namespace WcfClientProxyGenerator
         {
             return Create<TServiceInterface>(c => c.SetEndpoint(endpointConfigurationName));
         }
+#endif
 
         /// <summary>
         /// Creates a proxy instance of <typeparamref name="TServiceInterface"/> that
@@ -61,10 +63,11 @@ namespace WcfClientProxyGenerator
                 DefaultProxyConfigurator.Configure<TServiceInterface>(proxy as IRetryingProxyConfigurator);
             }
 
-            return proxy;            
+            return proxy;
         }
 
         #region Async Proxy
+
 
         /// <summary>
         /// Creates a wrapper for calling synchronously defined WCF methods asynchronously.
@@ -78,8 +81,10 @@ namespace WcfClientProxyGenerator
         public static IAsyncProxy<TServiceInterface> CreateAsyncProxy<TServiceInterface>()
             where TServiceInterface : class
         {
-            return CreateAsyncProxy<TServiceInterface>(c => c.UseDefaultEndpoint());
+            return CreateAsyncProxy<TServiceInterface>(c => { });
         }
+
+#if NETFULL
 
         /// <summary>
         /// Creates a wrapper for calling synchronously defined WCF methods asynchronously.
@@ -96,7 +101,9 @@ namespace WcfClientProxyGenerator
         {
             return CreateAsyncProxy<TServiceInterface>(c => c.SetEndpoint(endpointConfigurationName));
         }
-
+    
+#endif
+        
         /// <summary>
         /// Creates a wrapper for calling synchronously defined WCF methods asynchronously.
         /// <para>

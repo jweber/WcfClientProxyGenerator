@@ -4,31 +4,32 @@ using System.Threading;
 using NSubstitute;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Infrastructure;
+using WcfClientProxyGenerator.Tests.Services;
 
 namespace WcfClientProxyGenerator.Tests
 {
     [TestFixture]
-    public class DuplexProxyTests
+    public class DuplexProxyTests : TestBase
     {
         [Test]
         public void DuplexService_TriggersCallback()
         {
             var resetEvent = new AutoResetEvent(false);
 
-            var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
-
             var callback = Substitute.For<IDuplexServiceCallback>();
-
             callback
                 .TestCallback(Arg.Any<string>())
                 .Returns(m => m.Arg<string>())
                 .AndDoes(_ => resetEvent.Set());
-            
-            var proxy = WcfClientProxy.Create<IDuplexService>(c =>
-            {
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, callback);
-            });
 
+            var proxy = GenerateProxy<IDuplexService>(c =>
+            {
+                c.SetEndpoint(
+                    this.TestServer.Binding,
+                    this.GetAddress<IDuplexService>(),
+                    new InstanceContext(callback));
+            });
+            
             proxy.Test("test");
 
             if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
@@ -40,17 +41,18 @@ namespace WcfClientProxyGenerator.Tests
         {
             var resetEvent = new AutoResetEvent(false);
 
-            var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
-
             var callback = Substitute.For<IDuplexServiceCallback>();
 
             callback
                 .When(m => m.OneWayCallback(Arg.Any<string>()))
                 .Do(_ => resetEvent.Set());
 
-            var proxy = WcfClientProxy.Create<IDuplexService>(c =>
+            var proxy = GenerateProxy<IDuplexService>(c =>
             {
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, callback);
+                c.SetEndpoint(
+                    this.TestServer.Binding,
+                    GetAddress<IDuplexService>(),
+                    new InstanceContext(callback));
             });
 
             proxy.OneWay("test");
@@ -64,8 +66,6 @@ namespace WcfClientProxyGenerator.Tests
         {
             var resetEvent = new AutoResetEvent(false);
 
-            var serviceHost = InProcTestFactory.CreateHost<IDuplexService>(new DuplexService());
-
             var callback = Substitute.For<IDuplexServiceCallback>();
 
             callback
@@ -74,9 +74,13 @@ namespace WcfClientProxyGenerator.Tests
                 .AndDoes(_ => resetEvent.Set());
 
             InstanceContext<IDuplexServiceCallback> ctx = new InstanceContext<IDuplexServiceCallback>(callback);
-            var proxy = WcfClientProxy.Create<IDuplexService>(c =>
+            
+            var proxy = GenerateProxy<IDuplexService>(c =>
             {
-                c.SetEndpoint(serviceHost.Binding, serviceHost.EndpointAddress, ctx);
+                c.SetEndpoint(
+                    this.TestServer.Binding,
+                    GetAddress<IDuplexService>(),
+                    ctx);
             });
 
             proxy.Test("test");
@@ -86,39 +90,5 @@ namespace WcfClientProxyGenerator.Tests
         }
     }
 
-    [ServiceContract(CallbackContract = typeof(IDuplexServiceCallback))]
-    public interface IDuplexService
-    {
-        [OperationContract]
-        string Test(string input);
 
-        [OperationContract(IsOneWay = true)]
-        void OneWay(string input);
-    }
-
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
-    public class DuplexService : IDuplexService
-    {
-        public string Test(string input)
-        {
-            var callBackResponse = Callback.TestCallback(input);
-            return $"Method Echo: {callBackResponse}";
-        }
-
-        public void OneWay(string input)
-        {
-            Callback.OneWayCallback(input);
-        }
-
-        IDuplexServiceCallback Callback => OperationContext.Current.GetCallbackChannel<IDuplexServiceCallback>();
-    }
-
-    public interface IDuplexServiceCallback
-    {
-        [OperationContract]
-        string TestCallback(string input);
-
-        [OperationContract(IsOneWay = true)]
-        void OneWayCallback(string input);
-    }
 }

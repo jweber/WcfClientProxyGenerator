@@ -2,12 +2,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Dynamic;
+using System.Linq;
 using System.Reflection;
-using System.Security.Principal;
 using System.ServiceModel;
 using System.Threading;
-using System.Linq;
 using System.Threading.Tasks;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Policy;
@@ -52,7 +50,9 @@ namespace WcfClientProxyGenerator
             _wcfActionProviderCreator = wcfActionProviderCreator;
             _retryPredicates = new Dictionary<Type, IList<object>>
             {
+#if NETFULL
                 { typeof(ChannelTerminatedException), new List<object> { null } },
+#endif
                 { typeof(EndpointNotFoundException), new List<object> { null } },
                 { typeof(ServerTooBusyException), new List<object> { null } }
             };

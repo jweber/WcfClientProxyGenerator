@@ -8,7 +8,9 @@ namespace WcfClientProxyGenerator
         public static void Configure<TServiceInterface>(IRetryingProxyConfigurator proxy)
             where TServiceInterface : class
         {
+#if NETFULL
             proxy.UseDefaultEndpoint();
+#endif
         }
 
         public static readonly Func<LinearBackoffDelayPolicy> DefaultDelayPolicyFactory

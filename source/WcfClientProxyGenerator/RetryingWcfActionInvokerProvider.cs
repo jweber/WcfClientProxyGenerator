@@ -42,9 +42,11 @@ namespace WcfClientProxyGenerator
         {
             actionInvoker = new RetryingWcfActionInvoker<TServiceInterface>(() =>
             {
+#if NETFULL
                 if (channelFactory == null)
                     this.UseDefaultEndpoint();
-
+#endif
+    
                 return channelFactory.CreateChannel();
             });
         }
@@ -307,16 +309,19 @@ namespace WcfClientProxyGenerator
         {
             get
             {
+#if NETFULL
                 // if requested without endpoint set, use default
                 if (channelFactory == null)
                 {
                     UseDefaultEndpoint();
                 }
+#endif
 
                 return channelFactory;
             }
         }
 
+#if NETFULL
         public void UseDefaultEndpoint()
         {
             // If TServiceInterface is our generated async interface, the ChannelFactory
@@ -328,7 +333,7 @@ namespace WcfClientProxyGenerator
             }
             else
             {
-                channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(typeof(TServiceInterface));    
+                channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(typeof(TServiceInterface));
             }
         }
 
@@ -344,13 +349,14 @@ namespace WcfClientProxyGenerator
                 channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpointConfigurationName);    
             }
         }
+#endif
 
         public void SetEndpoint(Binding binding, EndpointAddress endpointAddress)
         {
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress);
         }
 
-        public void SetEndpoint(Binding binding, EndpointAddress endpointAddress, object callbackObject)
+        public void SetEndpoint(Binding binding, EndpointAddress endpointAddress, InstanceContext callbackObject)
         {
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(binding, endpointAddress, callbackObject);
         }
@@ -365,7 +371,7 @@ namespace WcfClientProxyGenerator
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint);
         }
 
-        public void SetEndpoint(ServiceEndpoint endpoint, object callbackObject)
+        public void SetEndpoint(ServiceEndpoint endpoint, InstanceContext callbackObject)
         {
             channelFactory = ChannelFactoryProvider.GetChannelFactory<TServiceInterface>(endpoint, callbackObject);
         }

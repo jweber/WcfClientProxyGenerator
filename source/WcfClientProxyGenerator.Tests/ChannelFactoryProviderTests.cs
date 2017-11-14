@@ -2,13 +2,50 @@
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using NUnit.Framework;
-using WcfClientProxyGenerator.Tests.Infrastructure;
+using WcfClientProxyGenerator.Tests.Services;
 
 namespace WcfClientProxyGenerator.Tests
 {
+    [ServiceContract]
+    public interface INoConfigService
+    {
+        [OperationContract]
+        string Echo(string input);
+    }
+    
     [TestFixture]
     public class ChannelFactoryProviderTests
     {
+        [Test]
+        public void ChannelFactories_WithIdenticalConfiguration_AreSameInstance_ForCodeBasedConfiguration()
+        {
+            var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
+                new NetTcpBinding(), 
+                new EndpointAddress("http://localhost:23456/TestService"));
+
+            var factory2 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
+                new NetTcpBinding(), 
+                new EndpointAddress("http://localhost:23456/TestService"));
+
+            Assert.AreSame(factory1, factory2);
+        }
+        
+        [Test]
+        public void ChannelFactories_WithNonIdenticalConfiguration_AreNotSameInstance_ForCodeBasedConfiguration()
+        {
+            var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
+                new NetTcpBinding(), 
+                new EndpointAddress("http://localhost:23456/TestService"));
+
+            var factory2 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
+                new NetTcpBinding(), 
+                new EndpointAddress("http://localhost:23456/TestService2"));
+
+            Assert.AreNotSame(factory1, factory2);
+        }
+        
+#if NET45
+
         /// <summary>
         /// Issue #19 exposed a failure where using the endpointConfigurationName
         /// to generate a proxy would not use the dynamically generated *Async service
@@ -22,7 +59,7 @@ namespace WcfClientProxyGenerator.Tests
             var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>("ITestService");
 
             var exception = Assert.ThrowsAsync<EndpointNotFoundException>(
-                () => proxy.CallAsync(m => m.IntMethod()),
+                () => proxy.CallAsync(m => m.Echo("test")),
                 message: "Expected EndpointNotFoundException (since ITestService address is not running)");
 
             Assert.That(exception.Message, Does.StartWith("There was no endpoint listening at "));
@@ -48,31 +85,30 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void ChannelFactories_WithIdenticalConfiguration_AreSameInstance_ForCodeBasedConfiguration()
+        public void ChannelFactory_WithSingleConfigurationForContract_UsesDefaultConfiguration()
         {
-            var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
-                new WSHttpBinding(), 
-                new EndpointAddress("http://localhost:23456/TestService"));
-
-            var factory2 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
-                new WSHttpBinding(), 
-                new EndpointAddress("http://localhost:23456/TestService"));
-
-            Assert.AreSame(factory1, factory2);
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestServiceSingleEndpointConfig>();
+            
+            Assert.That(factory.Endpoint.Address.ToString(), Is.EqualTo("http://localhost:23456/TestService2"));
+            Assert.That(factory.Endpoint.Binding.Name, Is.EqualTo("WSHttpBinding"));
         }
-        
+    
         [Test]
-        public void ChannelFactories_WithNonIdenticalConfiguration_AreNotSameInstance_ForCodeBasedConfiguration()
+        public void ChannelFactory_ClientEndpoint_WithCustomBindingConfiguration()
         {
-            var factory1 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
-                new WSHttpBinding(), 
-                new EndpointAddress("http://localhost:23456/TestService"));
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
 
-            var factory2 = ChannelFactoryProvider.GetChannelFactory<ITestService>(
-                new WSHttpBinding(), 
-                new EndpointAddress("http://localhost:23456/TestService2"));
+            Assert.That(factory.Endpoint.Address.ToString(), Is.EqualTo("http://localhost:23456/TestService"));
+            
+            var binding = (WSHttpBinding) factory.Endpoint.Binding;
+            Assert.That(binding.Name, Is.EqualTo("wsHttpBinding_ITestService"));
+            Assert.That(binding.MaxReceivedMessageSize, Is.EqualTo(12345));
+        }
 
-            Assert.AreNotSame(factory1, factory2);
+        [Test]
+        public void NoConfigurationForServiceType_ThrowsInvalidOperationException()
+        {
+            Assert.That(() => ChannelFactoryProvider.GetChannelFactory<INoConfigService>(), Throws.TypeOf<InvalidOperationException>());
         }
 
         [Test]
@@ -94,36 +130,12 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
-        public void ChannelFactory_WithSingleConfigurationForContract_UsesDefaultConfiguration()
-        {
-            var factory = ChannelFactoryProvider.GetChannelFactory<ITestServiceSingleEndpointConfig>();
-            
-            Assert.That(factory.Endpoint.Address.ToString(), Is.EqualTo("http://localhost:23456/TestService2"));
-            Assert.That(factory.Endpoint.Binding.Name, Is.EqualTo("WSHttpBinding"));
-        }
-
-        [Test]
         public void ServiceInterface_WithMultipleClientEndpoints_ThrowsInvalidOperationException_WhenUsingDefaultCtor()
         {
             Assert.That(() => ChannelFactoryProvider.GetChannelFactory<ITestService>(), Throws.TypeOf<InvalidOperationException>());
         }
-
-        [Test]
-        public void ChannelFactory_ClientEndpoint_WithCustomBindingConfiguration()
-        {
-            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("ITestService");
-
-            Assert.That(factory.Endpoint.Address.ToString(), Is.EqualTo("http://localhost:23456/TestService"));
-            
-            var binding = (WSHttpBinding) factory.Endpoint.Binding;
-            Assert.That(binding.Name, Is.EqualTo("wsHttpBinding_ITestService"));
-            Assert.That(binding.MaxReceivedMessageSize, Is.EqualTo(12345));
-        }
-
-        [Test]
-        public void NoConfigurationForServiceType_ThrowsInvalidOperationException()
-        {
-            Assert.That(() => ChannelFactoryProvider.GetChannelFactory<IAsyncTestInterface>(), Throws.TypeOf<InvalidOperationException>());
-        }
+    
+#endif
+        
     }
 }

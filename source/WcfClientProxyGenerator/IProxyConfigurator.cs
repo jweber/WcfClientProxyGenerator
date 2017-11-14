@@ -10,6 +10,7 @@ namespace WcfClientProxyGenerator
     /// </summary>
     public interface IProxyConfigurator
     {
+#if NETFULL
         /// <summary>
         /// Uses the default endpoint configuration from the web.config or app.config
         /// </summary>
@@ -20,6 +21,7 @@ namespace WcfClientProxyGenerator
         /// </summary>
         /// <param name="endpointConfigurationName"></param>
         void SetEndpoint(string endpointConfigurationName);
+#endif
 
         /// <summary>
         /// Specifies the binding and address to use
@@ -34,7 +36,7 @@ namespace WcfClientProxyGenerator
         /// <param name="binding"></param>
         /// <param name="endpointAddress"></param>
         /// <param name="callbackInstance"></param>
-        void SetEndpoint(Binding binding, EndpointAddress endpointAddress, object callbackInstance);
+        void SetEndpoint(Binding binding, EndpointAddress endpointAddress, InstanceContext callbackInstance);
 
         /// <summary>
         /// Specifies the binding, address to use and callbackInstance to use with DuplexChannel

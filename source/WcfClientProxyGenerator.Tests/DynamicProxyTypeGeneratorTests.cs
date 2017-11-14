@@ -4,7 +4,7 @@ using System.Reflection;
 using System.ServiceModel;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using WcfClientProxyGenerator.Tests.Infrastructure;
+using WcfClientProxyGenerator.Tests.Services;
 
 namespace WcfClientProxyGenerator.Tests
 {
@@ -18,53 +18,6 @@ namespace WcfClientProxyGenerator.Tests
 
         [OperationContract(Name = "Method2")]
         int Method(string input, string input2);
-    }
-
-    [AttributeUsage(AttributeTargets.Interface)]
-    public class CustomServiceAttributeAttribute : Attribute
-    {
-        public const string CtorArg = "hello world";
-        public const int NumberProperty = 100;
-
-        public CustomServiceAttributeAttribute(string name)
-        {
-            Name = name;
-        }
-
-        public string Name { get; }
-        public int Number { get; set; }
-    }
-
-    [AttributeUsage(AttributeTargets.Method)]
-    public class CustomMethodAttributeAttribute : Attribute
-    {
-        public const string CtorArg = "method";
-        public const int NumberProperty = 200;
-
-        public CustomMethodAttributeAttribute(string name)
-        {
-            Name = name;
-        }
-
-        public string Name { get; }
-        public int Number { get; set; }
-    }
-
-    [ServiceContract]
-    [CustomServiceAttribute(CustomServiceAttributeAttribute.CtorArg, Number = CustomServiceAttributeAttribute.NumberProperty)]
-    public interface ICustomAttributeService
-    {
-        [OperationContract]
-        [CustomMethodAttribute(CustomMethodAttributeAttribute.CtorArg, Number = CustomMethodAttributeAttribute.NumberProperty)]
-        string Method(string input);
-
-        [OperationContract]
-        [FaultContract(typeof(Exception))]
-        string FaultMethod(string input);
-
-        [OperationContract]
-        [ServiceKnownType(typeof(string))]
-        string KnownTypeMethod(string input);
     }
 
     [ServiceContract]
@@ -140,7 +93,7 @@ namespace WcfClientProxyGenerator.Tests
         [Test]
         public void ContractsWithOverloadedMethods_DoNotDuplicateSupportMethods()
         {
-            Assert.That(() => this.GenerateTypes<IOverloadedService>(), Throws.Nothing);
+            Assert.That((TestDelegate) (() => this.GenerateTypes<IOverloadedService>()), Throws.Nothing);
         }
 
         [Test]
