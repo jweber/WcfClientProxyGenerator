@@ -4,6 +4,7 @@ using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using NUnit.Framework;
+using WcfClientProxyGenerator.Standard.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
 
 namespace WcfClientProxyGenerator.Standard.Tests
@@ -23,14 +24,16 @@ namespace WcfClientProxyGenerator.Standard.Tests
         }
 
         [Test, Description("Asserts that we can fault a default Client Channel")]
-        [Ignore("Figure out how to accurately fault a channel")]
         public void FaultHappens_WithDefaultChannelProxy()
         {
             var proxy = new ChannelFactory<ITestService>(this.TestServer.Binding, GetAddress<ITestService>())
                 .CreateChannel();
 
-            Assert.That(() => proxy.UnhandledException(), Throws.Exception);
-            Assert.That(() => proxy.Echo("hello world"), Throws.Exception.TypeOf<CommunicationObjectFaultedException>());
+            Assert.That(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"), Throws.Exception);
+            Assert.That(() => proxy.UnhandledExceptionOnFirstCallThenEcho("hello world"), Throws.Exception.TypeOf<CommunicationObjectFaultedException>());
+            
+            var communicationObject = (ICommunicationObject) proxy;
+            Assert.That(communicationObject.State, Is.EqualTo(CommunicationState.Faulted));
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using WcfClientProxyGenerator.Standard.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
 
 namespace WcfClientProxyGenerator.Standard.Tests

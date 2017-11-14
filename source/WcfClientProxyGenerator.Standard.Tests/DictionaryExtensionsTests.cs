@@ -9,37 +9,6 @@ namespace WcfClientProxyGenerator.Standard.Tests
     [TestFixture]
     public class DictionaryExtensionsTests
     {
-        [Test, Explicit]
-        public void Unsafe_ConcurrentDictionary_GetOrAdd_CallsValueFactoryMultipleTimes()
-        {
-            var dictionary = new ConcurrentDictionary<string, string>();
-            string thread1Message = null, thread2Message = null;
-
-            var thread1 = new Thread(() => 
-                dictionary.GetOrAdd("key", _ =>
-                {
-                    Thread.SpinWait(10000);
-                    thread1Message = "thread 1";
-                    return thread1Message;
-                }));
-
-            var thread2 = new Thread(() => 
-                dictionary.GetOrAdd("key", _ =>
-                {
-                    Thread.SpinWait(10000);
-                    thread2Message = "thread 2";
-                    return thread2Message;
-                }));
-
-            thread1.Start();
-            thread2.Start();
-            thread1.Join();
-            thread2.Join();
-
-            Assert.That(thread1Message, Is.EqualTo("thread 1"));
-            Assert.That(thread2Message, Is.EqualTo("thread 2"));
-        }
-
         [Test]
         public void Safe_ConcurrentDictionary_GetOrAdd_CallsValueFactoryOnlyOnce()
         {

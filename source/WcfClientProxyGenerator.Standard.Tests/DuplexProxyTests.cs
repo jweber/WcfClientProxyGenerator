@@ -3,6 +3,7 @@ using System.ServiceModel;
 using System.Threading;
 using NSubstitute;
 using NUnit.Framework;
+using WcfClientProxyGenerator.Standard.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
 
 namespace WcfClientProxyGenerator.Standard.Tests

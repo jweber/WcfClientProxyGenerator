@@ -26,6 +26,12 @@ namespace WcfClientProxyGenerator.Tests.Services
         
         [OperationContract(IsOneWay = true)]
         void OneWay(string input);
+        
+        [OperationContract]
+        void VoidMethod(string input);
+
+        [OperationContract]
+        string UnhandledExceptionOnFirstCallThenEcho(string input);
     }
 
     [DataContract]

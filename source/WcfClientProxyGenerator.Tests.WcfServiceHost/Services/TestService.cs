@@ -1,4 +1,5 @@
-﻿using System.ServiceModel;
+﻿using System;
+using System.ServiceModel;
 using WcfClientProxyGenerator.Tests.Services;
 
 namespace WcfClientProxyGenerator.Tests.WcfServiceHost.Services
@@ -19,5 +20,16 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost.Services
         
         public void OneWay(string input)
         { }
+
+        public void VoidMethod(string input)
+        { }
+
+        public string UnhandledExceptionOnFirstCallThenEcho(string input)
+        {
+            if (sequenceCount++ == 0)
+                throw new Exception();
+
+            return input;
+        }
     }
 }

@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 
-namespace WcfClientProxyGenerator.Standard.Tests
+namespace WcfClientProxyGenerator.Standard.Tests.Infrastructure
 {
     public class TestServer : IDisposable
     {

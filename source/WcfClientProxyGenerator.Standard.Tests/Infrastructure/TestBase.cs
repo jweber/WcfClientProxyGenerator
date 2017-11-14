@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Reflection;
 using System.ServiceModel;
-using System.Threading;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Standard.Async;
 using WcfClientProxyGenerator.Tests.Services.Infrastructure;
 
-namespace WcfClientProxyGenerator.Standard.Tests
+namespace WcfClientProxyGenerator.Standard.Tests.Infrastructure
 {
     [SetUpFixture]
     public abstract class TestBase
