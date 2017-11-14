@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NSubstitute;
 using NUnit.Framework;
 using WcfClientProxyGenerator.Tests.Services;
 
@@ -14,7 +13,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Test]
         public async Task ServiceContractDefinedAsyncMethod_WithReturnValue()
         {
-            var proxy = GenerateProxy<IAsyncService>("/async");
+            var proxy = GenerateProxy<IAsyncService>();
 
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
@@ -28,7 +27,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Test]
         public async Task ServiceContractDefinedAsyncMethod_WithNoReturnValue()
         {
-            var proxy = GenerateProxy<IAsyncService>("/async");
+            var proxy = GenerateProxy<IAsyncService>();
 
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
@@ -40,7 +39,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Test]
         public async Task CallAsync_MethodWithReturnValue()
         {
-            var proxy = GenerateAsyncProxy<ITestService>("/test", c =>
+            var proxy = GenerateAsyncProxy<ITestService>(c =>
             {
                 c.MaximumRetries(1);
                 c.RetryOnResponse<string>(s => s == "bad");
@@ -62,7 +61,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         {
             var request = new Request() { RequestMessage = "test" };
 
-            var proxy = GenerateAsyncProxy<ITestService>("/test", c =>
+            var proxy = GenerateAsyncProxy<ITestService>(c =>
             {
                 c.MaximumRetries(1);
                 c.RetryOnResponse<Response>(s => s.StatusCode == 1);
@@ -83,7 +82,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Test]
         public async Task CallAsync_VoidMethod()
         {
-            var proxy = GenerateAsyncProxy<IAsyncService>("/async");
+            var proxy = GenerateAsyncProxy<IAsyncService>();
             
             Console.WriteLine("Caller thread: " + Thread.CurrentThread.ManagedThreadId);
 
@@ -95,7 +94,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Test]
         public async Task CallAsync_OneWayOperation()
         {
-            var proxy = GenerateAsyncProxy<ITestService>("/test");
+            var proxy = GenerateAsyncProxy<ITestService>();
 
             await proxy.CallAsync(m => m.OneWay("test"));
 
@@ -107,7 +106,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         {
             int iterations = 20;
 
-            var proxy = GenerateAsyncProxy<ITestService>("/test");
+            var proxy = GenerateAsyncProxy<ITestService>();
             
             var tasks = new List<Task>();
             for (int i = 0; i < iterations; i++)
@@ -131,7 +130,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Test]
         public void CallAsync_CanCallIntoSyncProxy()
         {
-            var proxy = GenerateAsyncProxy<ITestService>("/test");
+            var proxy = GenerateAsyncProxy<ITestService>();
             
             string result = proxy.Client.Echo("good");
             Assert.That(result, Is.EqualTo("good"));
@@ -142,7 +141,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         {
             byte[] expectedOutParam = { 0x01 };
 
-            var proxy = GenerateAsyncProxy<IOutParamTestService>("/out");
+            var proxy = GenerateAsyncProxy<IOutParamTestService>();
             
             byte[] resultingOutParam;
 

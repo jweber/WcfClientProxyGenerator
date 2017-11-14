@@ -5,11 +5,14 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using WcfClientProxyGenerator.Tests.Services;
+using WcfClientProxyGenerator.Tests.Services.Infrastructure;
+using WcfClientProxyGenerator.Tests.WcfServiceHost.Services;
 
 namespace WcfClientProxyGenerator.Tests.WcfServiceHost
 {
@@ -32,9 +35,10 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost
 
             var baseAddress = $"{binding.protocol}://localhost:{args[0]}";
 
-            Boot<ITestService, TestService>(baseAddress, "/test", binding.binding);
-            Boot<IAsyncService, AsyncService>(baseAddress, "/async", binding.binding);
-            Boot<IOutParamTestService, OutParamsTestService>(baseAddress, "/out", binding.binding);
+            Boot<ITestService, TestService>(baseAddress, binding.binding);
+            Boot<IAsyncService, AsyncService>(baseAddress, binding.binding);
+            Boot<IOutParamTestService, OutParamsTestService>(baseAddress, binding.binding);
+            Boot<IDuplexService, DuplexService>(baseAddress, binding.binding);
 
             Console.WriteLine("Press <Enter> to stop the service.");
             Console.ReadLine();
@@ -43,9 +47,15 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost
                 host.Close();
         }
 
-        private static void Boot<TService, TServiceImpl>(string baseAddress, string path, Binding binding)
+        private static void Boot<TService, TServiceImpl>(string baseAddress, Binding binding)
             where TServiceImpl : TService
         {
+            var servicePathAttribute = typeof(TService).GetCustomAttribute<ServicePathAttribute>();
+            if (servicePathAttribute == null)
+                throw new NullReferenceException($"The type '{typeof(TService).Name}' must have a `ServicePathAttribute`");
+
+            var path = servicePathAttribute.Path;
+            
             var address = new Uri(baseAddress + path);
             var host = new ServiceHost(typeof(TServiceImpl));
 
@@ -93,7 +103,7 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost
             {
                 case "http":
                     return ("http", new BasicHttpBinding());
-                case "netTcp":
+                case "nettcp":
                 case "tcp":
                     return ("net.tcp", new NetTcpBinding());
                 default:

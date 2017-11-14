@@ -63,16 +63,13 @@ namespace WcfClientProxyGenerator.Standard.Tests
             {
                 case "http":
                     return ("http", new BasicHttpBinding());
-                case "netTcp":
+                case "nettcp":
                 case "tcp":
                     return ("net.tcp", new NetTcpBinding());
                 default:
                     throw new ArgumentException($"Could not map '{bindingType}' to an actual binding type");
             }
         }
-        
-        public EndpointAddress Path(string path) 
-            => new EndpointAddress(this.BaseAddress.ToString() + path);
 
         public void Dispose()
         {

@@ -14,7 +14,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Test]
         public void Channel_WorksAsExpected()
         {
-            var proxy = new ChannelFactory<ITestService>(this.TestServer.Binding, this.TestServer.Path("/test"))
+            var proxy = new ChannelFactory<ITestService>(this.TestServer.Binding, GetAddress<ITestService>())
                 .CreateChannel();
 
             var response = proxy.Echo("hello world");
@@ -26,7 +26,7 @@ namespace WcfClientProxyGenerator.Standard.Tests
         [Ignore("Figure out how to accurately fault a channel")]
         public void FaultHappens_WithDefaultChannelProxy()
         {
-            var proxy = new ChannelFactory<ITestService>(this.TestServer.Binding, this.TestServer.Path("/test"))
+            var proxy = new ChannelFactory<ITestService>(this.TestServer.Binding, GetAddress<ITestService>())
                 .CreateChannel();
 
             Assert.That(() => proxy.UnhandledException(), Throws.Exception);

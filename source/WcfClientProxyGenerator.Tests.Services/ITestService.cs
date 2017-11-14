@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using System.ServiceModel;
+using WcfClientProxyGenerator.Tests.Services.Infrastructure;
 
 namespace WcfClientProxyGenerator.Tests.Services
 {
     [ServiceContract]
+    [ServicePath("/test")]
     public interface ITestService
     {
         [OperationContract]
@@ -73,23 +75,5 @@ namespace WcfClientProxyGenerator.Tests.Services
 
         [DataMember]
         public int StatusCode { get; set; }
-    }
-    
-    public class TestService : ITestService
-    {
-        private static int sequenceCount = 0;
-        
-        public string Echo(string input) => input;
-
-        public string Echo(string input, string secondInput) => input + " " + secondInput;
-
-        public string EchoSequence(params string[] inputs) => inputs[(sequenceCount++ % inputs.Length)];
-
-        public string UnhandledException() => throw new CommunicationException();
-
-        public Response Complex(Request request, params Response[] responses) => responses == null ? new Response() : responses[(sequenceCount++ % responses.Length)];
-        
-        public void OneWay(string input)
-        { }
     }
 }
