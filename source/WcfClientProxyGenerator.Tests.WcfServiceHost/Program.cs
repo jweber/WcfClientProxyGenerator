@@ -31,18 +31,22 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost
             if (args == null || !args.Any())
                 throw new NullReferenceException("The port to bind the services on must be passed as the first argument");
 
-            var binding = args.Length > 1 ? GetBindingType(args[1]) : GetBindingType("http");
+            var binding = args.Length > 1 ? GetBindingType(args[1]) : GetBindingType("netTcp");
 
             var baseAddress = $"{binding.protocol}://localhost:{args[0]}";
 
             Boot<ITestService, TestService>(baseAddress, binding.binding);
             Boot<IAsyncService, AsyncService>(baseAddress, binding.binding);
             Boot<IOutParamTestService, OutParamsTestService>(baseAddress, binding.binding);
-            Boot<IDuplexService, DuplexService>(baseAddress, binding.binding);
             Boot<ITrailingSlashOnNamespaceService, TrailingSlashOnNamespaceService>(baseAddress, binding.binding);
             Boot<ICustomAttributeService, CustomAttributeService>(baseAddress, binding.binding);
             Boot<IChildService, ChildService>(baseAddress, binding.binding);
 
+            if (binding.binding.GetType() == typeof(NetTcpBinding))
+            {
+                Boot<IDuplexService, DuplexService>(baseAddress, binding.binding);
+            }
+            
             Console.WriteLine("Press <Enter> to stop the service.");
             Console.ReadLine();
 

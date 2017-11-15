@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.ServiceModel;
 using WcfClientProxyGenerator.Tests.Services;
 
@@ -12,18 +13,36 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost.Services
 
         public string Echo(string input, string secondInput) => input + " " + secondInput;
 
+        public int EchoInt(int input) => input;
+
         public string EchoSequence(params string[] inputs) => inputs[(sequenceCount++ % inputs.Length)];
+
+        public object[] EchoMixed(string input, int input2) => new object[] { input, input2 };
 
         public string UnhandledException() => throw new CommunicationException();
 
         public string FaultException() => throw new FaultException();
 
-        public Response Complex(Request request, params Response[] responses) => responses == null ? new Response() : responses[(sequenceCount++ % responses.Length)];
+        public Response Complex(Request request, params Response[] responses) 
+            => responses == null || !responses.Any()
+                ? new Response() { ResponseMessage = request.RequestMessage }
+                : responses[(sequenceCount++ % responses.Length)];
+
+        public Response ComplexMulti(string input, Request request, params Response[] responses) 
+            => responses == null || !responses.Any() 
+                ? new Response() 
+                : responses[(sequenceCount++ % responses.Length)];
 
         public void OneWay(string input)
         { }
 
         public void VoidMethod(string input)
+        { }
+
+        public void VoidMethodIntParameter(int input)
+        { }
+
+        public void VoidMethodNoParameters()
         { }
 
         public string UnhandledExceptionOnFirstCallThenEcho(string input)

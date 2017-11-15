@@ -15,6 +15,12 @@
   <ItemGroup>
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />
   </ItemGroup>
+  <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
+    <DefineConstants>NETSTANDARD</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)'=='net46'">
+    <DefineConstants>NETFULL</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WcfClientProxyGenerator\WcfClientProxyGenerator.csproj" />
     <ProjectReference Include="..\WcfClientProxyGenerator.Tests.Services\WcfClientProxyGenerator.Tests.Services.csproj" />

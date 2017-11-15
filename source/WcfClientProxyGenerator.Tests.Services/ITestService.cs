@@ -12,6 +12,9 @@ namespace WcfClientProxyGenerator.Tests.Services
         [OperationContract]
         string Echo(string input);
 
+        [OperationContract]
+        int EchoInt(int input);
+
         [OperationContract(Name = "Echo2")]
         string Echo(string input, string secondInput);
 
@@ -19,13 +22,19 @@ namespace WcfClientProxyGenerator.Tests.Services
         string EchoSequence(params string[] inputs);
 
         [OperationContract]
+        object[] EchoMixed(string input, int input2);
+        
+        [OperationContract]
         string UnhandledException();
 
         [OperationContract]
         string FaultException();
         
         [OperationContract]
-        Response Complex(Request request, params Response[] responses);
+        Response Complex(Request request, params Response[] responses);        
+        
+        [OperationContract]
+        Response ComplexMulti(string input, Request request, params Response[] responses);
 
         [OperationContract]
         Response UnhandledExceptionOnFirstCall_ComplexMulti(string input, Request request, Response response);
@@ -34,7 +43,13 @@ namespace WcfClientProxyGenerator.Tests.Services
         void OneWay(string input);
         
         [OperationContract]
+        void VoidMethodNoParameters();
+        
+        [OperationContract]
         void VoidMethod(string input);
+        
+        [OperationContract]
+        void VoidMethodIntParameter(int input);
 
         [OperationContract]
         string UnhandledExceptionOnFirstCallThenEcho(string input);

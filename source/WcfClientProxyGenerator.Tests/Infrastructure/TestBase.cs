@@ -4,6 +4,7 @@ using System.ServiceModel;
 
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Tests.Services.Infrastructure;
+using Xunit;
 
 namespace WcfClientProxyGenerator.Tests.Infrastructure
 {
