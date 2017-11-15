@@ -524,8 +524,7 @@ namespace WcfClientProxyGenerator
         /// <returns></returns>
         private TServiceInterface RefreshProvider(TServiceInterface provider, int retryCount, InvokeInfo invokeInfo)
         {
-            var communicationObject = provider as ICommunicationObject;
-            if (communicationObject == null)
+            if (!(provider is ICommunicationObject communicationObject))
             {
                 return _wcfActionProviderCreator();
             }
@@ -543,8 +542,7 @@ namespace WcfClientProxyGenerator
 
         private void DisposeProvider(TServiceInterface provider, int retryCount, InvokeInfo invokeInfo)
         {
-            var communicationObject = provider as ICommunicationObject;
-            if (communicationObject == null || communicationObject.State == CommunicationState.Closed)
+            if (!(provider is ICommunicationObject communicationObject) || communicationObject.State == CommunicationState.Closed)
             {
                 return;
             }

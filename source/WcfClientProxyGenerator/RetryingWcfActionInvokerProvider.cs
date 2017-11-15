@@ -42,11 +42,15 @@ namespace WcfClientProxyGenerator
         {
             actionInvoker = new RetryingWcfActionInvoker<TServiceInterface>(() =>
             {
-#if NETFULL
                 if (channelFactory == null)
-                    this.UseDefaultEndpoint();
+                {
+#if NETFULL
+                    UseDefaultEndpoint();
+#else
+                    throw new NullReferenceException("SetEndpoint was not called in order to establish the channelFactory");
 #endif
-    
+                }
+                
                 return channelFactory.CreateChannel();
             });
         }
@@ -309,13 +313,16 @@ namespace WcfClientProxyGenerator
         {
             get
             {
-#if NETFULL
-                // if requested without endpoint set, use default
+
                 if (channelFactory == null)
                 {
+#if NETFULL
+                    // if requested without endpoint set, use default
                     UseDefaultEndpoint();
-                }
+#else
+                    throw new NullReferenceException("SetEndpoint was not called in order to establish the channelFactory");
 #endif
+                }
 
                 return channelFactory;
             }

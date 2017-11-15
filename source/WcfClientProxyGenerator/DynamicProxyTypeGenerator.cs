@@ -34,7 +34,7 @@ namespace WcfClientProxyGenerator
 #else
             AssemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
             ModuleBuilder = AssemblyBuilder.DefineDynamicModule(assemblyName.Name);
-#endif            
+#endif
         }
     }
 
