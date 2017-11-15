@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
+using System.ServiceModel;
 using System.ServiceModel.Description;
+using System.Threading;
 using System.Threading.Tasks;
 using NSubstitute;
 using Shouldly;
@@ -187,294 +189,192 @@ namespace WcfClientProxyGenerator.Tests
 
             proxy.UnhandledExceptionOnFirstCall_ComplexMulti("ok", new Request(), response).StatusCode.ShouldBe(response.StatusCode);
         }
-//
-//        [Fact]
-//        public void Proxy_CanBeGeneratedForInheritingServiceInterface()
-//        {
-//            var service = Substitute.For<ITestService>();
-//            var childService = Substitute.For<IChildService>();
-//
-//            childService
-//                .ChildMethod(Arg.Any<string>())
-//                .Returns("OK");
-//
-//            var proxy = childService.StartHostAndProxy();
-//
-//            Assert.That(() => proxy.ChildMethod("test"), Is.EqualTo("OK"));
-//        }
-//
-//        [Fact, Description("A call made with no retries should not throw the WcfRetryFailedException")]
-//        public void Proxy_ConfiguredWithNoRetries_CallsServiceOnce_AndThrowsActualException()
-//        {
-//            var service = Substitute.For<ITestService>();
-//
-//            service
-//                .When(m => m.VoidMethod("test"))
-//                .Throw(new FaultException());
-//
-//            var proxy = service.StartHostAndProxy(c =>
-//            {
-//                c.MaximumRetries(0);
-//                c.RetryOnException<FaultException>();
-//            });
-//
-//            Assert.That(() => proxy.VoidMethod("test"), Throws.TypeOf<FaultException>());
-//
-//            service
-//                .Received(1)
-//                .VoidMethod("test");
-//        }
-//
-//        [Fact]
-//        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsWcfRetryFailedException()
-//        {
-//            var service = Substitute.For<ITestService>();
-//
-//            service
-//                .When(m => m.VoidMethod("test"))
-//                .Throw(new FaultException());
-//
-//
-//            var proxy = service.StartHostAndProxy(c =>
-//            {
-//                c.MaximumRetries(1);
-//                c.RetryOnException<FaultException>();
-//            });
-//
-//            Assert.That(() => proxy.VoidMethod("test"), Throws.TypeOf<WcfRetryFailedException>());
-//
-//            service
-//                .Received(2)
-//                .VoidMethod("test");
-//        }
-//
-//        [Fact]
-//        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsCustomRetryFailureException()
-//        {
-//            var service = Substitute.For<ITestService>();
-//
-//            service
-//                .When(m => m.VoidMethod("test"))
-//                .Throw(new FaultException());
-//
-//            var proxy = service.StartHostAndProxy(c =>
-//            {
-//                c.MaximumRetries(1);
-//                c.RetryOnException<FaultException>();
-//                c.RetryFailureExceptionFactory((attempts, exception, info) =>
-//                {
-//                    string message = $"Failed call to {info.MethodName} {attempts} times";
-//                    return new CustomFailureException(message, exception);
-//                });
-//            });
-//
-//            Assert.That(() => proxy.VoidMethod("test"), Throws.TypeOf<CustomFailureException>());
-//
-//            service
-//                .Received(2)
-//                .VoidMethod("test");
-//        }
-//
-//        public class CustomFailureException : Exception
-//        {
-//            public CustomFailureException(string message, Exception innerException) : base(message, innerException)
-//            {}
-//        }
-//
-//        #region Out Parameter Support
-//
-//        [Fact]
-//        public void Proxy_CanBeGeneratedForOperationWithSingleOutParameter()
-//        {
-//            var service = Substitute.For<IOutParamTestService>();
-//
-//            byte[] expectedOutParam = { 0x00, 0x01 };
-//
-//            byte[] outPlaceholder;
-//            service
-//                .SingleOutParam(out outPlaceholder)
-//                .Returns(m =>
-//                {
-//                    m[0] = expectedOutParam;
-//                    return 1;
-//                });
-//
-//            var proxy = service.StartHostAndProxy();
-//
-//            byte[] outParam;
-//            int result = proxy.SingleOutParam(out outParam);
-//
-//            Assert.That(result, Is.EqualTo(1));
-//            Assert.That(outParam, Is.EqualTo(expectedOutParam));
-//        }
-//
-//        [Fact]
-//        public void Proxy_CanBeGeneratedForOperationWithMultipleOutParameters()
-//        {
-//            var service = Substitute.For<IOutParamTestService>();           
-//
-//            byte[] expectedOut1Value = { 0x00, 0x01 };
-//            string expectedOut2Value = "message";
-//
-//            byte[] out1ValuePlaceholder;
-//            string out2ValuePlaceholder;
-//            service
-//                .MultipleOutParams(out out1ValuePlaceholder, out out2ValuePlaceholder)
-//                .Returns(m =>
-//                {
-//                    m[0] = expectedOut1Value;
-//                    m[1] = expectedOut2Value;
-//                    return 1;
-//                });
-//
-//            var proxy = service.StartHostAndProxy();
-//
-//            byte[] out1Value;
-//            string out2Value;
-//            int result = proxy.MultipleOutParams(out out1Value, out out2Value);
-//
-//            Assert.That(result, Is.EqualTo(1));
-//            Assert.That(out1Value, Is.EqualTo(expectedOut1Value));
-//            Assert.That(out2Value, Is.EqualTo(expectedOut2Value));
-//        }
-//
-//        [Fact]
-//        public void Proxy_CanBeGeneratedForOperationWithMixedInputAndOutputParams()
-//        {
-//            var service = Substitute.For<IOutParamTestService>();           
-//
-//            const int expectedOut1Value = 25;
-//            int value = 0;
-//            service
-//                .MixedParams(1, out value, "test")
-//                .Returns(m =>
-//                {
-//                    m[1] = expectedOut1Value;
-//                    return 1;
-//                });
-//
-//            var proxy = service.StartHostAndProxy();
-//
-//            int out1Value;
-//            int result = proxy.MixedParams(1, out out1Value, "test");
-//
-//            Assert.That(result, Is.EqualTo(1));
-//            Assert.That(out1Value, Is.EqualTo(expectedOut1Value));
-//        }
-//
-//        [Fact]
-//        public void Proxy_CanBeUsedWithOneWayOperations()
-//        {
-//            var resetEvent = new AutoResetEvent(false);
-//
-//            var service = Substitute.For<ITestService>();
-//
-//            service
-//                .When(m => m.OneWay(Arg.Any<string>()))
-//                .Do(m =>
-//                {
-//                    Assert.That(m.Arg<string>(), Is.EqualTo("test"));
-//                    resetEvent.Set();
-//                });
-//
-//            var proxy = service.StartHostAndProxy();
-//
-//            proxy.OneWay("test");
-//            
-//            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
-//                Assert.Fail("Callback not entered");
-//        }
-//
-//        #endregion
-//
-//        #region OnBeforeInvoke and OnAfterInvoke support
-//
-//        [Fact]
-//        public void Proxy_OnBeforeInvoke_IsFired()
-//        {
-//            var service = Substitute.For<ITestService>();
-//            
-//            bool fired = false;
-//            var proxy = service.StartHostAndProxy(c =>
-//            {
-//                c.OnBeforeInvoke += (sender, args) => fired = true;
-//            });
-//
-//            proxy.VoidMethod("test");
-//            Assert.IsTrue(fired);
-//        }
-//
-//        [Fact]
-//        public void Proxy_OnBeforeInvoke_Multiple_AreFired()
-//        {
-//            var service = Substitute.For<ITestService>();
-//            
-//            bool fired1 = false, 
-//                 fired2 = false;
-//
-//            var proxy = service.StartHostAndProxy(c =>
-//            {
-//                c.OnBeforeInvoke += (sender, args) => fired1 = true;
-//                c.OnBeforeInvoke += (sender, args) => fired2 = true;
-//            });
-//
-//            proxy.VoidMethod("test");
-//
-//            Assert.IsTrue(fired1);
-//            Assert.IsTrue(fired2);
-//        }
-//
-//        [Fact]
-//        public void Proxy_OnBeforeInvoke_IfHandlerRemoved_NotFired()
-//        {
-//            var service = Substitute.For<ITestService>();
-//            
-//            bool fired = false;
-//            var proxy = service.StartHostAndProxy(c =>
-//            {
-//                OnInvokeHandler handler = (sender, args) => fired = true;
-//                c.OnBeforeInvoke += handler;
-//                c.OnBeforeInvoke -= handler;
-//            });
-//
-//            proxy.VoidMethod("test");
-//
-//            Assert.IsFalse(fired);
-//        }
-//
-//        [Fact]
-//        public void Proxy_OnBeforeInvoke_ArgumentsSetCorrectly()
-//        {
-//            var service = Substitute.For<ITestService>();
-//            
-//            var resetEvent = new AutoResetEvent(false);
-//            var proxy = service.StartHostAndProxy(c =>
-//            {
-//                OnInvokeHandler handler = (sender, args) =>
-//                {
-//                    Assert.AreEqual(false, args.IsRetry, "IsRetry is not set correctly");
-//                    Assert.AreEqual(0, args.RetryCounter, "RetryCounter is not set correctly");
-//                    Assert.AreEqual(typeof(ITestService), args.ServiceType, "ServiceType is not set correctly");
-//
-//                    resetEvent.Set();
-//                };
-//
-//                c.OnBeforeInvoke += handler;
-//            });
-//
-//            proxy.VoidMethod("test");
-//
-//            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
-//                Assert.Fail("OnBeforeInvoke not called");
-//        }
-//
+
+        [Fact]
+        public void Proxy_CanBeGeneratedForInheritingServiceInterface()
+        {
+            var proxy = GenerateProxy<IChildService>();
+            proxy.ChildMethod("hello").ShouldBe("hello");
+        }
+
+        [Fact, Description("A call made with no retries should not throw the WcfRetryFailedException")]
+        public void Proxy_ConfiguredWithNoRetries_CallsServiceOnce_AndThrowsActualException()
+        {
+            var proxy = GenerateProxy<ITestService>(c =>
+            {
+                c.MaximumRetries(0);
+                c.RetryOnException<FaultException>();
+            });
+            
+            Should.Throw<FaultException>(() => proxy.FaultException());
+        }
+
+        [Fact]
+        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsWcfRetryFailedException()
+        {
+            var proxy = GenerateProxy<ITestService>(c =>
+            {
+                c.MaximumRetries(1);
+                c.RetryOnException<FaultException>();
+            });
+
+            Should.Throw<WcfRetryFailedException>(() => proxy.FaultException());
+        }
+
+        [Fact]
+        public void Proxy_ConfiguredWithAtLeastOnRetry_CallsServiceMultipleTimes_AndThrowsCustomRetryFailureException()
+        {
+            var proxy = GenerateProxy<ITestService>(c =>
+            {
+                c.MaximumRetries(1);
+                c.RetryOnException<FaultException>();
+                c.RetryFailureExceptionFactory((attempts, exception, info) =>
+                {
+                    string message = $"Failed call to {info.MethodName} {attempts} times";
+                    return new CustomFailureException(message, exception);
+                });
+            });
+
+            Should.Throw<CustomFailureException>(() => proxy.FaultException());
+        }
+
+        public class CustomFailureException : Exception
+        {
+            public CustomFailureException(string message, Exception innerException) : base(message, innerException)
+            {}
+        }
+
+        #region Out Parameter Support
+
+        [Fact]
+        public void Proxy_CanBeGeneratedForOperationWithSingleOutParameter()
+        {
+            byte[] expectedOutParam = { 0x01 };
+
+            var proxy = GenerateProxy<IOutParamTestService>();
+
+            int result = proxy.SingleOutParam(out var outParam);
+
+            result.ShouldBe(1);
+            outParam.ShouldBe(expectedOutParam);
+        }
+
+        [Fact]
+        public void Proxy_CanBeGeneratedForOperationWithMultipleOutParameters()
+        {
+            byte[] expectedOut1Value = { 0x01 };
+            string expectedOut2Value = "hello world";
+
+            var proxy = GenerateProxy<IOutParamTestService>();
+
+            int result = proxy.MultipleOutParams(out var out1Value, out var out2Value);
+
+            result.ShouldBe(1);
+            out1Value.ShouldBe(expectedOut1Value);
+            out2Value.ShouldBe(expectedOut2Value);
+        }
+
+        [Fact]
+        public void Proxy_CanBeGeneratedForOperationWithMixedInputAndOutputParams()
+        {
+            var proxy = GenerateProxy<IOutParamTestService>();
+
+            int result = proxy.MixedParams(1, out var out1Value, "test");
+
+            result.ShouldBe(1);
+            out1Value.ShouldBe(25);
+        }
+
+        #endregion
+        
+        [Fact]
+        public void Proxy_CanBeUsedWithOneWayOperations()
+        {
+            var proxy = GenerateProxy<ITestService>();
+
+            proxy.OneWay("test");
+        }
+
+      #region OnBeforeInvoke and OnAfterInvoke support
+
+        [Fact]
+        public void Proxy_OnBeforeInvoke_IsFired()
+        {
+            bool fired = false;
+            var proxy = GenerateProxy<ITestService>(c =>
+            {
+                c.OnBeforeInvoke += (sender, args) => fired = true;
+            });
+
+            proxy.VoidMethod("test");
+            fired.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void Proxy_OnBeforeInvoke_Multiple_AreFired()
+        {
+            bool fired1 = false, 
+                 fired2 = false;
+
+            var proxy = GenerateProxy<ITestService>(c =>
+            {
+                c.OnBeforeInvoke += (sender, args) => fired1 = true;
+                c.OnBeforeInvoke += (sender, args) => fired2 = true;
+            });
+
+            proxy.VoidMethod("test");
+
+            fired1.ShouldBeTrue();
+            fired2.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void Proxy_OnBeforeInvoke_IfHandlerRemoved_NotFired()
+        {
+            bool fired = false;
+            var proxy = GenerateProxy<ITestService>(c =>
+            {
+                OnInvokeHandler handler = (sender, args) => fired = true;
+                c.OnBeforeInvoke += handler;
+                c.OnBeforeInvoke -= handler;
+            });
+
+            proxy.VoidMethod("test");
+
+            fired.ShouldBeFalse();
+        }
+
+        [Fact]
+        public void Proxy_OnBeforeInvoke_ArgumentsSetCorrectly()
+        {
+            var resetEvent = new AutoResetEvent(false);
+            var proxy = GenerateProxy<ITestService>(c =>
+            {
+                OnInvokeHandler handler = (sender, args) =>
+                {
+                    args.IsRetry.ShouldBeFalse("IsRetry is not set correctly");
+                    args.RetryCounter.ShouldBe(0, "RetryCounter is not set correctly");
+                    args.ServiceType.ShouldBe(typeof(ITestService), "ServiceType is not set correctly");
+
+                    resetEvent.Set();
+                };
+
+                c.OnBeforeInvoke += handler;
+            });
+
+            proxy.VoidMethod("test");
+
+            if (!resetEvent.WaitOne(TimeSpan.FromSeconds(10)))
+                Assert.True(false, "OnBeforeInvoke not called");
+        }
+
 //        [Fact]
 //        public void Proxy_OnBeforeInvoke_IfRetry_FiredManyTimes()
 //        {
 //            var resetEvent = new AutoResetEvent(false);
 //
 //            // set up a service method that throws first two times, and completes on the third time
-//            var serviceSub = Substitute.For<IExceptionDetailService>();           
+//            var serviceSub = Substitute.For<IExceptionDetailService>();
 //            var service = new ExceptionDetailService(serviceSub);
 //
 //            int mockFireCount = 0;
@@ -489,7 +389,7 @@ namespace WcfClientProxyGenerator.Tests
 //                });
 //
 //            int fireCount = 0;
-//            var proxy = service.StartHostAndProxy<IExceptionDetailService>(c =>
+//            var proxy = GenerateProxy<IExceptionDetailService>(c =>
 //            {
 //                c.MaximumRetries(10);
 //                c.RetryOnException<FaultException<ExceptionDetail>>();
@@ -1057,7 +957,7 @@ namespace WcfClientProxyGenerator.Tests
 //            resetEvent.WaitOrFail("OnAfterInvoke not called");
 //        }
 //
-//        #endregion
+        #endregion
 //
 //        #endregion
 //

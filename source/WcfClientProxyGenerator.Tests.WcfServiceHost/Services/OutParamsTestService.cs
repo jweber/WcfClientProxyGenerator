@@ -20,7 +20,7 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost.Services
 
         public int MixedParams(int inp1, out int out1, string inp2)
         {
-            out1 = inp1;
+            out1 = 25;
             
             return 1;
         }

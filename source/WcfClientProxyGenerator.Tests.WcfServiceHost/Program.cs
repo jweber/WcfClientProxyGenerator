@@ -41,6 +41,7 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost
             Boot<IDuplexService, DuplexService>(baseAddress, binding.binding);
             Boot<ITrailingSlashOnNamespaceService, TrailingSlashOnNamespaceService>(baseAddress, binding.binding);
             Boot<ICustomAttributeService, CustomAttributeService>(baseAddress, binding.binding);
+            Boot<IChildService, ChildService>(baseAddress, binding.binding);
 
             Console.WriteLine("Press <Enter> to stop the service.");
             Console.ReadLine();

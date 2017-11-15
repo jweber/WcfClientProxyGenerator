@@ -20,6 +20,9 @@ namespace WcfClientProxyGenerator.Tests.Services
 
         [OperationContract]
         string UnhandledException();
+
+        [OperationContract]
+        string FaultException();
         
         [OperationContract]
         Response Complex(Request request, params Response[] responses);

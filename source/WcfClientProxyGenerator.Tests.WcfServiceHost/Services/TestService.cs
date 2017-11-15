@@ -16,6 +16,8 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost.Services
 
         public string UnhandledException() => throw new CommunicationException();
 
+        public string FaultException() => throw new FaultException();
+
         public Response Complex(Request request, params Response[] responses) => responses == null ? new Response() : responses[(sequenceCount++ % responses.Length)];
 
         public void OneWay(string input)
