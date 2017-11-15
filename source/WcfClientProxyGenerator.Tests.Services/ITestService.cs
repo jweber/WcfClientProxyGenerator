@@ -23,6 +23,9 @@ namespace WcfClientProxyGenerator.Tests.Services
         
         [OperationContract]
         Response Complex(Request request, params Response[] responses);
+
+        [OperationContract]
+        Response UnhandledExceptionOnFirstCall_ComplexMulti(string input, Request request, Response response);
         
         [OperationContract(IsOneWay = true)]
         void OneWay(string input);
@@ -32,6 +35,9 @@ namespace WcfClientProxyGenerator.Tests.Services
 
         [OperationContract]
         string UnhandledExceptionOnFirstCallThenEcho(string input);
+        
+        [OperationContract]
+        Response UnhandledExceptionOnFirstCall_Complex(Request request, Response response);
     }
 
     [DataContract]

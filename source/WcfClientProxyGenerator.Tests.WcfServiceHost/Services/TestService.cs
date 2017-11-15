@@ -17,7 +17,7 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost.Services
         public string UnhandledException() => throw new CommunicationException();
 
         public Response Complex(Request request, params Response[] responses) => responses == null ? new Response() : responses[(sequenceCount++ % responses.Length)];
-        
+
         public void OneWay(string input)
         { }
 
@@ -30,6 +30,22 @@ namespace WcfClientProxyGenerator.Tests.WcfServiceHost.Services
                 throw new Exception();
 
             return input;
+        }
+
+        public Response UnhandledExceptionOnFirstCall_Complex(Request request, Response response)
+        {
+            if (sequenceCount++ == 0)
+                throw new Exception();
+
+            return response;
+        }
+
+        public Response UnhandledExceptionOnFirstCall_ComplexMulti(string input, Request request, Response response)
+        {
+            if (sequenceCount++ == 0)
+                throw new Exception();
+
+            return response;
         }
     }
 }

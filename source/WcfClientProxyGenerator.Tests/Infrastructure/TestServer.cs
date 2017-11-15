@@ -61,7 +61,7 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             foreach (var path in paths)
             {
                 var files = SearchResults(path);
-                if (files != null)
+                if (files != null && files.Any())
                     return files[0];
             }
             

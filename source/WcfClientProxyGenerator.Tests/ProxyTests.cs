@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.ServiceModel.Description;
 using System.Threading.Tasks;
-
+using NSubstitute;
 using Shouldly;
 using WcfClientProxyGenerator.Tests.Infrastructure;
 using WcfClientProxyGenerator.Tests.Services;
@@ -163,41 +163,30 @@ namespace WcfClientProxyGenerator.Tests
             proxy.UnhandledExceptionOnFirstCallThenEcho("hello world").ShouldBe("hello world");
         }
         
-        // TODO: Finish these tests
-//
-//        [Fact]
-//        public void Proxy_RecoversFromFaultedState_WhenCallingComplexTypeMethod()
-//        {
-//            var badRequest = new Request() { RequestMessage = "bad" };
-//            var goodRequest = new Request() { RequestMessage = "good" };
-//
-//            var service = Substitute.For<ITestService>();
-//            service.TestMethodComplex(goodRequest).Returns(new Response { ResponseMessage = "OK" });
-//            service.TestMethodComplex(badRequest).Throws<Exception>();
-//
-//            var proxy = service.StartHostAndProxy();
-//
-//            // Will fault the channel
-//            Assert.That(() => proxy.TestMethodComplex(badRequest), Throws.Exception);
-//            Assert.That(() => proxy.TestMethodComplex(goodRequest).ResponseMessage, Is.EqualTo("OK"));
-//        }
-//
-//        [Fact]
-//        public void Proxy_RecoversFromFaultedState_WhenCallingMultipleParameterComplexTypeMethod()
-//        {
-//            var badRequest = new Request() { RequestMessage = "bad" };
-//            var goodRequest = new Request() { RequestMessage = "good" };
-//
-//            var service = Substitute.For<ITestService>();
-//            service.TestMethodComplexMulti("good", goodRequest).Returns(new Response { ResponseMessage = "OK" });
-//            service.TestMethodComplexMulti("bad", badRequest).Throws<Exception>();
-//
-//            var proxy = service.StartHostAndProxy();
-//
-//            // Will fault the channel
-//            Assert.That(() => proxy.TestMethodComplexMulti("bad", badRequest), Throws.Exception);
-//            Assert.That(() => proxy.TestMethodComplexMulti("good", goodRequest).ResponseMessage, Is.EqualTo("OK"));
-//        }
+        [Fact]
+        public void Proxy_RecoversFromFaultedState_WhenCallingComplexTypeMethod()
+        {
+            var proxy = GenerateProxy<ITestService>();
+
+            var response = new Response { StatusCode = 123 };
+            
+            Should.Throw<Exception>(() => proxy.UnhandledExceptionOnFirstCall_Complex(new Request(), response));
+            
+            proxy.UnhandledExceptionOnFirstCall_Complex(new Request(), response).StatusCode.ShouldBe(response.StatusCode);
+        }
+
+        [Fact]
+        public void Proxy_RecoversFromFaultedState_WhenCallingMultipleParameterComplexTypeMethod()
+        {
+            var proxy = GenerateProxy<ITestService>();
+
+            var response = new Response { StatusCode = 123 };
+            
+            Should.Throw<Exception>(() =>
+                proxy.UnhandledExceptionOnFirstCall_ComplexMulti("ok", new Request(), response));
+
+            proxy.UnhandledExceptionOnFirstCall_ComplexMulti("ok", new Request(), response).StatusCode.ShouldBe(response.StatusCode);
+        }
 //
 //        [Fact]
 //        public void Proxy_CanBeGeneratedForInheritingServiceInterface()
