@@ -429,7 +429,7 @@ namespace WcfClientProxyGenerator.Tests
                 {
                     args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.ComplexMulti), "InvokeInfo.MethodName is not set correctly");
                     // parameters
-                    args.InvokeInfo.Parameters.Length.ShouldBe(2, "InvokeInfo.Parameters length is incorrect");
+                    args.InvokeInfo.Parameters.Length.ShouldBe(3, "InvokeInfo.Parameters length is incorrect");
                     args.InvokeInfo.Parameters[0].ShouldBe("test", "InvokeInfo.Parameters[0] is not set correctly");
                     args.InvokeInfo.Parameters[1].ShouldBe(request, "InvokeInfo.Parameters[1] is not set correctly");
 
@@ -473,7 +473,7 @@ namespace WcfClientProxyGenerator.Tests
             {
                 OnInvokeHandler handler = (sender, args) =>
                 {
-                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.VoidMethod), "InvokeInfo.MethodName is not set correctly");
+                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.VoidMethodIntParameter), "InvokeInfo.MethodName is not set correctly");
                     args.InvokeInfo.Parameters.Length.ShouldBe(1, "InvokeInfo.Parameters length is incorrect");
                     args.InvokeInfo.Parameters[0].ShouldBe(1337, "InvokeInfo.Parameters[0] is not set correctly");
 
@@ -918,7 +918,7 @@ namespace WcfClientProxyGenerator.Tests
             {
                 c.OnCallBegin += (invoker, args) =>
                 {
-                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.Echo));
+                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.Echo) + "Async");
                     
                     resetEvent.Set();
                 };
@@ -937,7 +937,7 @@ namespace WcfClientProxyGenerator.Tests
             {
                 c.OnCallSuccess += (invoker, args) =>
                 {
-                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.Echo));
+                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.Echo) + "Async");
                     args.InvokeInfo.ReturnValue.ShouldBe("test");
                     args.CallDuration.ShouldBeGreaterThan(TimeSpan.MinValue);
 
@@ -1002,7 +1002,7 @@ namespace WcfClientProxyGenerator.Tests
                 c.OnException += (sender, args) => fireCount++;
             });
 
-            Should.Throw<FaultException>(() => proxy.FaultException());
+            Should.Throw<Exception>(() => proxy.FaultException());
             fireCount.ShouldBe(6);
         }
 
@@ -1036,14 +1036,14 @@ namespace WcfClientProxyGenerator.Tests
                 c.OnException += (sender, args) =>
                 {
                     args.Exception.ShouldBeOfType<FaultException>();
-                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.VoidMethod), "InvokeInfo.MethodName");
+                    args.InvokeInfo.MethodName.ShouldBe(nameof(ITestService.FaultException), "InvokeInfo.MethodName");
                     args.ServiceType.ShouldBe(typeof(ITestService), "ServiceType");
 
                     resetEvent.Set();
                 };
             });
 
-            Should.Throw<FaultException>(() => proxy.VoidMethod("test"));
+            Should.Throw<FaultException>(() => proxy.FaultException());
 
             resetEvent.WaitOrFail("OnException not fired");
         }
@@ -1055,7 +1055,7 @@ namespace WcfClientProxyGenerator.Tests
         {
             var proxy = GenerateAsyncProxy<ITestService>();
 
-            await Should.ThrowAsync<FaultException>(() => proxy.CallAsync(m => m.VoidMethod("test")));
+            await Should.ThrowAsync<FaultException>(() => proxy.CallAsync(m => m.FaultException()));
         }
 
         [Fact]
@@ -1072,7 +1072,7 @@ namespace WcfClientProxyGenerator.Tests
                 };
             });
 
-            await Should.ThrowAsync<FaultException>(() => proxy.CallAsync(m => m.VoidMethod("test")));
+            await Should.ThrowAsync<FaultException>(() => proxy.CallAsync(m => m.FaultException()));
             
             resetEvent.WaitOrFail("OnException not fired");
 
@@ -1514,7 +1514,7 @@ namespace WcfClientProxyGenerator.Tests
             var proxy = GenerateProxy<ITestService>();
             
             // ITestService does not define TestMethodAsync, it's generated at runtime
-            string result = await ((dynamic) proxy).TestMethodAsync("good");
+            string result = await ((dynamic) proxy).EchoAsync("good");
 
             result.ShouldBe("good");
         }
