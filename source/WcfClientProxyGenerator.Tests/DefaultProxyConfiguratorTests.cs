@@ -7,7 +7,7 @@ namespace WcfClientProxyGenerator.Tests
 {
     public class DefaultProxyConfiguratorTests
     {
-        #if NET45
+        #if NETFULL
         
         [Fact]
         public void SetEndpoint_IsCalledWith_FullNamespaceOfServiceInterface()

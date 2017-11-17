@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.ServiceModel;
+using System.Threading;
 using System.Threading.Tasks;
 using WcfClientProxyGenerator.Async;
 using WcfClientProxyGenerator.Util;
@@ -16,6 +17,8 @@ namespace WcfClientProxyGenerator
     /// </summary>
     internal static class DynamicProxyAssembly
     {
+        private static int buildVersion = -1;
+        
         static DynamicProxyAssembly()
         {
             Initialize();
@@ -27,6 +30,9 @@ namespace WcfClientProxyGenerator
         internal static void Initialize()
         {
             var assemblyName = new AssemblyName("WcfClientProxyGenerator.DynamicProxy");
+            
+            int build = Interlocked.Increment(ref buildVersion);
+            assemblyName.Version = new Version(1, 0, 0, build);
 
 #if OUTPUT_PROXY_DLL
             AssemblyBuilder = appDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);

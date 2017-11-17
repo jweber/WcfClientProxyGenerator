@@ -11,7 +11,7 @@ namespace WcfClientProxyGenerator.Tests
 {
     public class RetryingWcfActionInvokerTests
     {
-#if NET45
+#if NETFULL
         
         [Fact]
         public void Retries_OnChannelTerminatedException()

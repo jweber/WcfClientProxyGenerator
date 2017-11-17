@@ -46,7 +46,7 @@ namespace WcfClientProxyGenerator.Tests
             factory1.ShouldNotBeSameAs(factory2);
         }
         
-#if NET45
+#if NETFULL
 
         /// <summary>
         /// Issue #19 exposed a failure where using the endpointConfigurationName
@@ -104,7 +104,7 @@ namespace WcfClientProxyGenerator.Tests
             
             var binding = (WSHttpBinding) factory.Endpoint.Binding;
             binding.Name.ShouldBe("wsHttpBinding_ITestService");
-            binding.MaxReceivedMessageSize.ShouldBe(123456);
+            binding.MaxReceivedMessageSize.ShouldBe(12345);
         }
 
         [Fact]

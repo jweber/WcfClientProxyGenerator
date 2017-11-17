@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Linq;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.Threading;
@@ -19,7 +20,7 @@ namespace WcfClientProxyGenerator.Tests
             DynamicProxyAssembly.Initialize();
         }
 
-#if NET45
+#if NETFULL
         [Fact] 
         [Description("Asserts that when no conguration is given in the Create proxy call, the endpoint config that matches the contract will be used")]
         public void CreatingProxy_WithNoConfigurator_AndSingleEndpointConfig_GetsDefaultClientConfiguration()
