@@ -11,6 +11,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WcfClientProxyGenerator.Tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WcfClientProxyGenerator.Tests.Services", "WcfClientProxyGenerator.Tests.Services\WcfClientProxyGenerator.Tests.Services.csproj", "{7A65833E-0552-4D03-998A-CCB20155706C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Resources", "Resources", "{EFC1E8B2-6C7A-4EEC-8A2E-BC916E391753}"
+ProjectSection(SolutionItems) = preProject
+	readme.md = readme.md
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
