@@ -4,7 +4,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <PackageId>WcfClientProxyGenerator</PackageId>
-    <Version>2.3.0-alpha1</Version>
+    <Version>2.3.0-alpha2</Version>
     <Authors>j.weber</Authors>
     <PackageProjectUrl>https://github.com/jweber/WcfClientProxyGenerator</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>

@@ -62,8 +62,8 @@ namespace WcfClientProxyGenerator.Tests
             ContractDescription contractDescription = ContractDescription.GetContract(typeof(ITestService));
 
             Should.NotThrow(() =>
-                WcfClientProxy.Create<ITestService>(c =>
-                    c.SetEndpoint(new ServiceEndpoint(contractDescription, this.TestServer.Binding, GetAddress<ITestService>()))));
+                WcfClientProxy.Create<ITestService>(
+                    new ServiceEndpoint(contractDescription, this.TestServer.Binding, GetAddress<ITestService>())));
         }
 
         [Fact]
@@ -71,8 +71,8 @@ namespace WcfClientProxyGenerator.Tests
         {
             ContractDescription contractDescription = ContractDescription.GetContract(typeof(ITestService));
 
-            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(c =>
-                c.SetEndpoint(new ServiceEndpoint(contractDescription, this.TestServer.Binding, GetAddress<ITestService>())));
+            var proxy = WcfClientProxy.CreateAsyncProxy<ITestService>(
+                new ServiceEndpoint(contractDescription, this.TestServer.Binding, GetAddress<ITestService>()));
 
             var response = await proxy.CallAsync(m => m.Echo("test"));
 
@@ -1560,21 +1560,24 @@ namespace WcfClientProxyGenerator.Tests
         [Fact]
         public void Proxy_GivesProperException_IfInterfaceNotPublic()
         {
-            Should.Throw<InvalidOperationException>(delegate { WcfClientProxy.Create<IPrivateTestService>(); });
+            Should.Throw<InvalidOperationException>(() 
+                => WcfClientProxy.Create<IPrivateTestService>(this.TestServer.Binding, this.TestServer.BaseAddress));
             // error message not checked here, but it should be quite readable
         }
 
         [Fact]
         public void Proxy_GivesProperException_IfNotServiceContract()
         {
-            Should.Throw<InvalidOperationException>(delegate { WcfClientProxy.Create<INonServiceInterface>(); });
+            Should.Throw<InvalidOperationException>(() 
+                => WcfClientProxy.Create<INonServiceInterface>(this.TestServer.Binding, this.TestServer.BaseAddress));
             // error message not checked here, but it should be quite readable
         }
 
         [Fact]
         public void Proxy_GivesProperException_IfZeroOperationContracts()
         {
-            Should.Throw<InvalidOperationException>(delegate { WcfClientProxy.Create<INoOperationsInterface>(); });
+            Should.Throw<InvalidOperationException>(() 
+                => WcfClientProxy.Create<INoOperationsInterface>(this.TestServer.Binding, this.TestServer.BaseAddress));
             // error message not checked here, but it should be quite readable
         }
 

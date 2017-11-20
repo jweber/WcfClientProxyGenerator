@@ -36,22 +36,26 @@ namespace WcfClientProxyGenerator.Tests.Infrastructure
             Action<IRetryingProxyConfigurator> config = null)
             where TServiceInterface : class
         {
-            return WcfClientProxy.Create<TServiceInterface>(c =>
-            {
-                c.SetEndpoint(this.TestServer.Binding, GetAddress<TServiceInterface>());
-                config?.Invoke(c);
-            });
+            return WcfClientProxy.Create<TServiceInterface>(
+                this.TestServer.Binding,
+                GetAddress<TServiceInterface>(),
+                c =>
+                {
+                    config?.Invoke(c);
+                });
         }
         
         protected IAsyncProxy<TServiceInterface> GenerateAsyncProxy<TServiceInterface>(
             Action<IRetryingProxyConfigurator> config = null)
             where TServiceInterface : class
         {
-            return WcfClientProxy.CreateAsyncProxy<TServiceInterface>(c =>
-            {
-                c.SetEndpoint(this.TestServer.Binding, GetAddress<TServiceInterface>());
-                config?.Invoke(c);
-            });
+            return WcfClientProxy.CreateAsyncProxy<TServiceInterface>(
+                this.TestServer.Binding,
+                GetAddress<TServiceInterface>(),
+                c =>
+                {
+                    config?.Invoke(c);
+                });
         }
     }
 }
