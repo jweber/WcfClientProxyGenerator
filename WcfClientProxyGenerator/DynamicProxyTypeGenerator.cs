@@ -160,7 +160,7 @@ namespace WcfClientProxyGenerator
             serviceNamespace = serviceNamespace.TrimEnd('/');
 
             string defaultAction =
-                $"{serviceNamespace}/{methodInfo.DeclaringType.Name}/{operationContractAttr.Name ?? methodInfo.Name}";
+                $"{serviceNamespace}/{serviceContract.Name ?? methodInfo.DeclaringType.Name}/{operationContractAttr.Name ?? methodInfo.Name}";
 
             return defaultAction;
         }
@@ -182,7 +182,7 @@ namespace WcfClientProxyGenerator
                 serviceNamespace = serviceNamespace.TrimEnd('/');
 
                 string defaultAction =
-                    $"{serviceNamespace}/{methodInfo.DeclaringType.Name}/{operationContractAttr.Name ?? methodInfo.Name}Response";
+                    $"{serviceNamespace}/{serviceContract.Name ?? methodInfo.DeclaringType.Name}/{operationContractAttr.Name ?? methodInfo.Name}Response";
 
                 return defaultAction;
             }
