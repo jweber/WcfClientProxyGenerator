@@ -78,6 +78,7 @@
     <Compile Include="Infrastructure\IOutParamTestService.cs" />
     <Compile Include="Infrastructure\ITestServiceSingleEndpointConfig.cs" />
     <Compile Include="DelayPolicyTests.cs" />
+    <Compile Include="Issues\Issue25.cs" />
     <Compile Include="ProxyTests.cs" />
     <Compile Include="Infrastructure\InProcTestFactory.cs" />
     <Compile Include="Infrastructure\ITestService.cs" />
