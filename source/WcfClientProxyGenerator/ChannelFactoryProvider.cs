@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Configuration;
 using System.ServiceModel.Description;
+using System.Text;
 using WcfClientProxyGenerator.Util;
 
 namespace WcfClientProxyGenerator
@@ -165,13 +167,44 @@ namespace WcfClientProxyGenerator
             var serviceEndpoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(TServiceInterface)))
             {
                 Binding = binding,
-                Address = new EndpointAddress(endpoint.Address)
+                Address = new EndpointAddress(endpoint.Address, ParseEndpointIdentity(endpoint.Identity))
             };
 
             foreach (var behavior in GetEndpointBehaviors(endpoint, serviceModelSection))
                 serviceEndpoint.Behaviors.Add(behavior);
 
             return serviceEndpoint;
+        }
+
+        private static EndpointIdentity ParseEndpointIdentity(IdentityElement element)
+        {
+            if (element.ServicePrincipalName.ElementInformation.IsPresent)
+            {
+                return EndpointIdentity.CreateSpnIdentity(element.ServicePrincipalName.Value);
+            }
+
+            if (element.Certificate.ElementInformation.IsPresent)
+            {
+              var certificate = new X509Certificate2(Convert.FromBase64String(element.Certificate.EncodedValue));
+              return EndpointIdentity.CreateX509CertificateIdentity(certificate);
+            }
+
+            if (element.Dns.ElementInformation.IsPresent)
+            {
+                return EndpointIdentity.CreateDnsIdentity(element.Dns.Value);
+            }
+
+            if (element.Rsa.ElementInformation.IsPresent)
+            {
+                return EndpointIdentity.CreateRsaIdentity(element.Rsa.Value);
+            }
+
+            if (element.UserPrincipalName.ElementInformation.IsPresent)
+            {
+                return EndpointIdentity.CreateUpnIdentity(element.UserPrincipalName.Value);
+            }
+
+            return null;
         }
 
         private static ChannelEndpointElement GetDefaultEndpointForServiceType(

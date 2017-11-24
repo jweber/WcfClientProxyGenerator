@@ -121,6 +121,50 @@ namespace WcfClientProxyGenerator.Tests
         }
 
         [Test]
+        public void ChannelFactory_Identity_WithSpnIdentity()
+        {
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("TestService_SpnIdentity");
+
+            Assert.That(factory.Endpoint.Address.Identity, Is.TypeOf<SpnEndpointIdentity>());
+
+            var spnValue = factory.Endpoint.Address.Identity.IdentityClaim;
+            Assert.That(spnValue.Resource, Is.EqualTo("Service/host:40000"));
+        }
+
+        [Test]
+        public void ChannelFactory_Identity_WithDnsIdentity()
+        {
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("TestService_DnsIdentity");
+
+            Assert.That(factory.Endpoint.Address.Identity, Is.TypeOf<DnsEndpointIdentity>());
+
+            var dnsValue = factory.Endpoint.Address.Identity.IdentityClaim;
+            Assert.That(dnsValue.Resource, Is.EqualTo("server"));
+        }
+
+        [Test]
+        public void ChannelFactory_Identity_WithUpnIdentity()
+        {
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("TestService_UpnIdentity");
+
+            Assert.That(factory.Endpoint.Address.Identity, Is.TypeOf<UpnEndpointIdentity>());
+
+            var dnsValue = factory.Endpoint.Address.Identity.IdentityClaim;
+            Assert.That(dnsValue.Resource, Is.EqualTo("someone@cohowinery.com"));
+        }
+
+        [Test]
+        public void ChannelFactory_Identity_WithCertificateIdentity()
+        {
+            var factory = ChannelFactoryProvider.GetChannelFactory<ITestService>("TestService_CertificateIdentity");
+
+            Assert.That(factory.Endpoint.Address.Identity, Is.TypeOf<X509CertificateEndpointIdentity>());
+
+            var certificate = ((X509CertificateEndpointIdentity)factory.Endpoint.Address.Identity).Certificates[0];
+            Assert.That(certificate.SubjectName.Name, Is.EqualTo("CN=NVIDIA GameStream Server"));
+        }
+
+        [Test]
         public void NoConfigurationForServiceType_ThrowsInvalidOperationException()
         {
             Assert.That(() => ChannelFactoryProvider.GetChannelFactory<IAsyncTestInterface>(), Throws.TypeOf<InvalidOperationException>());
