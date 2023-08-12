@@ -11,6 +11,8 @@
     <RepositoryUrl>https://github.com/jweber/WcfClientProxyGenerator.git</RepositoryUrl>
     <Description>Utility to generate fault tolerant and highly configurable client proxies for WCF services based on WCF ServiceContracts. Supports making async calls using non async-ready ServiceContracts.</Description>
     <PackageTags>wcf service client proxy dynamic async</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
     <DefineConstants>NETSTANDARD</DefineConstants>
@@ -18,6 +20,9 @@
   <PropertyGroup Condition="'$(TargetFramework)'=='net45'">
     <DefineConstants>NETFULL</DefineConstants>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\readme.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
     <PackageReference Include="System.Reflection.Emit" Version="4.7.0" />
     <PackageReference Include="System.ServiceModel.Primitives" Version="4.10.2" />
