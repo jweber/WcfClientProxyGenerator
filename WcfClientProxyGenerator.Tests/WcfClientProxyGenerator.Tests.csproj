@@ -1,15 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;net46</TargetFrameworks>
+    <TargetFrameworks>net7.0;net46</TargetFrameworks>
     <IsPackable>false</IsPackable>
+    <RunPostBuildEvent>Always</RunPostBuildEvent>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
-    <PackageReference Include="NSubstitute" Version="3.1.0" />
-    <PackageReference Include="System.ServiceModel.NetTcp" Version="4.4.0" />
-    <PackageReference Include="System.ValueTuple" Version="4.4.0" />
-    <PackageReference Include="xunit" Version="2.3.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.0" />
+    <PackageReference Include="NSubstitute" Version="4.4.0" />
+    <PackageReference Include="System.ServiceModel.NetTcp" Version="4.10.2" />
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+    <PackageReference Include="xunit" Version="2.5.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Shouldly" Version="2.8.3" />
   </ItemGroup>
   <ItemGroup>
@@ -34,9 +39,6 @@
     <Reference Include="System.ServiceModel.Web" />
   </ItemGroup>
   <ItemGroup>
-    <WcfServiceHostFiles Include="..\WcfClientProxyGenerator.Tests.WcfServiceHost\bin\$(Configuration)\**\*.*" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="bin\$(Configuration)\WcfServiceHost\*.*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -44,9 +46,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-  <Target Name="BeforeBuild" BeforeTargets="Build">
+  <ItemGroup>
+    <WcfServiceHostFiles Include="..\WcfClientProxyGenerator.Tests.WcfServiceHost\bin\$(Configuration)\net45\**\*.*" />
+  </ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Message Text="Building WcfClientProxyGenerator.Tests.WcfServiceHost" />
-    <MSBuild Projects="..\WcfClientProxyGenerator.Tests.WcfServiceHost\WcfClientProxyGenerator.Tests.WcfServiceHost.csproj" />
+<!--    <MSBuild Projects="..\WcfClientProxyGenerator.Tests.WcfServiceHost\WcfClientProxyGenerator.Tests.WcfServiceHost.csproj" />-->
     <Copy SourceFiles="@(WcfServiceHostFiles)" DestinationFolder="$(OutputPath)WcfServiceHost" />
   </Target>
 </Project>
