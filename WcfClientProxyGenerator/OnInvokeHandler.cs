@@ -16,6 +16,11 @@ namespace WcfClientProxyGenerator
         /// Type of the service that was invoked.
         /// </summary>
         public Type ServiceType { get; set; }
+        
+        /// <summary>
+        /// Duration of the call
+        /// </summary>
+        public TimeSpan CallDuration { get; set; }
 
         /// <summary>
         /// True if this is a re-try of a service method invocation.

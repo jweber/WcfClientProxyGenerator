@@ -194,6 +194,8 @@ namespace WcfClientProxyGenerator
                 Exception mostRecentException = null;
                 for (int i = 0; i < this.RetryCount + 1; i++)
                 {
+                    sw.Restart();
+                    
                     try
                     {
                         this.HandleOnBeforeInvoke(i, invokeInfo);
@@ -220,7 +222,7 @@ namespace WcfClientProxyGenerator
                     }
                     catch (Exception ex)
                     {
-                        this.HandleOnException(ex, i, invokeInfo);
+                        this.HandleOnException(ex, sw.Elapsed, i, invokeInfo);
 
                         if (this.ExceptionIsRetryable(ex))
                         {
@@ -275,6 +277,8 @@ namespace WcfClientProxyGenerator
                 Exception mostRecentException = null;
                 for (int i = 0; i < RetryCount + 1; i++)
                 {
+                    sw.Restart();
+                    
                     try
                     {
                         this.HandleOnBeforeInvoke(i, invokeInfo);
@@ -300,7 +304,7 @@ namespace WcfClientProxyGenerator
                     }
                     catch (Exception ex)
                     {
-                        this.HandleOnException(ex, i, invokeInfo);
+                        this.HandleOnException(ex, sw.Elapsed, i, invokeInfo);
 
                         // determine whether to retry the service call
                         if (ExceptionIsRetryable(ex))
@@ -386,11 +390,12 @@ namespace WcfClientProxyGenerator
             });
         }
 
-        private void HandleOnException(Exception exception, int retryCounter, InvokeInfo invokeInfo)
+        private void HandleOnException(Exception exception, TimeSpan callDuration, int retryCounter, InvokeInfo invokeInfo)
         {
             this.OnException(this, new OnExceptionHandlerArguments
             {
                 Exception = exception,
+                CallDuration = callDuration,
                 ServiceType = _originalServiceInterfaceType,
                 RetryCounter = retryCounter,
                 InvokeInfo = invokeInfo,
@@ -559,15 +564,15 @@ namespace WcfClientProxyGenerator
             }
             catch (CommunicationException ex)
             {
-                this.HandleOnException(ex, retryCount, invokeInfo);
+                this.HandleOnException(ex, TimeSpan.Zero, retryCount, invokeInfo);
             }
             catch (TimeoutException ex)
             {
-                this.HandleOnException(ex, retryCount, invokeInfo);
+                this.HandleOnException(ex, TimeSpan.Zero, retryCount, invokeInfo);
             }
             catch (Exception ex)
             {
-                this.HandleOnException(ex, retryCount, invokeInfo);
+                this.HandleOnException(ex, TimeSpan.Zero, retryCount, invokeInfo);
                 throw;
             }
             finally
@@ -587,7 +592,7 @@ namespace WcfClientProxyGenerator
             }
             catch (Exception ex)
             {
-                this.HandleOnException(ex, retryCount, invokeInfo);
+                this.HandleOnException(ex, TimeSpan.Zero, retryCount, invokeInfo);
             }
         }
     }
